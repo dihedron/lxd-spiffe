@@ -14,7 +14,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Language / SDK | Go, `github.com/spiffe/spire-plugin-sdk`. **Custom lightweight HTTP/JSON client for the LXD REST API** (FR-S17). Do NOT import `github.com/canonical/lxd/...`: LXD was relicensed from Apache-2.0 to AGPL-3.0 on 2023-12-12 and the licence status of its client packages is not cleared (gate L10); the SDK is also a large dependency surface that follows LXD's API releases. |
 | Guest OS | Linux (containers and VMs), amd64 and arm64. Windows guests out of scope (*Overview → Non-goals*) |
 | Hard constraints | No CGO and no native libraries on either side; the agent MUST NOT require LXD client tools or `cloud-init` in the guest |
-| Companion documents | `SPIRE vsphere_guest Node Attestor — Specification` v0.3 (same structure, same ID conventions, same threat-model method); `lxprobe` specification v0.1 (validation harness for gates L1–L15, to be built and run first) |
+| Companion documents | `SPIRE vsphere_guest Node Attestor — Specification` v0.3 (same structure, same ID conventions, same threat-model method); `lxprobe` specification v0.1, `lxd-probe.md` (validation harness for gates L1–L15, to be built and run first) |
 
 **Keywords.** MUST, MUST NOT, SHOULD, MAY are used per RFC 2119. Requirements carry IDs (`FR-*`, `SEC-*`, `NFR-*`); validation gates carry `L*` IDs; threats `T*`. Statements about LXD behaviour are tagged **[D]** when confirmed in the LXD documentation consulted for this draft (*Testing → Sources consulted*) and **[V:Ln]** when they are assumptions that a validation gate (*Testing → Validation gates*) MUST confirm before the dependent code is written.
 
@@ -26,66 +26,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | v0.2 | `ready_signal` withdrawn; ETag 412 retry (FR-S14); UID shifting for `file_pull`; custom HTTP client; broker pattern moved into architecture and guidance. |
 | v0.3 | Cross-references and ID gaps repaired (FR-A9, L5 kept as withdrawn); required API extensions reduced to what is used; FR-S14 rewritten (full re-verification on 412, same nonce, bounded budget, PATCH/PUT open point); UID rule rewritten around a single expected owner and `volatile.idmap.current` (*Proof of co-location → UID translation*); FR-S17 specifies the LXD client; licence-based rationale for not using the LXD SDK; minimal API contract (*LXD integration → Minimal API contract*); fixtures gate L15; broker generalised and marked not available in v1; `join_token` comparison restored; `lxprobe` introduced as step 0. |
 | Oct 8, 2026 | Merged into `lxd-spire-plugins.md`, the repository's spec, and reorganised into its sections (Overview, Trust model, Agent-side plugin, Server-side plugin, Configuration, Testing) without changing requirements; IDs and tags unchanged; cross-references by section name; repository layout aligned with the repository; configuration samples use the packaged binaries. |
-
-**v0.3 section map.** Other documents (notably `lxprobe-spec-v0.1.md`) cite this specification by its v0.3 section numbers; they map to the sections below as follows.
-
-| v0.3 section | Section in this spec |
-|---|---|
-| §1 Purpose and Scope | Overview |
-| §1.1 Goal | Overview → Goal |
-| §1.2 The central design problem | Overview → The central design problem |
-| §1.3 In scope | Overview → In scope |
-| §1.4 Basic flow | Overview → Basic flow |
-| §1.5 Out of scope | Overview → Non-goals |
-| §2 Architecture | Overview → Architecture |
-| §2.1 Trust boundaries | Trust model → Trust boundaries |
-| §2.2 Trust assumptions | Trust model → Trust assumptions |
-| §3 What Claims Can Be Made Reliably | Trust model → What claims can be made reliably |
-| §3.1 Claims about identity | Trust model → What claims can be made reliably → Claims about identity |
-| §3.2 Claims about provenance and configuration | Trust model → What claims can be made reliably → Claims about provenance and configuration |
-| §3.3 Claims that look reliable but are not | Trust model → What claims can be made reliably → Claims that look reliable but are not |
-| §3.4 What LXD cannot attest (R4) | Trust model → What claims can be made reliably → What LXD cannot attest (R4) |
-| §3.5 Conclusion for the design | Trust model → What claims can be made reliably → Conclusion for the design |
-| §4 Functional Requirements | Agent-side plugin, Server-side plugin |
-| §4.1 Agent plugin | Agent-side plugin → Functional requirements |
-| §4.2 Server plugin | Server-side plugin → Functional requirements |
-| §5 Wire Protocol | Overview → Wire protocol |
-| §6 Proof of Co-Location | Trust model → Proof of co-location |
-| §6.1 Mode `file_pull` (default) | Trust model → Proof of co-location → Mode `file_pull` (default) |
-| §6.1.1 UID translation (applies only if gate L1 shows that LXD reports host-side owners) | Trust model → Proof of co-location → UID translation (applies only if gate L1 shows that LXD reports host-side owners) |
-| §6.2 Mode `config_push` | Trust model → Proof of co-location → Mode `config_push` |
-| §6.3 Mode negotiation | Trust model → Proof of co-location → Mode negotiation |
-| §6.4 Privilege cost of each mode (the main trade-off) | Trust model → Proof of co-location → Privilege cost of each mode (the main trade-off) |
-| §7 Selectors | Server-side plugin → Selectors |
-| §8 Threat Model | Trust model → Threat model |
-| §8.1 Assets | Trust model → Threat model → Assets |
-| §8.2 Actors | Trust model → Threat model → Actors |
-| §8.3 Threats and countermeasures (STRIDE) | Trust model → Threat model → Threats and countermeasures (STRIDE) |
-| §8.4 Security requirements | Trust model → Threat model → Security requirements |
-| §9 LXD Integration | Server-side plugin → LXD integration |
-| §9.1 API usage and required extensions | Server-side plugin → LXD integration → API usage and required extensions |
-| §9.2 Least privilege | Server-side plugin → LXD integration → Least privilege |
-| §9.3 Caching | Server-side plugin → LXD integration → Caching |
-| §9.4 Minimal API contract | Server-side plugin → LXD integration → Minimal API contract |
-| §10 Configuration | Configuration |
-| §10.1 Agent (`agent.conf`) | Configuration → Agent (`agent.conf`) |
-| §10.2 Server (`server.conf`) | Configuration → Server (`server.conf`) |
-| §11 Observability, NFRs and Tests | Server-side plugin → Observability; Testing |
-| §11.1 Observability | Server-side plugin → Observability |
-| §11.2 Non-functional requirements | Testing → Non-functional requirements |
-| §11.3 Tests | Testing → Tests |
-| §12 Validation Gates (to resolve with a spike **before** implementing the dependent code) | Testing → Validation gates |
-| §13 Repository Layout and Build | Overview → Repository layout and build |
-| §14 Alternatives and Related Designs | Overview → Non-goals → Alternatives and related designs |
-| §14.1 Host-resident SPIRE agent with an LXD workload attestor | Overview → Non-goals → Alternatives and related designs → Host-resident SPIRE agent with an LXD workload attestor |
-| §14.2 Narrow challenge broker (pattern; not available in v1) | Overview → Non-goals → Alternatives and related designs → Narrow challenge broker (pattern; not available in v1) |
-| §14.3 SPIRE `join_token` (the built-in attestor), and as an add-on | Overview → Non-goals → Alternatives and related designs → SPIRE `join_token` (the built-in attestor), and as an add-on |
-| §14.4 `x509pop` or other pre-provisioned credentials | Overview → Non-goals → Alternatives and related designs → `x509pop` or other pre-provisioned credentials |
-| §14.5 vTPM | Overview → Non-goals → Alternatives and related designs → vTPM |
-| §14.6 Source IP binding | Overview → Non-goals → Alternatives and related designs → Source IP binding |
-| §15 Operational Guidance (must appear in user docs) | Configuration → Operational guidance |
-| §16 Instructions for the Implementing Agent (Claude) | Testing → Implementation instructions |
-| §17 Sources Consulted | Testing → Sources consulted |
+| Oct 8, 2026 (later) | Aligned with the lxprobe spec, now `lxd-probe.md`: v0.3 section map removed (no document cites v0.3 numbers any more); repository layout gains `internal/devlxd`, `internal/evidence`, `internal/probe` and `test/fakelxd`; *UID translation* names `util idmap check` for the cross-check; NFR-03 allow-list extended to the command line, configuration and logging libraries already in use. |
 
 ## Overview
 
@@ -213,24 +154,28 @@ Final response: SPIRE `AttestResponse` with `agent_id`, `selectors`, `can_reatte
 ```text
 cmd/lxd-agent-plugin/                # agent plugin binary (SPIRE Agent starts it without arguments)
 cmd/lxd-server-plugin/               # server plugin binary (SPIRE Server starts it without arguments)
-cmd/lxprobe/                         # validation harness (own specification)
+cmd/lxprobe/                         # validation harness (own specification, lxd-probe.md)
 internal/command/                    # command line commands shared by the binaries (version)
 internal/plugin/agent/lxdinstance/   # agent NodeAttestor (FR-A*)
 internal/plugin/server/lxdinstance/  # server NodeAttestor (FR-S*)
 internal/plugin/config/              # plugin_data decoding, unknown keys rejected
 internal/plugin/logging/             # log/slog to SPIRE's hclog
 internal/proto/lxd_instance.proto
-internal/claim/                      # claim collection, devLXD client
+internal/claim/                      # claim collection
+internal/devlxd/                     # devLXD unix-socket client; shared by the agent and lxprobe
 internal/proof/                      # nonce, hash, constant-time compare
 internal/agentproof/                 # file_pull, config_push (agent side)
 internal/lxd/                        # lightweight HTTP client (FR-S17), pinning, instance read, files, ops; shared with lxprobe
 internal/policy/                     # privilege/raw checks, device overlap, uid mapping/idmap logic
 internal/selectors/
 internal/limits/
+internal/evidence/                   # lxprobe only: evidence records, sanitizer, reports
+internal/probe/                      # lxprobe only: command implementations
 pkg/metadata/                        # build metadata injected at link time
 docs/                                # release documents; docs/validation/ (gate evidence), docs/threat-model.md
 test/fixtures/                       # responses recorded from real LXD (gate L15)
-test/                                # fake LXD API (replays fixtures), fuzz corpora
+test/fakelxd/                        # fake LXD API (replays fixtures)
+test/                                # fuzz corpora
 ```
 Build: `make` (development build), `make snapshot` and `make release`, through goreleaser (`.goreleaser.yaml`): `CGO_ENABLED=0`, `-trimpath`, `-buildvcs`; linux/amd64 and linux/arm64; deb and rpm packages, SBOM, signed checksums file; `make checksum` prints the SHA-256 for `plugin_checksum`. No Canonical SDK imports.
 
@@ -391,7 +336,7 @@ Required LXD entitlements: instance `can_view` and `can_access_files` (*LXD inte
 - **Algorithm.** Consider only entries with `Isuid = true`. Find the entries whose namespace range contains namespace uid 0 (`Nsid ≤ 0 < Nsid + Maprange`). Exactly one entry must match, otherwise the attestation fails. The expected host uid is `Hostid + (0 − Nsid)`.
 - **Fail closed** when `volatile.idmap.current` is missing or not parseable, when entries overlap, or when a value does not fit in 32 bits. When `raw.idmap` is set on the instance, v1 rejects it for `file_pull` if host-side reporting applies (keeps the mapping a single range).
 - Only the uid is checked (plus the mode); group ownership is not part of the rule.
-- The translation lives in `internal/policy` and is shared with `lxprobe` (`util idmap translate`), which cross-checks it against the guest's own `/proc/self/uid_map`.
+- The translation lives in `internal/policy` and is shared with `lxprobe`, which runs it (`util idmap translate`) and cross-checks `volatile.idmap.current` against the guest's own `/proc/self/uid_map` (`util idmap check`).
 
 #### Mode `config_push`
 
@@ -695,7 +640,7 @@ Validation at `Configure`: unknown keys rejected; missing pin/CA (SEC-07); inlin
 |---|---|
 | NFR-01 | Attestation p95 ≤ 4 s (`file_pull`) and ≤ 6 s (`config_push`) with a healthy LXD; provisional until gates L1/L2 measure them. |
 | NFR-02 | Server sustains ≥ 20 attestations/s within the limits of SEC-09. |
-| NFR-03 | Agent and server: static binaries, no CGO, linux/amd64 and linux/arm64; agent ≤ 20 MB. A CI check enforces a **dependency allow-list**: the standard library, the SPIRE plugin SDK with its transitive requirements, and protobuf/gRPC; nothing from `github.com/canonical/lxd`. |
+| NFR-03 | Agent and server: static binaries, no CGO, linux/amd64 and linux/arm64; agent ≤ 20 MB. A CI check enforces a **dependency allow-list**: the standard library, the SPIRE plugin SDK with its transitive requirements, protobuf/gRPC, and the command line, configuration and logging libraries the repository already uses (`github.com/jessevdk/go-flags`, `github.com/joho/godotenv`, `github.com/hashicorp/hcl`, `github.com/hashicorp/go-hclog`); nothing from `github.com/canonical/lxd`. |
 | NFR-04 | Fails closed on every error path; no panics on untrusted input (recover and return the uniform error). |
 | NFR-05 | Compatible with the SPIRE version fixed by gate V6 of the companion spec (challenge/response API, `can_reattest`); SDK version pinned. |
 | NFR-06 | `golangci-lint`, `gosec`, `govulncheck` clean. |
@@ -736,7 +681,7 @@ Evidence for each gate is produced with `lxprobe` (its own specification, one ru
 ### Implementation instructions (for the implementing agent, Claude)
 
 1. Do **not** implement `file_pull`, `config_push`, the `internal/lxd` client or the owner/UID logic before the matching gates are resolved or waived in writing: L1 (owner representation, idmap keys), L2 and L3 (`config_push` and claim collection), L9 (privilege statements), L10 (licence and client decision), L14 (update, ETag and delete semantics), L15 (fixtures). Parts that do not depend on gates may start immediately: proto, claim parsing, proof computation, selectors, limits, policy skeleton.
-2. Build **`lxprobe`** first, from its own specification (`lxprobe-spec-v0.1.md`): it runs the experiments of gates L1–L15, records evidence and the fixtures that this project's fake LXD API must replay, and is the first consumer of `internal/lxd`. Its findings are folded back into this specification (next revision) before the dependent code is written.
+2. Build **`lxprobe`** first, from its own specification (`lxd-probe.md`): it runs the experiments of gates L1–L15, records evidence and the fixtures that this project's fake LXD API must replay, and is the first consumer of `internal/lxd`. Its findings are folded back into this specification (next revision) before the dependent code is written.
 3. Keep requirement IDs in test names and comments.
 4. Treat every value from LXD, devLXD, the guest filesystem and the agent as untrusted; no untrusted data in error strings, shell commands or log format strings.
 5. All failure paths return the uniform error (SEC-10).
