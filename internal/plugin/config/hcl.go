@@ -1,5 +1,5 @@
 // Package config decodes the plugin_data block SPIRE hands to the
-// lxd_iid plugins (HCL, or JSON), rejecting unknown keys so that typos
+// lxd_instance plugins (HCL, or JSON), rejecting unknown keys so that typos
 // are never silently ignored.
 package config
 
@@ -92,7 +92,7 @@ func Duration(key, value string, def, min, max time.Duration) (time.Duration, er
 }
 
 // PluginData returns the plugin_data block of a plugin in a SPIRE Agent or
-// Server configuration file, e.g. NodeAttestor "lxd_iid", as the HCL
+// Server configuration file, e.g. NodeAttestor "lxd_instance", as the HCL
 // that SPIRE hands to the plugin's Configure.
 func PluginData(spireConfig []byte, pluginType, name string) (string, error) {
 	file, err := hcl.ParseBytes(spireConfig)

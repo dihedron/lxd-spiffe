@@ -113,7 +113,7 @@ plugins {
       directory = "/opt/spire/data/agent"
     }
   }
-  NodeAttestor "lxd_iid" {
+  NodeAttestor "lxd_instance" {
     plugin_cmd = "/usr/bin/lxd-agent-plugin"
     plugin_data {
       vendordata_url = "unix:///dev/lxd/sock"
@@ -122,7 +122,7 @@ plugins {
   }
 }
 `
-	data, err := PluginData([]byte(conf), "NodeAttestor", "lxd_iid")
+	data, err := PluginData([]byte(conf), "NodeAttestor", "lxd_instance")
 	if err != nil {
 		t.Fatalf("PluginData: %v", err)
 	}

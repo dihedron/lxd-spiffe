@@ -1,6 +1,6 @@
 // Package logging bridges log/slog to the hclog logger SPIRE hands to its
-// plugins, so that the lxd_iid plugins log into SPIRE's own log rather than
-// to the plugin process's stderr.
+// plugins, so that the lxd_instance plugins log into SPIRE's own log rather
+// than to the plugin process's stderr.
 package logging
 
 import (

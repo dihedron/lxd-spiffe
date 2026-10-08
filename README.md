@@ -1,6 +1,6 @@
 # lxd-spiffe
 
-SPIFFE node attestation for LXD instances: a pair of SPIRE plugins (`lxd_iid`).
+SPIFFE node attestation for LXD instances: a pair of SPIRE plugins (`lxd_instance`).
 
 - `lxd-agent-plugin`: the SPIRE Agent node attestor, run on the instance.
 - `lxd-server-plugin`: the SPIRE Server node attestor, which verifies what the agent presents.

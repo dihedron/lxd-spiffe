@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/dihedron/lxd-spiffe/cmd/lxd-server-plugin/command"
-	"github.com/dihedron/lxd-spiffe/internal/plugin/server/lxdiid"
+	"github.com/dihedron/lxd-spiffe/internal/plugin/server/lxdinstance"
 	"github.com/jessevdk/go-flags"
 	"github.com/joho/godotenv"
 	"github.com/spiffe/spire-plugin-sdk/pluginmain"
@@ -16,7 +16,7 @@ import (
 func main() {
 	// SPIRE Server starts the plugin without arguments
 	if len(os.Args) == 1 {
-		plugin := lxdiid.New()
+		plugin := lxdinstance.New()
 		pluginmain.Serve(
 			nodeattestorv1.NodeAttestorPluginServer(plugin),
 			configv1.ConfigServiceServer(plugin),

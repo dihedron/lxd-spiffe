@@ -1,10 +1,11 @@
-// Package lxdiid implements the server side of the lxd_iid SPIRE node
-// attestor. It will verify the evidence an LXD instance's SPIRE Agent presents, then return the agent's SPIFFE ID and selectors.
+// Package lxdinstance implements the server side of the lxd_instance SPIRE
+// node attestor. It will verify the evidence an LXD instance's SPIRE Agent
+// presents, then return the agent's SPIFFE ID and selectors.
 //
 // This is a stub: it accepts an empty configuration and answers every
 // attestation with codes.Unimplemented, until the attestation mechanism is
 // specified in .specs/lxd-spire-plugins.md.
-package lxdiid
+package lxdinstance
 
 import (
 	"context"
@@ -27,7 +28,7 @@ type Config struct{}
 // configKeys lists the keys Config accepts: any other key is an error.
 var configKeys = []string{}
 
-// Plugin is the server-side lxd_iid node attestor.
+// Plugin is the server-side lxd_instance node attestor.
 type Plugin struct {
 	nodeattestorv1.UnimplementedNodeAttestorServer
 	configv1.UnimplementedConfigServer
@@ -66,5 +67,5 @@ func (p *Plugin) Attest(stream nodeattestorv1.NodeAttestor_AttestServer) error {
 	if !configured {
 		return status.Error(codes.FailedPrecondition, "not configured")
 	}
-	return status.Error(codes.Unimplemented, "lxd_iid: attestation is not implemented yet")
+	return status.Error(codes.Unimplemented, "lxd_instance: attestation is not implemented yet")
 }

@@ -1,7 +1,7 @@
 # lxprobe — Specification v0.1
 
 **Status:** Draft for spec-driven development (SDD).
-**Companion of:** `lxd-instance-attestor-spec-v0.3.md` (the "attestor spec").
+**Companion of:** `lxd-spire-plugins.md` (the "attestor spec"; its *v0.3 section map* resolves the § numbers cited here).
 **Purpose:** a lab tool that **observes real LXD behaviour** and records it as evidence, so that every `[V:Ln]` validation gate of the attestor spec is closed with data instead of assumptions.
 
 ---

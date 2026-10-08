@@ -1,4 +1,4 @@
-package lxdiid
+package lxdinstance
 
 import (
 	"context"

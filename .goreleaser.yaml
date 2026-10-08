@@ -183,7 +183,7 @@ nfpms:
     ids:
       - lxd-server-plugin
     description: |
-      SPIRE Server node attestor plugin (lxd_iid) verifying the
+      SPIRE Server node attestor plugin (lxd_instance) verifying the
       identity evidence presented by LXD instances.
     homepage: "https://github.com/dihedron/lxd-spiffe"
     maintainer: "Andrea Funtò <dihedron.dev@gmail.com>"
@@ -214,7 +214,7 @@ nfpms:
     ids:
       - lxd-agent-plugin
     description: |
-      SPIRE Agent node attestor plugin (lxd_iid) presenting the
+      SPIRE Agent node attestor plugin (lxd_instance) presenting the
       identity evidence of the LXD instance it runs on.
     homepage: "https://github.com/dihedron/lxd-spiffe"
     maintainer: "Andrea Funtò <dihedron.dev@gmail.com>"
