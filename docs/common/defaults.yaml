@@ -1,0 +1,41 @@
+# pandoc defaults shared by the documents (see docs/build.sh and
+# .specs/lxd-spire-plugins.md). Paths are relative to the repository
+# root, where the build runs.
+from: markdown
+to: pdf
+template: eisvogel
+pdf-engine: xelatex
+standalone: true
+number-sections: true
+top-level-division: chapter
+fail-if-warnings: true
+# diagrams rendered by the build, artwork
+resource-path: [".", "build/docs/work/diagrams", "docs/common/artwork"]
+filters:
+  - docs/common/filters/include.lua
+variables:
+  # a book (scrbook) for chapters, printed one-sided
+  book: true
+  classoption: [oneside, open=any]
+  papersize: a4
+  fontsize: 10pt
+  mainfont: DejaVu Serif
+  sansfont: DejaVu Sans
+  monofont: DejaVu Sans Mono
+  colorlinks: true
+  linkcolor: blue
+  urlcolor: blue
+  titlepage: true
+  titlepage-logo: docs/common/artwork/logo.png
+  logo-width: 60mm
+  titlepage-rule-color: "1E4E79"
+  toc-own-page: true
+  footer-left: "lxd-spiffe"
+  code-block-font-size: \small
+  table-use-row-colors: true
+  # a description list's text starts below its term: the configuration
+  # reference's keys are easier to scan
+  header-includes: |
+    \usepackage{enumitem}
+    \usepackage{needspace}
+    \setlist[description]{style=nextline, leftmargin=1.5em}

@@ -7,6 +7,9 @@
 *.dll
 *.so
 *.dylib
+dist/
+# the release documents and their intermediate files (docs/build.sh)
+build/
 
 # Test binary, built with `go test -c`
 *.test
@@ -14,7 +17,6 @@
 # Code coverage profiles and other test artifacts
 *.out
 coverage.*
-!coverage.go
 *.coverprofile
 profile.cov
 
@@ -31,3 +33,4 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
