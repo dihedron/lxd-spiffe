@@ -2,19 +2,19 @@
 
 Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 
-*Status*: draft v0.3, for spec-driven development. The repository holds stub plugins only: they accept an empty configuration and answer every attestation with `Unimplemented`. Implementation follows the order in *Testing → Implementation instructions*, starting with `lxd-probe` and the validation gates.
+*Status*: draft v0.4, for spec-driven development. The repository holds stub plugins only: they accept an empty configuration and answer every attestation with `Unimplemented`. Implementation follows the order in *Testing → Implementation instructions*, starting with `lxd-probe` and the validation gates.
 
 | Field | Value |
 |---|---|
-| Status | Draft v0.3 for spec-driven development (v0.2 plus review fixes: UID mapping, ETag/412 semantics, client specification, cross-reference clean-up) |
+| Status | Draft v0.4 for spec-driven development (v0.3 plus the LXD Go client SDK as the basis of the LXD client) |
 | Components | Agent NodeAttestor plugin + Server NodeAttestor plugin |
 | Plugin name | `lxd_instance` (both sides) |
 | Binaries | `lxd-agent-plugin` (SPIRE Agent), `lxd-server-plugin` (SPIRE Server) |
 | Node definition | One LXD **instance** (container or virtual machine) running a SPIRE agent |
-| Language / SDK | Go, `github.com/spiffe/spire-plugin-sdk`. **Custom lightweight HTTP/JSON client for the LXD REST API** (FR-S17). Do NOT import `github.com/canonical/lxd/...`: LXD was relicensed from Apache-2.0 to AGPL-3.0 on 2023-12-12 and the licence status of its client packages is not cleared (gate L10); the SDK is also a large dependency surface that follows LXD's API releases. |
+| Language / SDK | Go, `github.com/spiffe/spire-plugin-sdk`. LXD access through the **LXD Go client SDK** (`github.com/canonical/lxd/client` and `github.com/canonical/lxd/shared/...`), wrapped by `internal/lxd` (FR-S17). These packages are Apache-2.0 (their own `COPYING` files) although the rest of the LXD repository is AGPL-3.0-only; no other LXD package is imported (NFR-03, gate L10). |
 | Guest OS | Linux (containers and VMs), amd64 and arm64. Windows guests out of scope (*Overview → Non-goals*) |
 | Hard constraints | No CGO and no native libraries on either side; the agent MUST NOT require LXD client tools or `cloud-init` in the guest |
-| Companion documents | `SPIRE vsphere_guest Node Attestor — Specification` v0.3 (same structure, same ID conventions, same threat-model method); `lxd-probe` specification v0.1, `lxd-probe.md` (validation harness for gates L1–L15, to be built and run first) |
+| Companion documents | `SPIRE vsphere_guest Node Attestor — Specification` v0.3 (same structure, same ID conventions, same threat-model method); `lxd-probe` specification v0.3, `lxd-probe.md` (validation harness for gates L1–L15, to be built and run first) |
 
 **Keywords.** MUST, MUST NOT, SHOULD, MAY are used per RFC 2119. Requirements carry IDs (`FR-*`, `SEC-*`, `NFR-*`); validation gates carry `L*` IDs; threats `T*`. Statements about LXD behaviour are tagged **[D]** when confirmed in the LXD documentation consulted for this draft (*Testing → Sources consulted*) and **[V:Ln]** when they are assumptions that a validation gate (*Testing → Validation gates*) MUST confirm before the dependent code is written.
 
@@ -28,6 +28,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Oct 8, 2026 | Merged into `lxd-spire-plugins.md`, the repository's spec, and reorganised into its sections (Overview, Trust model, Agent-side plugin, Server-side plugin, Configuration, Testing) without changing requirements; IDs and tags unchanged; cross-references by section name; repository layout aligned with the repository; configuration samples use the packaged binaries. |
 | Oct 8, 2026 (later) | Aligned with the lxprobe spec, now `lxd-probe.md`: v0.3 section map removed (no document cites v0.3 numbers any more); repository layout gains `internal/devlxd`, `internal/evidence`, `internal/probe` and `test/fakelxd`; *UID translation* names `util idmap check` for the cross-check; NFR-03 allow-list extended to the command line, configuration and logging libraries already in use. |
 | Oct 9, 2026 | The validation probe is renamed `lxd-probe` (`cmd/lxd-probe/`). |
+| v0.4 (Oct 9, 2026) | The LXD client is built on the LXD Go client SDK instead of a bespoke HTTP client: its `client` and `shared` packages are Apache-2.0 (per-package `COPYING`), so the licence question of L10 is closed and L10 keeps only the coverage check. FR-S17 rewritten as a wrapper with the project's own rules (fingerprint pin through the SDK's transport hook, body limits, explicit project, `RawQuery` where the SDK has no method); NFR-03 allow-list and tests adjusted. `GET /1.0/auth/identities/current` added to the API usage and the minimal API contract for the SEC-16 warning. NFR-05 no longer cites a gate of the vSphere spec. |
 
 ## Overview
 
@@ -51,7 +52,7 @@ So the guest cannot hand the SPIRE server any evidence about itself, and the ser
 
 ### In scope
 
-Agent and server plugins, wire protocol, LXD API usage (via custom lightweight HTTP client), an assessment of which claims are reliable (*Trust model → What claims can be made reliably*), threat model with countermeasures, configuration, observability, tests, validation gates, alternatives (including SPIRE `join_token`, *Non-goals → Alternatives and related designs*).
+Agent and server plugins, wire protocol, LXD API usage (through the LXD Go client SDK, wrapped by `internal/lxd`), an assessment of which claims are reliable (*Trust model → What claims can be made reliably*), threat model with countermeasures, configuration, observability, tests, validation gates, alternatives (including SPIRE `join_token`, *Non-goals → Alternatives and related designs*).
 
 ### Basic flow
 
@@ -163,10 +164,10 @@ internal/plugin/config/              # plugin_data decoding, unknown keys reject
 internal/plugin/logging/             # log/slog to SPIRE's hclog
 internal/proto/lxd_instance.proto
 internal/claim/                      # claim collection
-internal/devlxd/                     # devLXD unix-socket client; shared by the agent and lxd-probe
+internal/devlxd/                     # devLXD client on the SDK's ConnectDevLXD; shared by the agent and lxd-probe
 internal/proof/                      # nonce, hash, constant-time compare
 internal/agentproof/                 # file_pull, config_push (agent side)
-internal/lxd/                        # lightweight HTTP client (FR-S17), pinning, instance read, files, ops; shared with lxd-probe
+internal/lxd/                        # wrapper around the LXD Go client SDK (FR-S17): pinning, limits, instance read, files, ops; shared with lxd-probe
 internal/policy/                     # privilege/raw checks, device overlap, uid mapping/idmap logic
 internal/selectors/
 internal/limits/
@@ -178,7 +179,7 @@ test/fixtures/                       # responses recorded from real LXD (gate L1
 test/fakelxd/                        # fake LXD API (replays fixtures)
 test/                                # fuzz corpora
 ```
-Build: `make` (development build), `make snapshot` and `make release`, through goreleaser (`.goreleaser.yaml`): `CGO_ENABLED=0`, `-trimpath`, `-buildvcs`; linux/amd64 and linux/arm64; deb and rpm packages, SBOM, signed checksums file; `make checksum` prints the SHA-256 for `plugin_checksum`. No Canonical SDK imports.
+Build: `make` (development build), `make snapshot` and `make release`, through goreleaser (`.goreleaser.yaml`): `CGO_ENABLED=0`, `-trimpath`, `-buildvcs`; linux/amd64 and linux/arm64; deb and rpm packages, SBOM, signed checksums file; `make checksum` prints the SHA-256 for `plugin_checksum`. From LXD, only the Apache-2.0 SDK packages `github.com/canonical/lxd/client` and `github.com/canonical/lxd/shared/...` are imported (NFR-03).
 
 ### Non-goals
 
@@ -444,7 +445,7 @@ Recommendations (SEC-16, *Configuration → Operational guidance*):
 | SEC-13 | Release pipeline: pinned dependencies, `govulncheck`, SBOM, signatures, reproducible flags. |
 | SEC-14 | Documentation MUST state that `insecure_bootstrap` voids the T4 protections. |
 | SEC-15 | Selectors and ID components MUST come only from LXD-sourced R1/R2 data; guest-asserted values (R3) MUST NOT be offered as selectors. |
-| SEC-16 | The server MUST write only the key `user.spire.challenge.<id>` and read only the proof path it derived; it MUST log a WARN at startup when its LXD identity appears to hold server-level administrator rights **[V:L9]**. |
+| SEC-16 | The server MUST write only the key `user.spire.challenge.<id>` and read only the proof path it derived; it MUST log a WARN at startup when its LXD identity appears to hold server-level administrator rights, as reported by `GET /1.0/auth/identities/current` when the server offers it (*LXD integration → API usage and required extensions*) **[V:L9]**. |
 
 ## Agent-side plugin
 
@@ -485,9 +486,9 @@ Recommendations (SEC-16, *Configuration → Operational guidance*):
 | FR-S12 | On connect and reconnect, read `GET /1.0` and verify the **required API extensions** (*LXD integration → API usage and required extensions*) and server authentication state; refuse to attest through a server that lacks them (fail closed, log once). |
 | FR-S13 | **Operation synchronization**: instance updates are background operations; for every write (`config_push` challenge and its cleanup) the server MUST wait for the operation to finish successfully within a bounded timeout before the next protocol step. A failed challenge write fails the attestation; a failed cleanup is logged at WARN and counted (`config_push_cleanup_failures_total`). |
 | FR-S14 | **Conditional writes and 412 retries.** Writes carry the ETag of the last read in `If-Match`. The LXD REST documentation describes `If-Match` for `PUT`, warns that `PATCH` does not work in every case, and does not say how a single key is deleted; whether `PATCH` honours `If-Match` and how the challenge key is removed (`PATCH` with an empty value, or a `PUT` of the whole object) is decided by gate L14, which fixes the final form of this requirement. On `412 Precondition Failed` the server MUST: (1) re-read the instance; (2) re-run **all** checks of FR-S5 on the new data and compare `volatile.uuid`, `volatile.uuid.generation`, project and name with the first read, aborting on any difference; (3) retry with the **same** challenge value, exponential backoff with jitter, at most 3 retries and never beyond the remaining `proof_timeout`. If a `PUT` is required, the body is the *just re-read* object with only the challenge key changed. Exhausted retries fail the attestation with reason `precondition_failed` and the uniform error (SEC-10). The same rules apply to the cleanup write. Only the key `user.spire.challenge.<id>` may change (SEC-16). |
-| FR-S15 | Maintain one authenticated, reconnecting client per LXD server with timeouts, exponential backoff and a circuit breaker (T11), implemented with the lightweight client of FR-S17. |
+| FR-S15 | Maintain one authenticated, reconnecting client per LXD server with timeouts, exponential backoff and a circuit breaker (T11), implemented with the client of FR-S17. |
 | FR-S16 | Expose structured audit logs and metrics (*Server-side plugin → Observability*). |
-| FR-S17 | **LXD HTTP client** (package `internal/lxd`; standard library only; no import of `github.com/canonical/lxd/...`). (1) **TLS**: minimum TLS 1.3 (required by LXD **[D]**); mutual TLS with the client certificate and key loaded from files and reloaded when they change; server verification either by comparing the SHA-256 fingerprint of the presented leaf certificate with the pinned value in `VerifyConnection` (LXD certificates are self-signed by default; standard chain verification is replaced only in this pinned mode) or by chain verification against `ca_bundle_file`; no `InsecureSkipVerify` outside `dev_mode`. (2) **HTTP**: HTTP/1.1, redirects never followed (a 3xx is an error), pooled connections with idle timeout, every call bound to a context deadline. (3) **Scope**: the `project` query parameter is always sent explicitly. (4) **Envelope** **[D]**: handle `type` = `sync` / `async` / `error`; sync is HTTP 200, async is HTTP 202 with an `operation` URL, errors use 400/401/403/404/409/412/500; map them to internal error kinds; vendor error text goes to logs only. (5) **Operations**: wait with `GET /1.0/operations/<id>/wait?timeout=<s>` (bounded) and check the operation's final status and error. (6) **Limits**: bodies read through a limit reader (JSON ≤ 1 MiB, files API ≤ 4 KiB). (7) **Decoding**: typed structs that ignore unknown fields (newer LXD versions add fields) and validate required fields; decision data is never read from untyped maps. (8) `ETag` captured on reads and sent as `If-Match` on writes (FR-S14). (9) No credentials or tokens in logs; a `User-Agent` naming plugin and version. (10) Verified against fixtures recorded from real LXD (*Testing → Tests*, gate L15). |
+| FR-S17 | **LXD client** (package `internal/lxd`): a thin wrapper around the LXD Go client SDK (`github.com/canonical/lxd/client`, types from `github.com/canonical/lxd/shared/api`) that adds the project's rules; callers never use the SDK directly. (1) **TLS**: the SDK's TLS configuration (minimum TLS 1.3, required by LXD **[D]**) with mutual TLS; the client certificate and key are loaded from files and reloaded when they change (`GetClientCertificate`, installed through the SDK's `TransportWrapper`); server verification either by comparing the SHA-256 fingerprint of the presented leaf certificate with the pinned value in `VerifyConnection`, installed through `TransportWrapper` (LXD certificates are self-signed by default; standard chain verification is replaced only in this pinned mode), or by chain verification against `ca_bundle_file` (`TLSCA`); no unpinned `InsecureSkipVerify` outside `dev_mode`. (2) **HTTP**: redirects never followed (a 3xx is an error), every call bound to a context deadline (the SDK's `...WithContext` connection and request variants). (3) **Scope**: the project is always set explicitly (`UseProject`). (4) **Envelope** **[D]**: the SDK parses `sync` / `async` / `error`; the wrapper maps its errors (`api.StatusErrorCheck` and the HTTP status) to internal error kinds; vendor error text goes to logs only. (5) **Operations**: the SDK's operation wait, bounded by a timeout, and a check of the operation's final status and error. (6) **Limits**: response bodies limited in the transport (JSON ≤ 1 MiB, files API ≤ 4 KiB). (7) **Decoding**: the SDK's typed structs from `shared/api`; the wrapper validates the fields it consumes (*LXD integration → Minimal API contract*); decision data is never read from untyped maps. (8) `ETag` captured on reads and sent as `If-Match` on writes (FR-S14). (9) **Gaps**: calls the SDK has no method for (expected: `PATCH` of an instance, `GET /1.0/auth/identities/current`) use the SDK's `RawQuery`, decoded into `shared/api` types where they exist. (10) No credentials or tokens in logs; a `User-Agent` naming plugin and version. (11) Verified against fixtures recorded from real LXD (*Testing → Tests*, gate L15). The SDK version is pinned in `go.mod` (a pseudo-version: the Go module has no release tags) and updated deliberately, with the fixtures replayed. |
 
 ### Selectors
 
@@ -524,6 +525,7 @@ Guest-asserted data (hostname, addresses, OS data) MUST NOT become selectors (SE
 | Resolve instance | `GET /1.0/instances/{name}?project=<p>` | `volatile.*`, `expanded_config`, `expanded_devices`, `status`, `type`, `location`, `profiles`; keep `ETag` |
 | Read proof | `GET /1.0/instances/{name}/files?path=…&project=<p>` | `file_pull` |
 | Write/remove challenge | `PATCH` (or `PUT`, gate L14) `/1.0/instances/{name}?project=<p>` with `If-Match` | `config_push`; background operation, `GET /1.0/operations/{id}/wait` (FR-S13, FR-S14) |
+| Own identity (optional) | `GET /1.0/auth/identities/current` | SEC-16 startup warning; skipped when the server does not offer it **[V:L9]** |
 
 Required API extensions **[D]** (names from the LXD API extension list): `projects` and `instance_generation_id`. The list is minimal on purpose: an extension is required only if the plugin calls the feature, so `event_lifecycle_name_and_project` and `api_filtering` are **not** required in v1 (nothing uses events or filtered listing). Fine-grained TLS identities (`access_management_tls`) are a deployment prerequisite for the least-privilege groups of *LXD integration → Least privilege* but are not checked at runtime. The minimum LXD version is fixed by gate L8 (the 5.21 LTS and 6.x series are the candidates).
 
@@ -552,6 +554,7 @@ The fields below are the **only** ones the plugin consumes. They are the author'
 | `GET /1.0/instances/{name}/files?path=&project=` | response body; headers `X-LXD-uid`, `X-LXD-gid`, `X-LXD-mode`, `X-LXD-type` (names recalled, not found in the documentation read) | **[V:L1]** |
 | `PATCH`/`PUT /1.0/instances/{name}?project=` | request body with `config`; async envelope with `operation`; header `If-Match` | **[V:L14]** |
 | `GET /1.0/operations/{id}/wait?timeout=` | operation `status`, `status_code`, `err` | **[D]** envelope, **[V:L14]** endpoint details |
+| `GET /1.0/auth/identities/current` | identity type, groups and effective permissions (field names to be confirmed); 404 when the endpoint is absent | **[V:L9, L15]** |
 | Error envelope | `type`, `error`, `error_code`; HTTP 400/401/403/404/409/412/500 | **[D]** |
 
 ### Observability
@@ -641,16 +644,16 @@ Validation at `Configure`: unknown keys rejected; missing pin/CA (SEC-07); inlin
 |---|---|
 | NFR-01 | Attestation p95 ≤ 4 s (`file_pull`) and ≤ 6 s (`config_push`) with a healthy LXD; provisional until gates L1/L2 measure them. |
 | NFR-02 | Server sustains ≥ 20 attestations/s within the limits of SEC-09. |
-| NFR-03 | Agent and server: static binaries, no CGO, linux/amd64 and linux/arm64; agent ≤ 20 MB. A CI check enforces a **dependency allow-list**: the standard library, the SPIRE plugin SDK with its transitive requirements, protobuf/gRPC, and the command line, configuration and logging libraries the repository already uses (`github.com/jessevdk/go-flags`, `github.com/joho/godotenv`, `github.com/hashicorp/hcl`, `github.com/hashicorp/go-hclog`); nothing from `github.com/canonical/lxd`. |
+| NFR-03 | Agent and server: static binaries, no CGO, linux/amd64 and linux/arm64; agent ≤ 20 MB. A CI check enforces a **dependency allow-list**: the standard library, the SPIRE plugin SDK with its transitive requirements, protobuf/gRPC, and the command line, configuration and logging libraries the repository already uses (`github.com/jessevdk/go-flags`, `github.com/joho/godotenv`, `github.com/hashicorp/hcl`, `github.com/hashicorp/go-hclog`), and the LXD Go client SDK (`github.com/canonical/lxd/client`, `github.com/canonical/lxd/shared/...`) with its transitive requirements; no other package of `github.com/canonical/lxd`. The SDK adds about 5 MB to a binary that imports it; the CI build reports the agent's size against the 20 MB limit. |
 | NFR-04 | Fails closed on every error path; no panics on untrusted input (recover and return the uniform error). |
-| NFR-05 | Compatible with the SPIRE version fixed by gate V6 of the companion spec (challenge/response API, `can_reattest`); SDK version pinned. |
+| NFR-05 | Compatible with the SPIRE release that matches the SPIRE plugin SDK pinned in `go.mod` (challenge/response API, `can_reattest`); the end-to-end lab (*Testing → Implementation instructions*, step 7 (e)) runs against that release and records it. |
 | NFR-06 | `golangci-lint`, `gosec`, `govulncheck` clean. |
 
 ### Tests
 
 - **Unit**: proof computation vectors (including length-prefix edge cases), claim parsing, payload bounds, selector escaping, policy checks, device-overlap check, config validation, uniform error mapping; expected-owner selection per instance class; **idmap translation** (*Proof of co-location → UID translation*), table-driven: single range, several ranges, `Nsid` ≠ 0, range boundaries (`Nsid + Maprange`), 32-bit overflow, missing or garbled `volatile.idmap.current`, `volatile.idmap.next` differing from `.current` (must be ignored), gid-only entries (ignored), overlapping entries (fail closed); a property test that only namespace uid 0 can translate to the accepted owner.
 - **Server integration** with a fake LXD API (an `httptest` server implementing instances, files, operations and ETag semantics that **replays recorded fixtures**, gate L15; it MUST NOT define behaviour that no fixture shows); cases: happy path per mode; ambiguous or missing instance; project outside the allow-list; stopped/frozen; privileged; wrong owner or mode; wrong content; late proof; uuid or generation change between proof and re-check; operation failure; extension missing; rate limiting; **412 handling (FR-S14)**: retry succeeds, retries exhausted (`precondition_failed`, uniform error), status/uuid/generation/project/name changed between retries aborts, retry budget bounded by `proof_timeout`, 412 on the cleanup write, and the `PUT` variant if gate L14 requires it.
-- **LXD client** (FR-S17): pin match and mismatch, rotated client certificate reload, TLS version below 1.3 refused, redirect refused, oversize body refused, unknown fields ignored, missing required field rejected, async wait timeout, error-envelope mapping, no credentials in logs.
+- **LXD client** (FR-S17), testing the wrapper's own rules against the fake LXD API: pin match and mismatch, rotated client certificate reload, TLS version below 1.3 refused, redirect refused, oversize body refused, explicit project on every call, `If-Match` sent from the captured `ETag`, `RawQuery` calls decoded, missing consumed field rejected, async wait timeout, error mapping to internal kinds, no credentials in logs. Envelope parsing and unknown-field tolerance belong to the SDK and are covered by the fixtures (contract tests).
 - **Contract**: every call of *LXD integration → API usage and required extensions* decoded from real fixtures of each supported LXD version; a live smoke job against a real LXD where CI allows.
 - **Abuse tests** mapped to threats: attacker instance proves with its own file (T1); replay of an earlier payload and response (T3); concurrent attestations of one claim (T11); uniform error bytes (T12); malformed inputs and fuzzing (T18); shared-disk overlap (T2).
 - **Agent tests** with a temporary directory tree and a fake devLXD socket: permission and symlink refusals, `O_EXCL` collisions, non-root refusal, oversized responses.
@@ -670,7 +673,7 @@ Validation at `Configure`: unknown keys rejected; missing pin/CA (SEC-07); inlin
 | L7 | VMs: availability and start-up order of `lxd-agent` per image family, Windows guests, `security.devlxd` interplay, impact on `file_pull` and `config_push`. |
 | L8 | Minimum LXD versions (5.21 LTS vs 6.x) for each required API extension and for `volatile.cluster.group`; snap and deb differences. |
 | L9 | The exact entitlement set sufficient for each mode; whether the SPIRE identity can discover its own privileges (to implement the SEC-16 warning); behaviour of **restricted projects** with `can_edit`. |
-| L10 | **Licence and client decision.** Record the legal review of LXD's relicensing from Apache-2.0 to AGPL-3.0 (2023-12-12) and whether any `github.com/canonical/lxd/...` package may be imported; until cleared, nothing is imported. Confirm that the custom client of FR-S17 covers every call of *LXD integration → API usage and required extensions* (`lxd-probe` is its first consumer) and that the dependency allow-list of NFR-03 holds. |
+| L10 | **Client coverage.** The licence question is closed (v0.4): `client/COPYING` and `shared/COPYING` of the LXD repository are Apache-2.0 **[D]**, and only those packages are imported. Remaining: confirm that the SDK, directly or through `RawQuery` (FR-S17 (9)), covers every call of *LXD integration → API usage and required extensions* (`lxd-probe` is its first consumer); record the pinned SDK version; confirm that the dependency allow-list of NFR-03 holds. |
 | L11 | Clustering: API forwarding for files and instance updates, `location` accuracy, behaviour during migration and evacuation. |
 | L12 | Shared disk devices, bind mounts and nested LXD: can another instance write to the proof path; effectiveness of the overlap check. |
 | L13 | Whether LXD bearer identities (introduced in 6.6/6.7 for devLXD; "alternative to certificates" in the release notes) are usable by an external client for the remote API, with short-lived tokens, as a replacement for long-lived client certificates. |
@@ -681,12 +684,12 @@ Evidence for each gate is produced with `lxd-probe` (its own specification, one 
 
 ### Implementation instructions (for the implementing agent, Claude)
 
-1. Do **not** implement `file_pull`, `config_push`, the `internal/lxd` client or the owner/UID logic before the matching gates are resolved or waived in writing: L1 (owner representation, idmap keys), L2 and L3 (`config_push` and claim collection), L9 (privilege statements), L10 (licence and client decision), L14 (update, ETag and delete semantics), L15 (fixtures). Parts that do not depend on gates may start immediately: proto, claim parsing, proof computation, selectors, limits, policy skeleton.
+1. Do **not** implement `file_pull`, `config_push`, the `internal/lxd` client or the owner/UID logic before the matching gates are resolved or waived in writing: L1 (owner representation, idmap keys), L2 and L3 (`config_push` and claim collection), L9 (privilege statements), L10 (client coverage), L14 (update, ETag and delete semantics), L15 (fixtures). Parts that do not depend on gates may start immediately: proto, claim parsing, proof computation, selectors, limits, policy skeleton.
 2. Build **`lxd-probe`** first, from its own specification (`lxd-probe.md`): it runs the experiments of gates L1–L15, records evidence and the fixtures that this project's fake LXD API must replay, and is the first consumer of `internal/lxd`. Its findings are folded back into this specification (next revision) before the dependent code is written.
 3. Keep requirement IDs in test names and comments.
 4. Treat every value from LXD, devLXD, the guest filesystem and the agent as untrusted; no untrusted data in error strings, shell commands or log format strings.
 5. All failure paths return the uniform error (SEC-10).
-6. Prefer small interfaces (`InstanceReader`, `FileReader`, `ChallengeWriter`, `DevLXDClient`) so each part is mockable. Build a bespoke lightweight HTTP client; do not pull in canonical SDK packages.
+6. Prefer small interfaces (`InstanceReader`, `FileReader`, `ChallengeWriter`, `DevLXDClient`) so each part is mockable. Use the LXD Go client SDK only through `internal/lxd` and `internal/devlxd` (FR-S17), so that the rest of the code depends on the small interfaces, not on the SDK.
 7. Delivery order: (0) `lxd-probe` and the gate evidence, then a specification revision; (a) proto, claims, proof, policy skeleton, selectors, fuzz; (b) the `internal/lxd` client against recorded fixtures, then the server with the fake LXD (`file_pull`, with the owner rule decided by L1); (c) agent `file_pull`; (d) `config_push` with the ETag/412 logic as fixed by L14; (e) end-to-end lab; (f) packaging and documentation.
 8. When a gate disproves an assumption tagged **[V:Ln]**, propose a spec amendment instead of silently diverging.
 
@@ -705,7 +708,8 @@ Documentation read for this draft (LXD 6.9 documentation unless noted); statemen
 - [LXD 6.6 release notes](https://github.com/canonical/lxd/releases/tag/lxd-6.6) and [LXD 6.7 release notes](https://newreleases.io/project/github/canonical/lxd/release/lxd-6.7)
 - [cloud-init LXD datasource](https://docs.cloud-init.io/en/latest/reference/datasources/lxd.html)
 - [LXD now re-licensed and under a CLA](https://stgraber.org/2023/12/12/lxd-now-re-licensed-and-under-a-cla/) (AGPL-3.0 from 2023-12-12; earlier Go packages Apache-2.0)
+- LXD repository licence files, read from the Go module of Oct 9, 2026: `COPYING` (AGPL-3.0-only), `client/COPYING` and `shared/COPYING` (Apache-2.0), and the README section *Client SDK packages* ("These SDKs are licensed as Apache-2.0")
 - [How `security.idmap.isolated` works (volatile.idmap.base/current/next)](https://discuss.linuxcontainers.org/t/how-security-idmap-isolated-works-in-detail/13266) (forum thread, not official documentation)
 - [LXD REST API conventions (return values, ETag/If-Match for PUT, PATCH vs PUT, background operations)](https://raw.githubusercontent.com/canonical/lxd/main/doc/rest-api.md)
 
-Items not found in these sources are tagged **[V:Ln]** and listed in *Testing → Validation gates*. Notable gaps: the contents of `/1.0/meta-data`, the files API headers and the owner representation for unprivileged containers, live update of `user.*` keys, `If-Match` on `PATCH` and single-key removal, VM SMBIOS identifiers, Windows guest support, the licence status of the LXD client packages, and the precise privilege boundary of each entitlement.
+Items not found in these sources are tagged **[V:Ln]** and listed in *Testing → Validation gates*. Notable gaps: the contents of `/1.0/meta-data`, the files API headers and the owner representation for unprivileged containers, live update of `user.*` keys, `If-Match` on `PATCH` and single-key removal, VM SMBIOS identifiers, Windows guest support, and the precise privilege boundary of each entitlement.

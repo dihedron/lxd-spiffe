@@ -73,8 +73,6 @@ type ServerCommand struct {
 	TokenFile string `long:"token-file" description:"File holding the bearer token (or set LXD_PROBE_TOKEN)." env:"LXD_PROBE_TOKEN_FILE"`
 	// Project is the LXD project, always sent explicitly.
 	Project string `long:"project" description:"LXD project." default:"default" env:"LXD_PROBE_PROJECT"`
-	// AllowTLS12 accepts TLS 1.2 and records it as a finding (PRS-03).
-	AllowTLS12 bool `long:"allow-tls12" description:"Accept TLS 1.2 and record it as a finding."`
 	// AllowSpireKeys also allows writes to user.spire.challenge.* (PRN-02).
 	AllowSpireKeys bool `long:"allow-spire-keys" description:"Also allow writes to user.spire.challenge.* to rehearse the real key layout."`
 	// ExpectDenied makes 403 the expected result (PRE-06).

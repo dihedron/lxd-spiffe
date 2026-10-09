@@ -2,17 +2,17 @@
 
 Oct 8, 2026 · @Andrea Funtò
 
-*Status*: draft v0.2, for spec-driven development. `lxd-probe` is step 0 of the attestor spec's implementation order (`lxd-spire-plugins.md`, *Testing → Implementation instructions*): it is built and run before any plugin code that depends on a validation gate. Nothing of it is implemented yet.
+*Status*: draft v0.3, for spec-driven development. `lxd-probe` is step 0 of the attestor spec's implementation order (`lxd-spire-plugins.md`, *Testing → Implementation instructions*): it is built and run before any plugin code that depends on a validation gate. Nothing of it is implemented yet.
 
 | Field | Value |
 |---|---|
-| Status | Draft v0.2 for spec-driven development (SDD) |
+| Status | Draft v0.3 for spec-driven development (SDD) |
 | Purpose | A lab tool that **observes real LXD behaviour** and records it as evidence, so that every `[V:Ln]` validation gate of the attestor spec is closed with data instead of assumptions. |
 | Companion of | `lxd-spire-plugins.md` (the "attestor spec") |
 | Binary | `lxd-probe` |
 | Language | Go, same module as the attestor (`cmd/lxd-probe`) |
 | Platforms | Linux on amd64 and arm64 only (PRN-22). `guest` environment: Linux containers and VMs. `server` environment: a Linux operator workstation or the SPIRE server host |
-| Dependencies | Allow-list of NFR-03; no CGO; static binary; no `github.com/canonical/lxd/...` |
+| Dependencies | Allow-list of NFR-03, which includes the Apache-2.0 LXD Go client SDK (`github.com/canonical/lxd/client`, `github.com/canonical/lxd/shared/...`); no CGO; static binary |
 | Output | Human-readable text by default; `--json` for machine output; evidence files always JSON |
 | Network | `guest` environment uses **no network** (only `/dev/lxd/sock` and local files). `server` environment talks only to the configured LXD endpoint |
 | Secrets | Credentials never written to evidence, logs or the command line (*Trust model → Credentials and logging*) |
@@ -27,6 +27,7 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 8, 2026 | Moved from `lxprobe-spec-v0.1.md` and reorganised into the sections of the attestor spec (Overview, Trust model, Guest environment, Server environment, Util environment, Configuration, Testing) without changing requirements, except: references by section name instead of number; the header names belong to the attestor spec's minimal API contract (L1); the L6 decision rule follows FR-S7 (`server_id` already in the ID) and FR-S10 (generation); uniqueness is FR-S3/SEC-05 (PRS-12); PRF-12 no longer cites the withdrawn L5; committed evidence in `docs/validation/`, fixtures in `test/fixtures/`; the assumption-based fake is limited to lxprobe's own tests (PRT-10); the secrets constraint points to the credential rules; PRU added to the requirement prefixes. |
 | Oct 9, 2026 | The probe is renamed `lxd-probe` (binary, `cmd/lxd-probe`); lab config keys become `user.lxd-probe.*`, the guest lab directory `/run/lxd-probe/`, and the bearer token variable `LXD_PROBE_TOKEN`. No other changes. |
 | v0.2 (Oct 9, 2026) | Review fixes before implementation. Command line: go-flags and the repository's command structure (PRN-23, PRN-30–PRN-34), logging through `LXD_PROBE_*` variables instead of `-v`/`-vv`, exit code 1, `version` reuses `internal/command/version`, flag tables per environment and per verb. Evidence: expectation table defined (PRE-04, PRE-06), per-environment run directories and `O_EXCL` record numbering (PRE-07), aliases in `aliases.json` (PRE-03, PRE-09), raw plus typed decoding (PRE-08). Safety: `--allow-outside-lab-dir` removed (PRF-20), `--allow-write`/`--lab` apply to guest writes too, PRS-24 compares `volatile.uuid`. `--allow-tls12` is a probe-only exception and Q3 moves to L8 (PRS-03). PRF-13 re-executes the binary through a hidden command. Linux on amd64 and arm64 only, no Windows guests; FR-S17 scope of the probe (PRN-24); separate archives, no deb/rpm (PRN-22). Shared options live in embedded base structs, flags follow the verb, and session options default from `LXD_PROBE_*` variables (PRN-31, PRN-32). PRU-07/PRU-08: the report never matches decision rules; the operator records the decision with `util note --decision`. |
+| v0.3 (Oct 9, 2026) | Follows attestor spec v0.4: `internal/lxd` and `internal/devlxd` wrap the LXD Go client SDK (principle 5, PRF-14, PRN-24); observations use the SDK's raw access so that headers and bodies are recorded as sent. The TLS 1.2 question becomes a separate handshake of `server info --probe-tls12` (PRS-03), which replaces `--allow-tls12`. PRT-11 tests the wrapper's own rules. L10 keeps only the coverage check. |
 
 ## Overview
 
@@ -50,7 +51,7 @@ The attestor spec contains documented facts `[D]` and unverified assumptions `[V
 2. **Evidence is the product.** Every command produces a machine-readable record; a run produces an evidence directory that can be committed (after sanitization) and replayed as test fixtures (gate L15).
 3. **Lab only.** The tool performs writes (to `user.lxd-probe.*` keys and to `/run/lxd-probe/`) and must refuse to run write verbs without explicit acknowledgement. It is not a production component and is not shipped with the plugins.
 4. **Share code with the attestor, not conclusions.** `lxd-probe` uses the same `internal/lxd` client (FR-S17), `internal/policy` (idmap translation, device overlap) and `internal/proof` packages that the plugins will use. A bug found in the probe is a bug found in the future plugin; a fixture recorded by the probe is the plugin's test input.
-5. **No new dependencies.** Same module, Go standard library plus the dependencies already allowed by NFR-03. No CGO, no Canonical SDK.
+5. **No new dependencies.** Same module, Go standard library plus the dependencies allowed by NFR-03, which include the LXD Go client SDK the plugins use. No CGO.
 6. **Findings feed the spec.** Each gate runbook (*Testing → Gate runbooks*) states which spec text is amended for each possible outcome.
 
 ### Evidence model
@@ -98,8 +99,8 @@ Working runs write to `--evidence-dir` (default `./evidence`). Sanitized evidenc
 
 ```
 cmd/lxd-probe            main, init (logging, .env, profiling), command/ (go-flags command tree)
-internal/lxd             HTTP/JSON client (FR-S17): the same package the plugin uses
-internal/devlxd          devLXD unix-socket client (guest)
+internal/lxd             wrapper around the LXD Go client SDK (FR-S17): the same package the plugin uses
+internal/devlxd          devLXD client on the SDK's ConnectDevLXD (guest)
 internal/policy          idmap translation (attestor spec *UID translation*), device overlap, owner rules
 internal/proof           nonce, path derivation, challenge handling
 internal/evidence        record writer, sanitizer, report renderer
@@ -116,7 +117,7 @@ Build: same module, toolchain and goreleaser configuration as the plugins (attes
 | PRN-21 | `lxd-probe` has no persistent state outside the evidence directory. |
 | PRN-22 | Static binary for linux/amd64 and linux/arm64 only, like the plugins; no macOS or Windows builds, and no Windows guests. Size target: ≤ 15 MB. Released as its own goreleaser archives (`lxd-probe_<version>_<os>_<arch>`); no deb or rpm packages. |
 | PRN-23 | The command line is parsed with `github.com/jessevdk/go-flags` and follows the structure of the repository's other binaries (*Configuration → Command line → Command structure*); no other command line library is used. |
-| PRN-24 | The probe uses `internal/lxd` with FR-S17 items (1) to (9) of the attestor spec, except the reload of the client certificate when its files change (a probe invocation is short-lived). Two probe-only deviations are per call and never change the plugin's defaults: the files API limit follows `--max-bytes` (PRS-31), and TLS 1.2 is accepted with `--allow-tls12` (PRS-03). |
+| PRN-24 | The probe uses `internal/lxd` (FR-S17 of the attestor spec) with every rule except the reload of the client certificate when its files change (a probe invocation is short-lived). To observe rather than interpret, the probe's calls go through the SDK's raw access (`RawQuery`, or `DoHTTP` where the full response with all headers is needed, PRS-30) on the wrapper's connection, so pinning, project and limits still apply; the typed `shared/api` structs are then used for decoding (PRE-08). One probe-only deviation is per call and never changes the plugin's defaults: the files API limit follows `--max-bytes` (PRS-31). |
 
 ### Non-goals
 
@@ -167,7 +168,7 @@ Negative privilege tests (for example, "a client with only `can_view` receives 4
 | PRF-11 | `guest devlxd dump` walks all known read paths (PRF-10 list) and stores one record per path. Unknown or failing paths are recorded with their status, not skipped. |
 | PRF-12 | `guest devlxd watch KEY [--for DUR]` polls `/1.0/config/KEY` (and uses the events endpoint when it exists) and records timestamps of each change, to measure propagation delay after a host-side `config set` (gate L2). |
 | PRF-13 | `guest devlxd access --as-uid N[,N...]` performs the preflight `GET /1.0` as each uid and records allowed/denied (gate L4). It requires root in the guest. For each uid, the probe re-executes its own binary (`/proc/self/exe`) with `SysProcAttr.Credential` set to that uid (and its primary gid, or the same number when the uid has no passwd entry), running the hidden command `guest devlxd access-child`. The child performs the call and writes its result as JSON on stdout; the parent writes the record. Failure to switch uid or to start the child is recorded as an observation. |
-| PRF-14 | The devLXD client is a plain HTTP-over-unix-socket client built on `net/http` with a custom dialer. No LXD library. |
+| PRF-14 | The devLXD client is `internal/devlxd`, built on the SDK's `ConnectDevLXD`. Calls go through its raw access (`RawQuery`) so that every path of PRF-10 is reachable, including those the SDK has no typed method for, and the response is recorded as received. |
 
 ### Local files (proof path rehearsal)
 
@@ -192,7 +193,7 @@ Negative privilege tests (for example, "a client with only `can_view` receives 4
 |---|---|
 | PRS-01 | `server info` calls `GET /1.0` and records: `api_extensions` (full list), server version, `auth` state, `environment` (kernel, driver versions, `server_clustered`, `server_name`), and the TLS version and cipher negotiated. Highlights which extensions required by attestor spec *Server-side plugin → LXD integration → API usage and required extensions* are present or absent. Supports L8. |
 | PRS-02 | `server whoami` calls `GET /1.0/auth/identities/current` when the extension exists and records the identity type, groups and effective permissions as reported. Supports L9, L13. |
-| PRS-03 | TLS: the client verifies the pinned fingerprint in `VerifyConnection` and refuses TLS < 1.3 unless `--allow-tls12` is given. `--allow-tls12` is a probe-only exception to FR-S17 (1): it exists to learn which TLS versions a server accepts (Q3, gate L8); a connection that negotiates TLS 1.2 is recorded as a finding. The plugins never accept TLS 1.2. |
+| PRS-03 | TLS: API calls use the client of FR-S17 (pinned fingerprint, TLS 1.3 minimum). To learn which TLS versions a server accepts (Q3, gate L8), `server info --probe-tls12` additionally performs a bare TLS handshake (`crypto/tls`, no HTTP request) limited to TLS 1.2 against the endpoint and records whether it succeeds, with the version and cipher negotiated by each handshake. A server that accepts TLS 1.2 is recorded as a finding; no API call is ever made over TLS 1.2. |
 | PRS-04 | The client does not follow redirects and records any 3xx as an unexpected response. |
 
 ### Instance inspection
@@ -273,7 +274,7 @@ lxd-probe version [--verbose]
 |---|---|
 | PRN-30 | `cmd/lxd-probe` has the same files as the plugin binaries: `main.go` (parses `command.Commands` with `flags.NewParser(&options, flags.Default)`, after `godotenv.Load()`), `init.go` (the shared `log/slog` set-up, `.env` loading through `metadata.DotEnvVarName`, and CPU/memory profiling, with `cleanup()` deferred in `main`) and `command/commands.go` (the root `Commands` struct). |
 | PRN-31 | The root `Commands` struct has one go-flags command per environment (`guest`, `server`, `util`) plus `version`, which reuses `internal/command/version` unchanged. Objects and verbs are nested go-flags commands; each leaf is a struct in `internal/probe/...` that implements `Execute(args []string) error`. Options shared by several commands are declared once in base structs that have no `Execute` method (`GlobalOptions`; `GuestCommand` and `ServerCommand`, which embed `GlobalOptions`) and are embedded anonymously in the leaf commands, which go-flags scans as their own options; a leaf adds only its verb flags. Positional arguments use go-flags `positional-args` with `required` where the verb needs them. Every command and option has a `description`. |
-| PRN-32 | Because every option belongs to a leaf command (PRN-31), flags are written after the verb: `lxd-probe server config set NAME KEY VALUE --endpoint ... --method patch`. The global and environment options that describe the session (evidence directory, run id, gate, cell, endpoint, pin, client certificate and key, authentication, token file, project) also read a default from an `LXD_PROBE_*` environment variable through the go-flags `env` tag (*Global flags*, *Server-environment flags*), so a lab session sets them once, in the shell or in the `.env` file. The safety flags (`--allow-write`, `--lab`, `--allow-spire-keys`, `--allow-spire-paths`, `--allow-tls12`) have no environment variable: they are acknowledged on each command line. |
+| PRN-32 | Because every option belongs to a leaf command (PRN-31), flags are written after the verb: `lxd-probe server config set NAME KEY VALUE --endpoint ... --method patch`. The global and environment options that describe the session (evidence directory, run id, gate, cell, endpoint, pin, client certificate and key, authentication, token file, project) also read a default from an `LXD_PROBE_*` environment variable through the go-flags `env` tag (*Global flags*, *Server-environment flags*), so a lab session sets them once, in the shell or in the `.env` file. The safety flags (`--allow-write`, `--lab`, `--allow-spire-keys`, `--allow-spire-paths`) have no environment variable: they are acknowledged on each command line. |
 | PRN-33 | Logging and profiling are configured only through the environment, as in the other binaries, with the prefix derived from the binary name: `LXD_PROBE_LOG_LEVEL`, `LXD_PROBE_LOG_STREAM`, `LXD_PROBE_CPU_PROFILE`, `LXD_PROBE_MEM_PROFILE`. There is no verbosity flag. Logs go to stderr by default, so they never mix with `--json` output on stdout. |
 | PRN-34 | `main` maps errors to the exit codes of *Exit codes*: `flags.ErrHelp` exits 0; any other go-flags parse error exits 2; a verb returns a typed error carrying its exit code; any other error exits 1. |
 
@@ -311,7 +312,6 @@ lxd-probe version [--verbose]
 | `--auth tls\|bearer` | authentication mode (default `tls`; environment `LXD_PROBE_AUTH`); `bearer` reads the token from `--token-file` or the `LXD_PROBE_TOKEN` environment variable (never from an argument) |
 | `--token-file FILE` | file holding the bearer token; refused if group- or world-readable (PRN-12); environment `LXD_PROBE_TOKEN_FILE` |
 | `--project NAME` | LXD project (always sent explicitly; default `default`); environment `LXD_PROBE_PROJECT` |
-| `--allow-tls12` | accept TLS 1.2 and record it as a finding (PRS-03) |
 | `--allow-spire-keys` | also allow writes to `user.spire.challenge.*`, to rehearse the real key layout (PRN-02) |
 | `--expect-denied` | a 403 is the expected result: recorded as an observation with outcome `ok`, exit 0 instead of 4 (PRE-06) |
 
@@ -321,6 +321,7 @@ Each verb also accepts the global flags and the flags of its environment. Positi
 
 | Verb | Flag | Type, default | Meaning |
 |---|---|---|---|
+| `server info` | `--probe-tls12` | bool | also try a TLS 1.2 handshake and record the result (PRS-03) |
 | `guest devlxd watch KEY` | `--for` | duration, 60s | how long to watch (PRF-12) |
 | `guest devlxd access` | `--as-uid` | list of uids, required | uids to try (PRF-13) |
 | `guest file put PATH` | `--content-file` | path, required | content to write; `-` reads stdin |
@@ -411,7 +412,7 @@ lxd-probe util note --gate L9 --cell lxd6-unpriv-ubuntu-read "file pull returned
 | PRT-02 | Sanitizer tests: known secrets (tokens, cert PEM, MAC addresses, `cloud-init.*`) must never appear in output; fuzz test over random JSON. |
 | PRT-03 | Safety-rule tests: each write verb refuses without flags; out-of-scope key or path is refused before any request is made. |
 | PRT-10 | A `fakelxd` HTTP server (`test/fakelxd`) replays fixtures. Until real fixtures exist (stage 0), lxd-probe's own tests may use an **assumption-based** fake, clearly marked as such in test output; real fixtures supersede it. The plugins' tests never use the assumption-based fake: they replay real fixtures only (attestor spec *Testing → Tests*). |
-| PRT-11 | Client tests for the FR-S17 behaviours: pin mismatch, TLS version, redirect refused, response size limits, sync/async/error envelopes, tolerant decoding of unknown fields. |
+| PRT-11 | Tests of the `internal/lxd` wrapper's own rules (FR-S17) against the fake: pin match and mismatch, redirect refused, response size limits, explicit project, `If-Match` from the captured `ETag`, `RawQuery` decoding, error mapping to internal kinds. What the SDK implements (TLS 1.3 minimum, envelope parsing, unknown fields) is covered by replaying fixtures (PRT-10), not re-tested. The `--probe-tls12` handshake is tested against an `httptest` TLS server limited to TLS 1.2 and one limited to TLS 1.3. |
 | PRT-12 | ETag/412 tests against the fake: stale ETag, concurrent writers, retry limits. |
 | PRT-13 | Golden-file tests of the evidence schema and of the report renderer. |
 
@@ -431,7 +432,7 @@ Each runbook gives the question, the matrix cells, the commands, the evidence, a
 3. Offline: `lxd-probe util idmap check <instance record> <preflight record>`, `lxd-probe util idmap translate ...`.
 
 **Decision rules:**
-- Header names found → update attestor spec *Server-side plugin → LXD integration → Minimal API contract* and FR-S17 with the exact names; remove `[V:L1]` tag.
+- Header names found → update attestor spec *Server-side plugin → LXD integration → Minimal API contract* with the exact names and check that the SDK's `GetInstanceFile` reads the same headers; remove `[V:L1]` tag.
 - Owner reported as in-container uid (0) → attestor spec *Mode `file_pull`* step 6 uses the simple rule; the *UID translation* becomes a fallback for LXD versions that differ.
 - Owner reported as host uid → attestor spec *UID translation* is normative; record the keys used and the matching test vectors.
 - idmap keys cross-check mismatches `/proc/self/uid_map` → `volatile.idmap.current` is not usable; choose another source or restrict `file_pull` to privileged containers and VMs.
@@ -471,7 +472,7 @@ Kept for reference stability. No runbook.
 
 #### L8 — Versions and extensions
 
-**Command:** `$S info` on each LXD server, once more with `--allow-tls12` to learn whether TLS 1.2 is accepted (Q3). **Decision:** minimum LXD version list; the table of required extensions in attestor spec *API usage and required extensions* is confirmed (`projects`, `instance_generation_id`, ...); each additional extension found necessary is added.
+**Command:** `$S info --probe-tls12` on each LXD server, which also learns whether TLS 1.2 is accepted (Q3). **Decision:** minimum LXD version list; the table of required extensions in attestor spec *API usage and required extensions* is confirmed (`projects`, `instance_generation_id`, ...); each additional extension found necessary is added.
 
 #### L9 — Entitlements
 
@@ -479,9 +480,9 @@ Kept for reference stability. No runbook.
 
 **Decision:** minimal entitlement set per mode for attestor spec *Proof of co-location → Privilege cost of each mode*; whether the identity can see its own privileges (SEC-16 warning feasible or not).
 
-#### L10 — Licence and client decision
+#### L10 — Client coverage
 
-Non-lab. Evidence: legal review reference recorded in the notes; `lxd-probe` is the first consumer of the FR-S17 client. **Decision:** the client stays custom; confirm all calls of attestor spec *API usage and required extensions* are covered by the probe's coverage matrix (`util report` lists unreached endpoints).
+Non-lab. The licence question is closed in attestor spec v0.4 (the SDK's `client` and `shared` packages are Apache-2.0). Evidence: the pinned SDK version (`go.mod`) recorded with `util note`; `lxd-probe` is the first consumer of the FR-S17 client, and `util report` lists the endpoints reached and unreached. **Decision:** confirm that every call of attestor spec *API usage and required extensions* is covered, by an SDK method or by `RawQuery`, and list the calls that need `RawQuery`.
 
 #### L11 — Clusters
 

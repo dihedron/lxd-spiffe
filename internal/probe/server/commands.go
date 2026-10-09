@@ -74,6 +74,7 @@ type pathArgs struct {
 // Info is server info.
 type Info struct {
 	probe.ServerCommand
+	ProbeTLS12 bool `long:"probe-tls12" description:"Also try a TLS 1.2 handshake and record whether the server accepts it (PRS-03)."`
 }
 
 // Execute runs the command.

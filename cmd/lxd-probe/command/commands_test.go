@@ -167,6 +167,15 @@ func TestRunbookExamples(t *testing.T) {
 			t.Errorf("auth = %q, wait-expiry = %v, max-wait = %v", cmd.Auth, cmd.WaitExpiry, cmd.MaxWait)
 		}
 	})
+	t.Run("server info", func(t *testing.T) {
+		cmd := mustParse(t, "server", "info", "--probe-tls12").(*server.Info)
+		if !cmd.ProbeTLS12 {
+			t.Errorf("probe-tls12 = false; want true")
+		}
+		if _, err := parse(t, "server", "whoami", "--probe-tls12"); err == nil {
+			t.Errorf("server whoami accepted --probe-tls12; want it on server info only")
+		}
+	})
 	t.Run("file get", func(t *testing.T) {
 		cmd := mustParse(t, "server", "file", "get", "c1", "/run/lxd-probe/proof").(*server.FileGet)
 		if cmd.MaxBytes != 1<<20 {
@@ -262,7 +271,7 @@ func walk(c *flags.Command, fn func(*flags.Command)) {
 func TestSafetyFlagsIgnoreEnvironment(t *testing.T) {
 	safety := map[string]bool{
 		"allow-write": true, "lab": true, "allow-spire-keys": true,
-		"allow-spire-paths": true, "allow-tls12": true,
+		"allow-spire-paths": true,
 	}
 	parser := flags.NewParser(&Commands{}, flags.None)
 	seen := map[string]bool{}
