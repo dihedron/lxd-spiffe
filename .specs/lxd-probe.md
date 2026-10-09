@@ -28,6 +28,7 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 9, 2026 | The probe is renamed `lxd-probe` (binary, `cmd/lxd-probe`); lab config keys become `user.lxd-probe.*`, the guest lab directory `/run/lxd-probe/`, and the bearer token variable `LXD_PROBE_TOKEN`. No other changes. |
 | v0.2 (Oct 9, 2026) | Review fixes before implementation. Command line: go-flags and the repository's command structure (PRN-23, PRN-30–PRN-34), logging through `LXD_PROBE_*` variables instead of `-v`/`-vv`, exit code 1, `version` reuses `internal/command/version`, flag tables per environment and per verb. Evidence: expectation table defined (PRE-04, PRE-06), per-environment run directories and `O_EXCL` record numbering (PRE-07), aliases in `aliases.json` (PRE-03, PRE-09), raw plus typed decoding (PRE-08). Safety: `--allow-outside-lab-dir` removed (PRF-20), `--allow-write`/`--lab` apply to guest writes too, PRS-24 compares `volatile.uuid`. `--allow-tls12` is a probe-only exception and Q3 moves to L8 (PRS-03). PRF-13 re-executes the binary through a hidden command. Linux on amd64 and arm64 only, no Windows guests; FR-S17 scope of the probe (PRN-24); separate archives, no deb/rpm (PRN-22). Shared options live in embedded base structs, flags follow the verb, and session options default from `LXD_PROBE_*` variables (PRN-31, PRN-32). PRU-07/PRU-08: the report never matches decision rules; the operator records the decision with `util note --decision`. |
 | v0.3 (Oct 9, 2026) | Follows attestor spec v0.4: `internal/lxd` and `internal/devlxd` wrap the LXD Go client SDK (principle 5, PRF-14, PRN-24); observations use the SDK's raw access so that headers and bodies are recorded as sent. The TLS 1.2 question becomes a separate handshake of `server info --probe-tls12` (PRS-03), which replaces `--allow-tls12`. PRT-11 tests the wrapper's own rules. L10 keeps only the coverage check. |
+| Oct 9, 2026 (chunk 3) | The run directory no longer has a `fixtures/` subdirectory: fixtures are written only under `--record DIR`, with the file names of PRE-10. |
 
 ## Overview
 
@@ -64,7 +65,6 @@ evidence/<run_id>/
     run.json            # run metadata: tool version, git commit, host, LXD endpoint (no credentials), flags
     records/            # one JSON file per command execution: NNNN-<verb>.json
     artifacts/          # raw bodies, file contents (hashes + optional content for small files)
-    fixtures/           # sanitized request/response pairs (when --record is used)
     notes.jsonl         # operator notes
     aliases.json        # name → alias map for --redact-names (PRE-09); never committed
 ```
@@ -91,7 +91,7 @@ Working runs write to `--evidence-dir` (default `./evidence`). Sanitized evidenc
 
 | ID | Requirement |
 |---|---|
-| PRE-10 | With `--record DIR`, every HTTP exchange of the `server` environment is stored as `NNNN.request.json` and `NNNN.response.json` (status, selected headers, body) after sanitization, indexed by method + path + query, with the LXD version in the file name. |
+| PRE-10 | With `--record DIR`, every HTTP exchange of the `server` environment is stored, after sanitization, as `DIR/<lxd-version>/NNNN-SS-<method>-<path>.request.json` and `.response.json`, where `NNNN` is the record number and `SS` the exchange's sequence within the command. The request holds method, path, query, headers and body; the response status, headers and body (JSON bodies as JSON, others as text). The replaying fake matches on method, path and query (PRT-10). Fixtures live only under `DIR`, not in the run directory. |
 | PRE-11 | Fixtures include the error cases 403, 404, 412 and the `operation` envelopes (sync/async/error), which the lab runbooks provoke on purpose. |
 | PRE-12 | A fixture set can be replayed by the fake LXD API of the test suite (PRT-10) with no network. |
 
