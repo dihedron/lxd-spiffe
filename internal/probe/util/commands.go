@@ -84,21 +84,6 @@ func (cmd *Overlap) Execute(args []string) error {
 	return probe.NotImplemented("util overlap")
 }
 
-// Sanitize is util sanitize DIR.
-type Sanitize struct {
-	probe.GlobalOptions
-	Check bool   `long:"check" description:"Only check; exit 6 if forbidden material is found."`
-	Out   string `long:"out" description:"Write the sanitized copy here (default: in place)."`
-	Args  struct {
-		Dir string `positional-arg-name:"DIR" description:"Evidence directory."`
-	} `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *Sanitize) Execute(args []string) error {
-	return probe.NotImplemented("util sanitize")
-}
-
 // FixturesVerify is util fixtures verify DIR.
 type FixturesVerify struct {
 	probe.GlobalOptions

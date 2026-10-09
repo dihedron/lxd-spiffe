@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/dihedron/lxd-spiffe/cmd/lxd-probe/command"
+	"github.com/dihedron/lxd-spiffe/internal/evidence"
 	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
 	"github.com/jessevdk/go-flags"
 	"github.com/joho/godotenv"
@@ -19,6 +20,9 @@ func main() {
 // code so that the deferred cleanup runs before the process exits.
 func run() int {
 	defer cleanup()
+
+	// every log line goes through the evidence sanitizer (PRN-11)
+	slog.SetDefault(slog.New(evidence.NewLogHandler(slog.Default().Handler(), evidence.Logs)))
 
 	err := godotenv.Load()
 	if err != nil {
