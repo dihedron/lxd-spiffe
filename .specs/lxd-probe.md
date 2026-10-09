@@ -1,16 +1,16 @@
-# LXD validation probe (`lxprobe`) — implementation spec
+# LXD validation probe (`lxd-probe`) — implementation spec
 
 Oct 8, 2026 · @Andrea Funtò
 
-*Status*: draft v0.1, for spec-driven development. `lxprobe` is step 0 of the attestor spec's implementation order (`lxd-spire-plugins.md`, *Testing → Implementation instructions*): it is built and run before any plugin code that depends on a validation gate. Nothing of it is implemented yet.
+*Status*: draft v0.1, for spec-driven development. `lxd-probe` is step 0 of the attestor spec's implementation order (`lxd-spire-plugins.md`, *Testing → Implementation instructions*): it is built and run before any plugin code that depends on a validation gate. Nothing of it is implemented yet.
 
 | Field | Value |
 |---|---|
 | Status | Draft v0.1 for spec-driven development (SDD) |
 | Purpose | A lab tool that **observes real LXD behaviour** and records it as evidence, so that every `[V:Ln]` validation gate of the attestor spec is closed with data instead of assumptions. |
 | Companion of | `lxd-spire-plugins.md` (the "attestor spec") |
-| Binary | `lxprobe` |
-| Language | Go, same module as the attestor (`cmd/lxprobe`) |
+| Binary | `lxd-probe` |
+| Language | Go, same module as the attestor (`cmd/lxd-probe`) |
 | Platforms | `guest` environment: Linux (container and VM). `server` environment: Linux/macOS/Windows operator workstation or the SPIRE server host |
 | Dependencies | Allow-list of NFR-03; no CGO; static binary; no `github.com/canonical/lxd/...` |
 | Output | Human-readable text by default; `--json` for machine output; evidence files always JSON |
@@ -25,12 +25,13 @@ Oct 8, 2026 · @Andrea Funtò
 |---|---|
 | v0.1 | Initial draft. |
 | Oct 8, 2026 | Moved from `lxprobe-spec-v0.1.md` and reorganised into the sections of the attestor spec (Overview, Trust model, Guest environment, Server environment, Util environment, Configuration, Testing) without changing requirements, except: references by section name instead of number; the header names belong to the attestor spec's minimal API contract (L1); the L6 decision rule follows FR-S7 (`server_id` already in the ID) and FR-S10 (generation); uniqueness is FR-S3/SEC-05 (PRS-12); PRF-12 no longer cites the withdrawn L5; committed evidence in `docs/validation/`, fixtures in `test/fixtures/`; the assumption-based fake is limited to lxprobe's own tests (PRT-10); the secrets constraint points to the credential rules; PRU added to the requirement prefixes. |
+| Oct 9, 2026 | The probe is renamed `lxd-probe` (binary, `cmd/lxd-probe`); lab config keys become `user.lxd-probe.*`, the guest lab directory `/run/lxd-probe/`, and the bearer token variable `LXD_PROBE_TOKEN`. No other changes. |
 
 ## Overview
 
-This spec defines `lxprobe`, a lab tool that **observes real LXD behaviour** and records it as evidence, so that every `[V:Ln]` validation gate of the attestor spec is closed with data instead of assumptions.
+This spec defines `lxd-probe`, a lab tool that **observes real LXD behaviour** and records it as evidence, so that every `[V:Ln]` validation gate of the attestor spec is closed with data instead of assumptions.
 
-`lxprobe <environment> <verb> [subcommand] [flags]`
+`lxd-probe <environment> <verb> [subcommand] [flags]`
 
 | Environment | Where it runs | What it can see |
 |---|---|---|
@@ -40,14 +41,14 @@ This spec defines `lxprobe`, a lab tool that **observes real LXD behaviour** and
 
 ### Why this tool exists
 
-The attestor spec contains documented facts `[D]` and unverified assumptions `[V:Ln]` (gates L1–L15). Building the plugins before the gates are closed risks building on wrong assumptions (e.g. which UID LXD reports for files in unprivileged containers; whether `PATCH` honours `If-Match`; how a single `user.*` key is removed). `lxprobe` is built **first** (step 0 of the attestor roadmap) to remove that uncertainty.
+The attestor spec contains documented facts `[D]` and unverified assumptions `[V:Ln]` (gates L1–L15). Building the plugins before the gates are closed risks building on wrong assumptions (e.g. which UID LXD reports for files in unprivileged containers; whether `PATCH` honours `If-Match`; how a single `user.*` key is removed). `lxd-probe` is built **first** (step 0 of the attestor roadmap) to remove that uncertainty.
 
 ### Principles
 
 1. **Observe, do not assume.** The tool never "fixes" or interprets an unexpected response: it records it verbatim (sanitized) and reports it.
 2. **Evidence is the product.** Every command produces a machine-readable record; a run produces an evidence directory that can be committed (after sanitization) and replayed as test fixtures (gate L15).
-3. **Lab only.** The tool performs writes (to `user.lxprobe.*` keys and to `/run/lxprobe/`) and must refuse to run write verbs without explicit acknowledgement. It is not a production component and is not shipped with the plugins.
-4. **Share code with the attestor, not conclusions.** `lxprobe` uses the same `internal/lxd` client (FR-S17), `internal/policy` (idmap translation, device overlap) and `internal/proof` packages that the plugins will use. A bug found in the probe is a bug found in the future plugin; a fixture recorded by the probe is the plugin's test input.
+3. **Lab only.** The tool performs writes (to `user.lxd-probe.*` keys and to `/run/lxd-probe/`) and must refuse to run write verbs without explicit acknowledgement. It is not a production component and is not shipped with the plugins.
+4. **Share code with the attestor, not conclusions.** `lxd-probe` uses the same `internal/lxd` client (FR-S17), `internal/policy` (idmap translation, device overlap) and `internal/proof` packages that the plugins will use. A bug found in the probe is a bug found in the future plugin; a fixture recorded by the probe is the plugin's test input.
 5. **No new dependencies.** Same module, Go standard library plus the dependencies already allowed by NFR-03. No CGO, no Canonical SDK.
 6. **Findings feed the spec.** Each gate runbook (*Testing → Gate runbooks*) states which spec text is amended for each possible outcome.
 
@@ -72,7 +73,7 @@ Working runs write to `--evidence-dir` (default `./evidence`). Sanitized evidenc
 |---|---|
 | PRE-01 | Every record contains: `schema` (integer), `id`, `time` (UTC RFC3339), `tool_version`, `env`, `verb`, `args` (sanitized), `gate`, `cell`, `outcome` (`ok`, `unexpected`, `error`), `duration_ms`, `observations` (structured key/values), and `raw` (reference to artifact). |
 | PRE-02 | The `server` records include the LXD `version` and `api_extensions` hash, so that a record can always be attributed to a server version. |
-| PRE-03 | **Sanitization (mandatory, applied at write time, not afterwards):** remove `Authorization` and cookie headers; remove client certificates/keys and any bearer tokens; redact the values of `cloud-init.*`, `user.*` (except `user.lxprobe.*` and `user.spire.challenge.*`) and `environment.*` config keys; replace MAC addresses and, when `--redact-names` is set, instance and project names with stable aliases. The unsanitized data is never persisted. |
+| PRE-03 | **Sanitization (mandatory, applied at write time, not afterwards):** remove `Authorization` and cookie headers; remove client certificates/keys and any bearer tokens; redact the values of `cloud-init.*`, `user.*` (except `user.lxd-probe.*` and `user.spire.challenge.*`) and `environment.*` config keys; replace MAC addresses and, when `--redact-names` is set, instance and project names with stable aliases. The unsanitized data is never persisted. |
 | PRE-04 | `outcome: unexpected` is assigned whenever the status code, a header, or a body shape differs from the tool's built-in expectation table. This is a finding, not an error: the exit code is still 0 unless `--strict` is given. |
 | PRE-05 | Evidence files are written with mode 0600, directories 0700. |
 
@@ -87,7 +88,7 @@ Working runs write to `--evidence-dir` (default `./evidence`). Sanitized evidenc
 ### Repository layout and build
 
 ```
-cmd/lxprobe              main, flag parsing, command tree
+cmd/lxd-probe            main, flag parsing, command tree
 internal/lxd             HTTP/JSON client (FR-S17): the same package the plugin uses
 internal/devlxd          devLXD unix-socket client (guest)
 internal/policy          idmap translation (attestor spec *UID translation*), device overlap, owner rules
@@ -98,31 +99,31 @@ test/fixtures            sanitized real responses (output of lab runs, gate L15)
 test/fakelxd             in-process fake LXD that replays fixtures
 ```
 
-Build: same module, toolchain and goreleaser configuration as the plugins (attestor spec *Overview → Repository layout and build*), as separate archives for its own platforms (PRN-22); `lxprobe` is never part of the plugin packages (*Overview → Principles*, item 3).
+Build: same module, toolchain and goreleaser configuration as the plugins (attestor spec *Overview → Repository layout and build*), as separate archives for its own platforms (PRN-22); `lxd-probe` is never part of the plugin packages (*Overview → Principles*, item 3).
 
 | ID | Requirement |
 |---|---|
 | PRN-20 | Packages `internal/lxd`, `internal/policy` and `internal/proof` must not import anything from `internal/probe` or `internal/evidence`; the dependency direction is probe → shared packages. |
-| PRN-21 | `lxprobe` has no persistent state outside the evidence directory. |
+| PRN-21 | `lxd-probe` has no persistent state outside the evidence directory. |
 | PRN-22 | Static binary for linux/amd64, linux/arm64; server environment also for darwin and windows. Size target: ≤ 15 MB. |
 
 ### Non-goals
 
 - Not an attestor, not a SPIRE plugin, no SPIRE dependency.
 - Not a load or performance benchmark tool (latency is recorded, not optimized).
-- Not a security testing/exploitation tool. Negative privilege tests are performed by the operator with `lxc` and recorded via `lxprobe util note` (*Trust model → Manual tests*).
+- Not a security testing/exploitation tool. Negative privilege tests are performed by the operator with `lxc` and recorded via `lxd-probe util note` (*Trust model → Manual tests*).
 - Not a substitute for the T-series threat tests of the attestor spec.
 
 ## Trust model
 
-`lxprobe` runs against lab LXD servers only (*Overview → Principles*, item 3). It holds an LXD credential and can write to instances and to guest files, so its safety rules are its trust model: what it may modify, how it treats credentials, and which tests stay manual.
+`lxd-probe` runs against lab LXD servers only (*Overview → Principles*, item 3). It holds an LXD credential and can write to instances and to guest files, so its safety rules are its trust model: what it may modify, how it treats credentials, and which tests stay manual.
 
 ### Writes
 
 | ID | Requirement |
 |---|---|
 | PRN-01 | Every verb that modifies an LXD server or the guest filesystem is classified `write`; it refuses to run without `--allow-write` and `--lab`. |
-| PRN-02 | Writes are limited to: config keys `user.lxprobe.*` (and `user.spire.challenge.*` with `--allow-spire-keys`); guest paths under `/run/lxprobe/` (and `/run/spire/lxd/` with `--allow-spire-paths`). Any other target is rejected before a request is sent. |
+| PRN-02 | Writes are limited to: config keys `user.lxd-probe.*` (and `user.spire.challenge.*` with `--allow-spire-keys`); guest paths under `/run/lxd-probe/` (and `/run/spire/lxd/` with `--allow-spire-paths`). Any other target is rejected before a request is sent. |
 | PRN-03 | The tool never performs state-changing instance operations (start, stop, freeze, restore, delete, snapshot, copy, move, publish). Experiments requiring them (gate L6) are performed by the operator with `lxc`, and observed with `server instance watch` and `util note`. |
 | PRN-04 | A `--dry-run` flag prints the request that would be sent and exits. |
 
@@ -136,7 +137,7 @@ Build: same module, toolchain and goreleaser configuration as the plugins (attes
 
 ### Manual tests
 
-Negative privilege tests (for example, "a client with only `can_view` receives 403 on file pull") are performed by the operator with `lxc` and recorded using `util note`; `lxprobe` provides the matrix scripts as documentation in *Configuration → Operational guidance → Lab setup*, not as automated attacks.
+Negative privilege tests (for example, "a client with only `can_view` receives 403 on file pull") are performed by the operator with `lxc` and recorded using `util note`; `lxd-probe` provides the matrix scripts as documentation in *Configuration → Operational guidance → Lab setup*, not as automated attacks.
 
 ## Guest environment
 
@@ -161,10 +162,10 @@ Negative privilege tests (for example, "a client with only `can_view` receives 4
 
 | ID | Requirement |
 |---|---|
-| PRF-20 | `guest file put PATH --content-file F [--mode 0600]` writes a file under `/run/lxprobe/` (or any path when `--allow-outside-lab-dir` is given) using `O_CREAT\|O_EXCL`, mode as requested, and records the resulting `stat` (uid, gid, mode, size, mtime, inode). |
+| PRF-20 | `guest file put PATH --content-file F [--mode 0600]` writes a file under `/run/lxd-probe/` (or any path when `--allow-outside-lab-dir` is given) using `O_CREAT\|O_EXCL`, mode as requested, and records the resulting `stat` (uid, gid, mode, size, mtime, inode). |
 | PRF-21 | `guest file stat PATH` records `lstat` (so symlinks are visible) and `stat`. |
-| PRF-22 | `guest file rm PATH` removes a file created by `lxprobe` only (checks a sidecar marker or the lab directory). |
-| PRF-23 | `guest file layout` creates the set of "hostile layouts" used by L1: a regular file, a symlink to a file, a directory, a file with mode 0666, a file owned by another uid (when root). Used with `server file stat` (*Server environment → Files API*) to learn what the files API reports for each. Created only under `/run/lxprobe/layout/`. |
+| PRF-22 | `guest file rm PATH` removes a file created by `lxd-probe` only (checks a sidecar marker or the lab directory). |
+| PRF-23 | `guest file layout` creates the set of "hostile layouts" used by L1: a regular file, a symlink to a file, a directory, a file with mode 0666, a file owned by another uid (when root). Used with `server file stat` (*Server environment → Files API*) to learn what the files API reports for each. Created only under `/run/lxd-probe/layout/`. |
 
 ### idmap
 
@@ -193,7 +194,7 @@ Negative privilege tests (for example, "a client with only `can_view` receives 4
 
 ### Config writes (gate L2, L14)
 
-All verbs in this subsection require `--allow-write --lab`, and only touch keys `user.lxprobe.*` (or `user.spire.challenge.*` when `--allow-spire-keys` is given, to rehearse the real key layout).
+All verbs in this subsection require `--allow-write --lab`, and only touch keys `user.lxd-probe.*` (or `user.spire.challenge.*` when `--allow-spire-keys` is given, to rehearse the real key layout).
 
 | ID | Requirement |
 |---|---|
@@ -265,7 +266,7 @@ All verbs in this subsection require `--allow-write --lab`, and only touch keys 
 | `--endpoint URL` | `https://host:8443` or `unix:///var/snap/lxd/common/lxd/unix.socket` |
 | `--pin SHA256` | server certificate fingerprint to pin (FR-S17); mandatory for https |
 | `--client-cert FILE` / `--client-key FILE` | TLS identity |
-| `--auth tls\|bearer` | authentication mode; `bearer` reads the token from `--token-file` or the `LXPROBE_TOKEN` environment variable (never from an argument) |
+| `--auth tls\|bearer` | authentication mode; `bearer` reads the token from `--token-file` or the `LXD_PROBE_TOKEN` environment variable (never from an argument) |
 | `--project NAME` | LXD project (always sent explicitly; default `default`) |
 | `--allow-write` | required by every verb that modifies anything |
 | `--lab` | explicit acknowledgement "this is a lab server"; required together with `--allow-write` |
@@ -318,8 +319,8 @@ lxc launch images:alpine/3.20 v-alpine --vm
 # create four identities: read (can_view), files (can_view + can_access_files), edit (can_edit), full (admin)
 # restricted project
 lxc project create restricted -c restricted=true
-# manual negative tests: run the same lxprobe server commands with each identity and record with:
-lxprobe util note --gate L9 --cell lxd6-unpriv-ubuntu-read "file pull returned 403"
+# manual negative tests: run the same lxd-probe server commands with each identity and record with:
+lxd-probe util note --gate L9 --cell lxd6-unpriv-ubuntu-read "file pull returned 403"
 ```
 
 ## Testing
@@ -331,14 +332,14 @@ lxprobe util note --gate L9 --cell lxd6-unpriv-ubuntu-read "file pull returned 4
 | PRT-01 | Table-driven tests for `internal/policy` idmap translation: single entry, no entry, two matching entries, host-uid beyond range, `.next` ignored, malformed input. Plus a property test: translation followed by inverse mapping returns the original uid. |
 | PRT-02 | Sanitizer tests: known secrets (tokens, cert PEM, MAC addresses, `cloud-init.*`) must never appear in output; fuzz test over random JSON. |
 | PRT-03 | Safety-rule tests: each write verb refuses without flags; out-of-scope key or path is refused before any request is made. |
-| PRT-10 | A `fakelxd` HTTP server (`test/fakelxd`) replays fixtures. Until real fixtures exist (stage 0), lxprobe's own tests may use an **assumption-based** fake, clearly marked as such in test output; real fixtures supersede it. The plugins' tests never use the assumption-based fake: they replay real fixtures only (attestor spec *Testing → Tests*). |
+| PRT-10 | A `fakelxd` HTTP server (`test/fakelxd`) replays fixtures. Until real fixtures exist (stage 0), lxd-probe's own tests may use an **assumption-based** fake, clearly marked as such in test output; real fixtures supersede it. The plugins' tests never use the assumption-based fake: they replay real fixtures only (attestor spec *Testing → Tests*). |
 | PRT-11 | Client tests for the FR-S17 behaviours: pin mismatch, TLS version, redirect refused, response size limits, sync/async/error envelopes, tolerant decoding of unknown fields. |
 | PRT-12 | ETag/412 tests against the fake: stale ETag, concurrent writers, retry limits. |
 | PRT-13 | Golden-file tests of the evidence schema and of the report renderer. |
 
 ### Gate runbooks
 
-Each runbook gives the question, the matrix cells, the commands, the evidence, and the **decision rule**: which amendment of the attestor spec follows from each outcome. Commands are indicative and use shorthand (`$S` = `lxprobe server --endpoint ... --pin ...`, `$G` = `lxprobe guest`).
+Each runbook gives the question, the matrix cells, the commands, the evidence, and the **decision rule**: which amendment of the attestor spec follows from each outcome. Commands are indicative and use shorthand (`$S` = `lxd-probe server --endpoint ... --pin ...`, `$G` = `lxd-probe guest`).
 
 #### L1 — Files API metadata and owner representation
 
@@ -347,9 +348,9 @@ Each runbook gives the question, the matrix cells, the commands, the evidence, a
 **Cells:** unpriv-container, priv-container, isolated-container, raw-idmap-container, VM (Ubuntu, Debian, Alpine).
 
 **Procedure:**
-1. In the guest: `$G preflight`, `$G idmap show`, `$G file layout`, `$G file put /run/lxprobe/proof --mode 0600`.
-2. On the server: `$S instance show NAME`, `$S file stat NAME /run/lxprobe/proof`, and the same for each layout item.
-3. Offline: `lxprobe util idmap check <instance record> <preflight record>`, `lxprobe util idmap translate ...`.
+1. In the guest: `$G preflight`, `$G idmap show`, `$G file layout`, `$G file put /run/lxd-probe/proof --mode 0600`.
+2. On the server: `$S instance show NAME`, `$S file stat NAME /run/lxd-probe/proof`, and the same for each layout item.
+3. Offline: `lxd-probe util idmap check <instance record> <preflight record>`, `lxd-probe util idmap translate ...`.
 
 **Decision rules:**
 - Header names found → update attestor spec *Server-side plugin → LXD integration → Minimal API contract* and FR-S17 with the exact names; remove `[V:L1]` tag.
@@ -362,7 +363,7 @@ Each runbook gives the question, the matrix cells, the commands, the evidence, a
 
 **Question:** Is `PATCH` of `user.*` on a running instance accepted without restart, how fast is it visible through devLXD, is an event emitted?
 
-**Commands:** `$G devlxd watch user.lxprobe.t1 --for 60s` while `$S config set NAME user.lxprobe.t1 v1 --method patch --wait`.
+**Commands:** `$G devlxd watch user.lxd-probe.t1 --for 60s` while `$S config set NAME user.lxd-probe.t1 v1 --method patch --wait`.
 
 **Decision:** propagation delay p95 sets the default `proof_timeout` floor; absence of events fixes polling as normative in attestor spec *Mode `config_push`*; restart triggered → `config_push` is rejected as a mode.
 
@@ -402,7 +403,7 @@ Kept for reference stability. No runbook.
 
 #### L10 — Licence and client decision
 
-Non-lab. Evidence: legal review reference recorded in the notes; `lxprobe` is the first consumer of the FR-S17 client. **Decision:** the client stays custom; confirm all calls of attestor spec *API usage and required extensions* are covered by the probe's coverage matrix (`util report` lists unreached endpoints).
+Non-lab. Evidence: legal review reference recorded in the notes; `lxd-probe` is the first consumer of the FR-S17 client. **Decision:** the client stays custom; confirm all calls of attestor spec *API usage and required extensions* are covered by the probe's coverage matrix (`util report` lists unreached endpoints).
 
 #### L11 — Clusters
 
@@ -410,7 +411,7 @@ Non-lab. Evidence: legal review reference recorded in the notes; `lxprobe` is th
 
 #### L12 — Shared devices and nested LXD
 
-**Procedure:** build instances A and B sharing a disk device or bind mount over `/run/lxprobe`; from B write a file at the path A would use. **Commands:** `$S instance show` on both, `util overlap`. **Decision:** the overlap check is complete enough or must additionally forbid listed device types; nested LXD inside a container is out of scope unless shown to defeat the check.
+**Procedure:** build instances A and B sharing a disk device or bind mount over `/run/lxd-probe`; from B write a file at the path A would use. **Commands:** `$S instance show` on both, `util overlap`. **Decision:** the overlap check is complete enough or must additionally forbid listed device types; nested LXD inside a container is out of scope unless shown to defeat the check.
 
 #### L13 — Bearer identities and short-lived tokens
 
@@ -420,13 +421,13 @@ Non-lab. Evidence: legal review reference recorded in the notes; `lxprobe` is th
 
 **Commands:**
 ```
-$S config set NAME user.lxprobe.a 1 --method patch --if-match auto --wait
-$S config set NAME user.lxprobe.a 2 --method patch --if-match stale
-$S config set NAME user.lxprobe.a 3 --method put   --if-match stale
-$S config unset NAME user.lxprobe.a --method patch-empty
-$S config unset NAME user.lxprobe.a --method patch-null
-$S config unset NAME user.lxprobe.a --method put
-$S config race NAME user.lxprobe.r --writers 8
+$S config set NAME user.lxd-probe.a 1 --method patch --if-match auto --wait
+$S config set NAME user.lxd-probe.a 2 --method patch --if-match stale
+$S config set NAME user.lxd-probe.a 3 --method put   --if-match stale
+$S config unset NAME user.lxd-probe.a --method patch-empty
+$S config unset NAME user.lxd-probe.a --method patch-null
+$S config unset NAME user.lxd-probe.a --method put
+$S config race NAME user.lxd-probe.r --writers 8
 ```
 **Decision:**
 - `PATCH` honours `If-Match` (412 on stale) → FR-S14 uses `PATCH`.
@@ -453,8 +454,8 @@ Each stage ends with: run the relevant runbooks, commit sanitized evidence to `d
 ### Acceptance criteria
 
 1. Every gate L1–L15 (except L5) has a record in the committed evidence tree (`docs/validation/`), or a documented reason it was not testable.
-2. `lxprobe util report` generates a per-gate Markdown report without manual editing.
-3. `lxprobe util sanitize --check` passes on the whole evidence tree.
+2. `lxd-probe util report` generates a per-gate Markdown report without manual editing.
+3. `lxd-probe util sanitize --check` passes on the whole evidence tree.
 4. The fake LXD API in the attestor test suite works solely from real fixtures.
 5. No credential, token or certificate key exists in any evidence file (verified by PRT-02 plus a repository scan).
 6. A findings document lists, for each gate, the spec text amended.
