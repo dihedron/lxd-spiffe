@@ -50,6 +50,7 @@ type Server struct {
 	instances map[string]*instance // key: project/name
 	files     map[string]*File     // key: project/name/path
 	deny      []string             // path prefixes answered with 403
+	exts      []string             // api_extensions of GET /1.0
 	nextOp    int
 	replay    map[string][]evidence.Fixture
 }
@@ -81,10 +82,13 @@ func (i *instance) etag() string {
 func NewAssumed(t testing.TB) *Server {
 	t.Helper()
 	t.Log("fakelxd: ASSUMPTION-BASED fake LXD (PRT-10); replace with recorded fixtures after Lab 0")
-	s := &Server{t: t, instances: map[string]*instance{}, files: map[string]*File{}}
+	s := &Server{t: t, instances: map[string]*instance{}, files: map[string]*File{}, exts: DefaultExtensions}
 	s.start(http.HandlerFunc(s.assumed))
 	return s
 }
+
+// DefaultExtensions are the api_extensions the assumed fake reports.
+var DefaultExtensions = []string{"projects", "instance_generation_id", "access_management"}
 
 // NewReplay starts a fake LXD that answers only with the fixtures under
 // dir. Requests with the same method, path and query are answered in the
@@ -147,6 +151,14 @@ func (s *Server) Deny(prefix string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.deny = append(s.deny, prefix)
+}
+
+// SetExtensions replaces the api_extensions the fake reports; the
+// extensions do not change what the fake serves.
+func (s *Server) SetExtensions(extensions ...string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.exts = extensions
 }
 
 // BumpETag changes an instance's ETag without changing its config, as an
@@ -219,11 +231,16 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/1.0" && r.Method == http.MethodGet:
 		writeSync(w, map[string]any{
-			"api_extensions": []string{"projects", "instance_generation_id"},
+			"api_extensions": s.exts,
 			"api_version":    "1.0",
 			"auth":           "trusted",
-			"environment":    map[string]any{"server_version": "6.5", "server_clustered": false, "server_name": "fake"},
+			"environment": map[string]any{
+				"server_version": "6.5", "server_clustered": false, "server_name": "fake",
+				"kernel": "Linux", "kernel_version": "6.8.0", "driver": "lxc | qemu", "driver_version": "6.0.0 | 8.2.2",
+			},
 		}, "")
+	case r.URL.Path == "/1.0/auth/identities/current" && r.Method == http.MethodGet:
+		s.identity(w, r)
 	case len(parts) == 3 && parts[1] == "instances":
 		s.instance(w, r, project, parts[2])
 	case len(parts) == 4 && parts[1] == "instances" && parts[3] == "files" && r.Method == http.MethodGet:
@@ -243,10 +260,19 @@ func (s *Server) instance(w http.ResponseWriter, r *http.Request, project, name 
 	}
 	switch r.Method {
 	case http.MethodGet:
-		writeSync(w, map[string]any{
+		root := map[string]any{"root": map[string]any{"type": "disk", "path": "/", "pool": "default"}}
+		metadata := map[string]any{
 			"name": i.Name, "project": i.Project, "status": i.Status, "status_code": 103,
-			"type": "container", "config": i.Config, "location": "none",
-		}, i.etag())
+			"type": "container", "architecture": "x86_64", "location": "none", "profiles": []string{"default"},
+			"config": i.Config, "devices": map[string]any{}, "expanded_config": i.Config, "expanded_devices": root,
+			"created_at": "2026-10-01T10:00:00Z", "last_used_at": "2026-10-01T10:00:05Z",
+		}
+		if r.URL.Query().Get("recursion") == "1" {
+			metadata["state"] = map[string]any{"status": i.Status, "status_code": 103, "pid": 4242}
+			metadata["snapshots"] = nil
+			metadata["backups"] = nil
+		}
+		writeSync(w, metadata, i.etag())
 	case http.MethodPatch, http.MethodPut:
 		if match := r.Header.Get("If-Match"); match != "" && match != i.etag() {
 			writeError(w, http.StatusPreconditionFailed, "ETag doesn't match")
@@ -277,6 +303,21 @@ func (s *Server) instance(w http.ResponseWriter, r *http.Request, project, name 
 	default:
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
+}
+
+// identity answers GET /1.0/auth/identities/current with the client
+// certificate's identity.
+func (s *Server) identity(w http.ResponseWriter, r *http.Request) {
+	id := ""
+	if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
+		sum := sha256.Sum256(r.TLS.PeerCertificates[0].Raw)
+		id = hex.EncodeToString(sum[:])
+	}
+	writeSync(w, map[string]any{
+		"authentication_method": "tls", "type": "Client certificate", "id": id, "name": "probe",
+		"groups": []string{"spire"}, "effective_groups": []string{"spire"}, "fine_grained": true,
+		"effective_permissions": []map[string]any{{"entity_type": "project", "url": "/1.0/projects/default", "entitlement": "can_view"}},
+	}, "")
 }
 
 func (s *Server) file(w http.ResponseWriter, r *http.Request, project, name string) {

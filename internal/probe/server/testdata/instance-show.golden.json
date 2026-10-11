@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "id": "server/0001",
+  "time": "0001-01-01T00:00:00Z",
+  "tool_version": "",
+  "env": "server",
+  "verb": "instance show",
+  "args": [
+    "c1"
+  ],
+  "gate": "",
+  "cell": "",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "server": {
+    "version": "6.5",
+    "api_extensions_hash": "sha256:c213b7b67b753a2ca7ba8e013fdfe3e95d115d2fe6fd13a96f11ec23f201530c"
+  },
+  "expectations": [
+    "instance",
+    "instance-full"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance-full.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.etag",
+      "value": "d62da50bee87a87d"
+    },
+    {
+      "key": "instance-full.etag",
+      "value": "d62da50bee87a87d"
+    },
+    {
+      "key": "etag.equal",
+      "value": true
+    },
+    {
+      "key": "instance.type",
+      "value": "container"
+    },
+    {
+      "key": "instance.status",
+      "value": "Running"
+    },
+    {
+      "key": "instance.location",
+      "value": "none"
+    },
+    {
+      "key": "instance.architecture",
+      "value": "x86_64"
+    },
+    {
+      "key": "instance.config",
+      "value": {
+        "user.lxd-probe.t1": "v",
+        "user.secret": "[redacted]",
+        "volatile.uuid": "8d4e1c2a",
+        "volatile.uuid.generation": "8d4e1c2b"
+      }
+    },
+    {
+      "key": "instance.devices",
+      "value": {}
+    },
+    {
+      "key": "instance.expanded_devices",
+      "value": {
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0001-server.json",
+    "artifacts/0001-instance.json",
+    "artifacts/0001-instance-full.json"
+  ]
+}

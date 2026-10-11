@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -180,6 +181,17 @@ func (e *Entry) ArtifactText(name, text string) (string, error) {
 	return e.artifact(name+".txt", []byte(e.run.Sanitizer.String(text)))
 }
 
+// ArtifactResponse stores an HTTP response, sanitized, as
+// artifacts/NNNN-<name>.json in the format of a fixture response: status,
+// headers, and the body as JSON or as text (PRE-08).
+func (e *Entry) ArtifactResponse(name string, status int, header http.Header, body []byte) (string, error) {
+	data, err := json.MarshalIndent(sanitizeResponse(e.run.Sanitizer, status, header, body), "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("artifact %s: %w", name, err)
+	}
+	return e.artifact(name+".json", append(data, '\n'))
+}
+
 func (e *Entry) artifact(name string, data []byte) (string, error) {
 	rel := filepath.Join("artifacts", fmt.Sprintf("%04d-%s", e.Number, fileName(name)))
 	if err := createFile(filepath.Join(e.run.Dir, rel), data); err != nil {
@@ -228,6 +240,11 @@ func (e *Entry) Commit(rec *Record) error {
 		return fmt.Errorf("writing record: %w", err)
 	}
 	return e.file.Close()
+}
+
+// Path returns the path of the record file.
+func (e *Entry) Path() string {
+	return e.file.Name()
 }
 
 // Abort releases the reserved record number by removing its file.

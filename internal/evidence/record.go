@@ -47,8 +47,9 @@ type Record struct {
 	DurationMS int64 `json:"duration_ms"`
 	// Server attributes a server record to a server version (PRE-02).
 	Server *ServerInfo `json:"server,omitempty"`
-	// Expectation names the expectation the response was checked against (PRE-06).
-	Expectation string `json:"expectation,omitempty"`
+	// Expectations name the expectations the responses were checked
+	// against, in call order (PRE-06).
+	Expectations []string `json:"expectations,omitempty"`
 	// Observations are the structured findings, in order.
 	Observations []Observation `json:"observations"`
 	// Raw lists the artifacts of the record, relative to the run directory.

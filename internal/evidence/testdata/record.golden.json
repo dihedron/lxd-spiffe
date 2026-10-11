@@ -17,7 +17,9 @@
     "version": "6.5",
     "api_extensions_hash": "sha256:af51a483556613a5a56853e867ab2f56079ccad79edfa5467de49036244a17c4"
   },
-  "expectation": "files-get",
+  "expectations": [
+    "files-get"
+  ],
   "observations": [
     {
       "key": "header.X-LXD-uid",

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -178,22 +179,65 @@ func TestRecordNumberingConcurrent(t *testing.T) {
 	}
 }
 
+func TestArtifactResponse(t *testing.T) {
+	run, err := Open(t.TempDir(), "run1", "server", RunInfo{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, err := run.Begin("instance show")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer entry.Abort()
+	header := http.Header{"Etag": {"abc"}, "Set-Cookie": {"session=1"}}
+	for name, body := range map[string]string{
+		"json": `{"type":"sync","metadata":{"config":{"user.x":"private","volatile.uuid":"u1"}}}`,
+		"text": "not json, hw 00:16:3e:aa:bb:cc",
+	} {
+		rel, err := entry.ArtifactResponse(name, 200, header, []byte(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(filepath.Join(run.Dir, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got FixtureResponse
+		if err := json.Unmarshal(data, &got); err != nil {
+			t.Fatalf("%s: %v", rel, err)
+		}
+		if got.Status != 200 || got.Header.Get("Etag") != "abc" || got.Header.Get("Set-Cookie") != "" {
+			t.Errorf("%s: status or headers = %d %v", rel, got.Status, got.Header)
+		}
+		text := string(data)
+		if strings.Contains(text, "private") || strings.Contains(text, "00:16:3e") {
+			t.Errorf("%s not sanitized: %s", rel, text)
+		}
+		if name == "json" && (len(got.Body) == 0 || !strings.Contains(text, "volatile.uuid")) {
+			t.Errorf("%s: JSON body not kept as JSON: %s", rel, text)
+		}
+		if name == "text" && got.BodyText == "" {
+			t.Errorf("%s: text body not kept as text: %s", rel, text)
+		}
+	}
+}
+
 // TestRecordGolden pins the evidence schema (PRT-13).
 func TestRecordGolden(t *testing.T) {
 	rec := &Record{
-		Schema:      Schema,
-		ID:          "server/0007",
-		Time:        time.Date(2026, 10, 9, 22, 15, 0, 0, time.UTC),
-		ToolVersion: "0.0.1",
-		Env:         "server",
-		Verb:        "file stat",
-		Args:        []string{"c1", "/run/lxd-probe/proof"},
-		Gate:        "L1",
-		Cell:        "lxd6-unpriv-ubuntu-files",
-		Outcome:     OutcomeUnexpected,
-		DurationMS:  12,
-		Server:      &ServerInfo{Version: "6.5", APIExtensionsHash: HashExtensions([]string{"projects", "instance_generation_id"})},
-		Expectation: "files-get",
+		Schema:       Schema,
+		ID:           "server/0007",
+		Time:         time.Date(2026, 10, 9, 22, 15, 0, 0, time.UTC),
+		ToolVersion:  "0.0.1",
+		Env:          "server",
+		Verb:         "file stat",
+		Args:         []string{"c1", "/run/lxd-probe/proof"},
+		Gate:         "L1",
+		Cell:         "lxd6-unpriv-ubuntu-files",
+		Outcome:      OutcomeUnexpected,
+		DurationMS:   12,
+		Server:       &ServerInfo{Version: "6.5", APIExtensionsHash: HashExtensions([]string{"projects", "instance_generation_id"})},
+		Expectations: []string{"files-get"},
 		Observations: []Observation{
 			{Key: "header.X-LXD-uid", Value: "1000000"},
 			{Key: "expectation.header.X-LXD-type", Value: "missing"},

@@ -71,38 +71,6 @@ type pathArgs struct {
 	Path string `positional-arg-name:"PATH" description:"Path inside the instance."`
 }
 
-// Info is server info.
-type Info struct {
-	probe.ServerCommand
-	ProbeTLS12 bool `long:"probe-tls12" description:"Also try a TLS 1.2 handshake and record whether the server accepts it (PRS-03)."`
-}
-
-// Execute runs the command.
-func (cmd *Info) Execute(args []string) error {
-	return probe.NotImplemented("server info")
-}
-
-// Whoami is server whoami.
-type Whoami struct {
-	probe.ServerCommand
-}
-
-// Execute runs the command.
-func (cmd *Whoami) Execute(args []string) error {
-	return probe.NotImplemented("server whoami")
-}
-
-// InstanceShow is server instance show NAME.
-type InstanceShow struct {
-	probe.ServerCommand
-	Args instanceArgs `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *InstanceShow) Execute(args []string) error {
-	return probe.NotImplemented("server instance show")
-}
-
 // InstanceWatch is server instance watch NAME.
 type InstanceWatch struct {
 	probe.ServerCommand

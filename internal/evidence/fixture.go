@@ -63,9 +63,8 @@ func (w *FixtureWriter) Write(version string, record, seq int, method, path, que
 	stem := fmt.Sprintf("%04d-%02d-%s-%s", record, seq, strings.ToLower(method), slug)
 
 	req := FixtureRequest{Method: method, Path: w.Sanitizer.String(path), Query: w.Sanitizer.String(query), Header: w.Sanitizer.Headers(reqHeader)}
-	req.Body, req.BodyText = w.body(reqBody)
-	resp := FixtureResponse{Status: status, Header: w.Sanitizer.Headers(respHeader)}
-	resp.Body, resp.BodyText = w.body(respBody)
+	req.Body, req.BodyText = sanitizeBody(w.Sanitizer, reqBody)
+	resp := sanitizeResponse(w.Sanitizer, status, respHeader, respBody)
 
 	for suffix, v := range map[string]any{".request.json": req, ".response.json": resp} {
 		data, err := json.MarshalIndent(v, "", "  ")
@@ -79,16 +78,25 @@ func (w *FixtureWriter) Write(version string, record, seq int, method, path, que
 	return nil
 }
 
-func (w *FixtureWriter) body(data []byte) (json.RawMessage, string) {
+// sanitizeResponse returns a response as stored in fixtures and artifacts.
+func sanitizeResponse(s *Sanitizer, status int, header http.Header, body []byte) FixtureResponse {
+	resp := FixtureResponse{Status: status, Header: s.Headers(header)}
+	resp.Body, resp.BodyText = sanitizeBody(s, body)
+	return resp
+}
+
+// sanitizeBody returns a sanitized JSON body, or a sanitized text body when
+// data is not JSON.
+func sanitizeBody(s *Sanitizer, data []byte) (json.RawMessage, string) {
 	if len(data) == 0 {
 		return nil, ""
 	}
 	if v, err := decodeJSON(data); err == nil {
-		if out, err := json.Marshal(w.Sanitizer.Value(v)); err == nil {
+		if out, err := json.Marshal(s.Value(v)); err == nil {
 			return out, ""
 		}
 	}
-	return nil, w.Sanitizer.String(string(data))
+	return nil, s.String(string(data))
 }
 
 // LoadFixtures reads every fixture pair under dir, sorted by file name.
