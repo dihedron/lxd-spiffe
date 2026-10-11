@@ -105,6 +105,25 @@ vm_size() {
 # vm_domain VM: the VM's libvirt domain.
 vm_domain() { echo "$LAB_NETWORK-$1"; }
 
+# Every VM the lab can have, in any scenario and topology: the network knows
+# them all, and "down" removes them all.
+readonly LAB_ALL_VMS=(lxd5 lxd6 node1 node2 node3 spire)
+
+# vm_host VM: the host part of the VM's address.
+vm_host() {
+	case "$1" in
+	lxd5) echo "$LAB_LXD5_HOST" ;;
+	lxd6) echo "$LAB_LXD6_HOST" ;;
+	node1) echo "$LAB_NODE1_HOST" ;;
+	node2) echo "$LAB_NODE2_HOST" ;;
+	node3) echo "$LAB_NODE3_HOST" ;;
+	spire) echo "$LAB_SPIRE_HOST" ;;
+	*) die "unknown VM $1" ;;
+	esac
+}
+
+vm_ip() { lab_ip "$(vm_host "$1")"; }
+
 # --- Helpers ------------------------------------------------------------------
 
 have() { command -v "$1" >/dev/null 2>&1; }
@@ -173,6 +192,35 @@ ubuntu_image_url() {
 	*) die "no known image for Ubuntu $LAB_UBUNTU_RELEASE: set LAB_UBUNTU_IMAGE_URL" ;;
 	esac
 	echo "https://cloud-images.ubuntu.com/$codename/current/$codename-server-cloudimg-amd64.img"
+}
+
+# published_sha256 URL: the SHA-256 of URL from the SHA256SUMS published next
+# to it.
+published_sha256() {
+	local dir="${1%/*}" file="${1##*/}"
+	curl -fsSL "$dir/SHA256SUMS" 2>/dev/null | awk -v f="$file" '
+		$2 == f || $2 == "*" f { print $1; found = 1; exit }
+		END { exit !found }'
+}
+
+# fetch URL SHA256: downloads URL into the cache unless already there with
+# that checksum, and prints the cached path. Fails on a checksum mismatch.
+fetch() {
+	local url="$1" sha="$2" path
+	path="$LAB_CACHE_DIR/downloads/${url##*/}"
+	mkdir -p "${path%/*}"
+	if [[ -f "$path" ]] && echo "$sha  $path" | sha256sum -c --quiet >/dev/null 2>&1; then
+		echo "$path"
+		return
+	fi
+	info "downloading $url" >&2
+	curl -fL --progress-bar -o "$path.part" "$url" >&2 || die "cannot download $url"
+	echo "$sha  $path.part" | sha256sum -c --quiet >/dev/null 2>&1 || {
+		rm -f "$path.part"
+		die "checksum mismatch for $url (expected $sha)"
+	}
+	mv "$path.part" "$path"
+	echo "$path"
 }
 
 # go_mod_version: the Go version go.mod requires.
