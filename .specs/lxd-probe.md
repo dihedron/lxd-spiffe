@@ -37,6 +37,7 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 12, 2026 (chunk 7) | A file's content never reaches records or artifacts, and fixtures keep it only under the lab directory (PRS-35, PRE-10); `file stat` also records size and hash (PRS-30); `file get` records a body over the limit (PRS-31); L1 runs its server steps as `files`, once as `read`, with `--record`. |
 | Oct 12, 2026 (chunk 8) | `config get` only reads, so needs no write flags; `--if-match stale` sends a truly outdated ETag (PRS-21); `unset` records whether the key is gone, empty or unchanged (PRS-22); `race` has a bounded retry budget with jitter (PRS-23). |
 | Oct 12, 2026 (chunk 9) | `devlxd watch` polls every 100 ms and listens to events, with UTC timestamps (PRF-12); `util diff` lists what it ignores (PRU-01); `util idmap translate` works for any uid and lives in `internal/policy` (PRU-02); `util idmap check` reports "not applicable" for privileged containers and VMs (PRU-03); L1's offline step joins each cell's run; L2 writes five times per cell and records the clock offset. |
+| Oct 12, 2026 (chunk 10) | `instance watch` also follows `volatile.cloud-init.instance-id` and the instance's disappearance, with UTC times and `--interval` (PRS-11); `permissions` adds the instance state and `identities/current` (PRS-40); `util note` writes a util record, `--decision` needs `--gate` (PRU-07); L8 uses S0-1's records. |
 
 ## Overview
 
@@ -210,7 +211,7 @@ Negative privilege tests (for example, "a client with only `can_view` receives 4
 | ID | Requirement |
 |---|---|
 | PRS-10 | `server instance show NAME` calls `GET /1.0/instances/NAME?project=P` (recursion 1 and 0, both stored) and records the **raw ETag header**, `config` (volatile keys included), `devices`, `expanded_devices`, `location`, `status`, `type`, `architecture`. Supports L1, L3, L6, L9. |
-| PRS-11 | `server instance watch NAME [--for DUR]` polls the instance and prints/records a change log of `volatile.uuid`, `volatile.uuid.generation`, `volatile.idmap.*`, `location`, `status`, and ETag. Used during copy/move/restore experiments (L6, L11). |
+| PRS-11 | `server instance watch NAME [--for DUR] [--interval DUR]` polls the instance (every second by default) and prints/records a change log of `volatile.uuid`, `volatile.uuid.generation`, `volatile.cloud-init.instance-id`, `volatile.idmap.*`, `location`, `status`, and ETag, each change with its UTC time; an instance that disappears or reappears is a change too. Used during copy/move/restore experiments (L6, L11). |
 | PRS-12 | `server instance list` records name, type, status, location for the project (used to confirm the uniqueness checks of FR-S3 and SEC-05). |
 
 ### Config writes (gate L2, L14)
@@ -240,7 +241,7 @@ The write verbs of this subsection (`set`, `unset`, `race`) require `--allow-wri
 
 | ID | Requirement |
 |---|---|
-| PRS-40 | `server permissions NAME` runs a fixed matrix of **read-only** calls for the presented identity (`GET` instance, `GET` files, `GET` events websocket handshake, `GET` operations) and records per call whether it is allowed, denied (403) or hidden (404). The operator runs it once per probe identity (read, files, edit, full) to build the entitlement matrix. |
+| PRS-40 | `server permissions NAME` runs a fixed matrix of **read-only** calls for the presented identity (`GET` instance, `GET` instance state, `GET` files, `GET` events websocket handshake, `GET` operations, `GET /1.0/auth/identities/current`) and records per call whether it is allowed, denied (403) or hidden (404). The operator runs it once per probe identity (read, files, edit, full, outsider, bearer) to build the entitlement matrix. |
 | PRS-41 | `server bearer check` (when `--auth bearer`) records whether the token authenticates against the remote API, its reported lifetime/expiry if exposed, and the first failing call after expiry (`--wait-expiry` option). Gate L13. |
 
 ### Rehearsal of the real proofs (stage 3)
@@ -261,7 +262,7 @@ The write verbs of this subsection (`set`, `unset`, `race`) require `--allow-wri
 | PRU-04 | `util overlap RECORD [--proof-dir PATH]` runs the device-overlap check of the attestor spec (*Proof of co-location → Mode `file_pull`*, proof-path device rules) on the recorded `expanded_devices` and reports shared or bind-mounted paths over the proof directory (gate L12). |
 | PRU-05 | `util sanitize DIR` applies the sanitization rules of *Overview → Evidence model → Record schema* (PRE-03) to an evidence directory; `util sanitize --check DIR` fails (exit 6) if forbidden material is found. |
 | PRU-06 | `util fixtures verify DIR` decodes every recorded response in `DIR` with the typed structs of `internal/lxd` and reports decode errors, unknown fields (informational) and missing required fields (gate L15). |
-| PRU-07 | `util note --gate Ln --cell C "text"` appends an operator observation (for example manual negative privilege tests with `lxc`) to the evidence of the run. With `--decision`, the note records the operator's decision for the gate instead (which outcome of the runbook's decision rules applies, and why). Free text is sanitized like everything else. |
+| PRU-07 | `util note --gate Ln --cell C "text"` appends an operator observation (for example manual negative privilege tests with `lxc`) to the evidence of the run, as a record of its `util` environment. With `--decision` (which needs `--gate`), the note records the operator's decision for the gate instead (which outcome of the runbook's decision rules applies, and why). Free text is sanitized like everything else. |
 | PRU-08 | `util report RUN_DIR...` merges the environments of one or more runs and renders a Markdown report per gate: question, cells covered, observations with their record ids, the gate's decision rules as text (*Testing → Gate runbooks*), the operator's decisions recorded with `util note --decision`, and open items (gates without a decision, unreached endpoints). It never matches observations to rules by itself. |
 
 ## Configuration
@@ -340,6 +341,7 @@ Each verb also accepts the global flags and the flags of its environment. Positi
 | `guest file put PATH` | `--content-file` | path, required | content to write; `-` reads stdin |
 | | `--mode` | octal, 0600 | file mode |
 | `server instance watch NAME` | `--for` | duration, 10m | how long to watch (PRS-11) |
+| | `--interval` | duration, 1s | poll interval (PRS-11) |
 | | `--interval` | duration, 1s | poll interval |
 | `server config set NAME KEY VALUE` | `--method` | `patch\|put`, `patch` | PRS-21 |
 | | `--if-match` | `auto\|none\|stale`, `auto` | PRS-21 |
@@ -475,7 +477,7 @@ Kept for reference stability. No runbook.
 
 #### L8 — Versions and extensions
 
-**Command:** `$S info --probe-tls12` on each LXD server, which also learns whether TLS 1.2 is accepted (Q3). **Decision:** minimum LXD version list; the table of required extensions in attestor spec *API usage and required extensions* is confirmed (`projects`, `instance_generation_id`, ...); each additional extension found necessary is added.
+**Command:** `$S info --probe-tls12` on each LXD server, which also learns whether TLS 1.2 is accepted (Q3); S0-1's records provide it (Lab 0). **Decision:** minimum LXD version list; the table of required extensions in attestor spec *API usage and required extensions* is confirmed (`projects`, `instance_generation_id`, ...); each additional extension found necessary is added.
 
 #### L9 — Entitlements
 
