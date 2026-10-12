@@ -31,6 +31,7 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 9, 2026 (chunk 3) | The run directory no longer has a `fixtures/` subdirectory: fixtures are written only under `--record DIR`, with the file names of PRE-10. |
 | Oct 12, 2026 (chunk 4.5) | `--expect-hidden` (PRE-06, server flags, PRS-40): the lab showed that LXD 5.21 and 6.9 answer a trusted identity that may not view an entity with 404 Not Found, exactly as for an entity that does not exist, and keep 403 for untrusted clients and for actions on entities the identity can view. |
 | Oct 12, 2026 (chunk 4.5, host) | `run.json` records the host name as `redacted` unless `--record-host` (environment `LXD_PROBE_RECORD_HOST=true`) is given (PRE-03, global flags): the operator's machine name is not lab evidence, and committed evidence should not carry it by default. |
+| Oct 12, 2026 (chunk 4.5, docs) | *Lab setup* points to the lab spec (`test/lab/lab.sh`) instead of indicative `lxc` commands; the lab matrix adds the `outsider` identity; the delivery plan names its lab checkpoints (S0-1, S0-2, G-L1, G-L2, G-L4, G-L14). |
 
 ## Overview
 
@@ -377,7 +378,7 @@ Each verb also accepts the global flags and the flags of its environment. Positi
 |---|---|
 | LXD server | 5.21 LTS standalone; latest 6.x standalone; a 3-node cluster; a second standalone (backup import, L6) |
 | Instance | unprivileged container; privileged container; container with `security.idmap.isolated=true`; container with `raw.idmap`; Alpine VM; Ubuntu VM; Debian VM |
-| Probe identity | read-only; files; edit; full; (bearer, when available) |
+| Probe identity | read-only; files; edit; full; outsider (trusted, but without access to the restricted project, where LXD answers 404); (bearer, when available) |
 | Project | `default`; a restricted project |
 
 The full cross-product is not required. `util report` lists the cells covered per gate and flags gates closed with less than one real cell per relevant axis value.
@@ -386,25 +387,15 @@ The full cross-product is not required. `util report` lists the cells covered pe
 
 `--cell` uses `lxd<major>-<instance>-<image>[-<identity>]`, for example `lxd6-unpriv-ubuntu-files`.
 
-#### Lab setup (indicative; syntax must be checked per LXD version)
+#### Lab setup
 
-```
-# containers
-lxc launch ubuntu:24.04 c-unpriv
-lxc launch ubuntu:24.04 c-priv -c security.privileged=true
-lxc launch ubuntu:24.04 c-iso  -c security.idmap.isolated=true
-lxc launch ubuntu:24.04 c-raw  -c raw.idmap="both 1000 1000"
-# virtual machines
-lxc launch ubuntu:24.04 v-ubuntu --vm
-lxc launch images:debian/12 v-debian --vm
-lxc launch images:alpine/3.20 v-alpine --vm
-# identities (TLS), entitlements via the LXD authorization model (OpenFGA or built-in groups, per version)
-# create four identities: read (can_view), files (can_view + can_access_files), edit (can_edit), full (admin)
-# restricted project
-lxc project create restricted -c restricted=true
-# manual negative tests: run the same lxd-probe server commands with each identity and record with:
-lxd-probe util note --gate L9 --cell lxd6-unpriv-ubuntu-read "file pull returned 403"
-```
+The lab is built and run by `test/lab/lab.sh`, specified in [lxd-test-environment.md](lxd-test-environment.md): `lab.sh up` creates it on one Linux machine with KVM, `lab.sh reset` returns it to its snapshot, and `lab.sh deploy` installs the current `lxd-probe`. It provides:
+
+- two standalone LXD servers on libvirt VMs, `lxd5` (5.21 LTS) and `lxd6` (latest 6.x), with refreshes held (the cluster and the backup-import server come with the gates that need them, L11 and L6);
+- on each, the baseline instances of the matrix: `c-unpriv`, `c-priv`, `c-iso`, `c-raw`, `v-ubuntu`, `v-debian`, `v-alpine`, plus a `c-unpriv` in the `restricted` project, each with a user `probe` of uid 1000;
+- the probe identities `read`, `files`, `edit`, `full` and `outsider` (TLS client certificates in LXD groups), and a bearer identity in `lab-files` where the server offers one.
+
+Runbook steps run through `lab.sh`: `$S ...` is `lab.sh probe <server> --as <identity> -- server ...` on the lab host, and `$G ...` is `lab.sh guest <server> <instance> [--user <uid>] -- guest ...` inside an instance. `LXD_PROBE_RUN_ID`, `LXD_PROBE_GATE` and `LXD_PROBE_CELL` pass through, so that one run gathers both environments. Manual steps (with `lxc`, gate L6) and negative tests outside the probe are recorded with `util note`, for example `lxd-probe util note --gate L9 --cell lxd6-unpriv-ubuntu-read "file pull returned 403"`.
 
 ## Testing
 
@@ -533,6 +524,8 @@ $S config race NAME user.lxd-probe.r --writers 8
 | 3 | `server rehearse file-pull`, `server rehearse config-push` | One end-to-end rehearsal per mode passes in the lab |
 
 Each stage ends with: run the relevant runbooks, commit sanitized evidence to `docs/validation/`, write the findings list, and amend the attestor spec before starting plugin code that depends on the findings.
+
+**Lab checkpoints.** The runbooks run as the gate sessions of the lab ([lxd-test-environment.md](lxd-test-environment.md), *Acceptance tests*), with `lab.sh test --collect`. **Lab 0** closes stage 0 with S0-1, the server half (`server info`, `whoami`, `instance show` and the fixtures, gates L8 and L15), and S0-2, the guest half (`guest preflight`, `guest devlxd get/dump`, gate L3). **Lab 1** closes stage 1 with G-L1, G-L2, G-L4 and G-L14. The sessions of stages 2 and 3 are listed there too.
 
 ### Acceptance criteria
 
