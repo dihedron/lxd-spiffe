@@ -35,6 +35,7 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 12, 2026 (chunk 5) | devLXD before the guest verbs: two response formats (plain, as devLXD's own, or the LXD envelope) recorded and accepted by the expectations (PRF-10, PRE-06); a config key's bare value redacted by its name (PRF-10); raw access through `DoHTTP` with the agent's limits (PRF-14); `/1.0/events` probed with a short plain `GET` (PRF-11); `--record` in the guest environment (PRE-10); the guest code is Linux-only, as the binary (PRN-22). |
 | Oct 12, 2026 (chunk 6) | `devlxd access` takes `--path` and its child reports statuses only (PRF-13); `rm` may remove anything under the lab directory and, under the SPIRE directory, only what `put` marked (PRF-20, PRF-22); the layout's symlink points outside the lab directory (PRF-23); guest writes go through `os.Root` (PRN-05); L4 also tries `cloud-init.user-data`. |
 | Oct 12, 2026 (chunk 7) | A file's content never reaches records or artifacts, and fixtures keep it only under the lab directory (PRS-35, PRE-10); `file stat` also records size and hash (PRS-30); `file get` records a body over the limit (PRS-31); L1 runs its server steps as `files`, once as `read`, with `--record`. |
+| Oct 12, 2026 (chunk 8) | `config get` only reads, so needs no write flags; `--if-match stale` sends a truly outdated ETag (PRS-21); `unset` records whether the key is gone, empty or unchanged (PRS-22); `race` has a bounded retry budget with jitter (PRS-23). |
 
 ## Overview
 
@@ -213,14 +214,14 @@ Negative privilege tests (for example, "a client with only `can_view` receives 4
 
 ### Config writes (gate L2, L14)
 
-All verbs in this subsection require `--allow-write --lab`, and only touch keys `user.lxd-probe.*` (or `user.spire.challenge.*` when `--allow-spire-keys` is given, to rehearse the real key layout).
+The write verbs of this subsection (`set`, `unset`, `race`) require `--allow-write --lab`, and only touch keys `user.lxd-probe.*` (or `user.spire.challenge.*` when `--allow-spire-keys` is given, to rehearse the real key layout); `get` only reads.
 
 | ID | Requirement |
 |---|---|
-| PRS-20 | `server config get NAME KEY` reads the key from the instance object and prints it. |
-| PRS-21 | `server config set NAME KEY VALUE --method patch\|put --if-match auto\|none\|stale [--wait]` writes the key. `--method patch` sends `PATCH` with only the key; `--method put` reads the instance, modifies, and sends `PUT` of the whole object. `--if-match auto` uses the ETag read just before; `none` sends no header; `stale` deliberately sends an outdated ETag to provoke 412. `--wait` waits on the returned operation (`/1.0/operations/ID/wait`). The command records: request (sanitized), status, headers, operation metadata, duration, and whether a restart was triggered (instance `status` before/after). |
-| PRS-22 | `server config unset NAME KEY --method patch-empty\|patch-null\|put` tries the candidate ways of removing a single `user.*` key and records which actually removes the key (as opposed to leaving an empty value). Gate L14. |
-| PRS-23 | `server config race NAME KEY --writers N` launches N concurrent writers with `--if-match auto` on the same key and records the sequence of 200/412 outcomes, the number of retries, and the final value. Verifies the FR-S14 retry logic empirically and the rate of spurious 412 responses (for example when volatile keys change under the writer). |
+| PRS-20 | `server config get NAME KEY` reads the key from the instance object and records it (sanitized as any config value: PRE-03). |
+| PRS-21 | `server config set NAME KEY VALUE --method patch\|put --if-match auto\|none\|stale [--wait]` writes the key. `--method patch` sends `PATCH` with only the key; `--method put` reads the instance, modifies, and sends `PUT` of the whole object. `--if-match auto` uses the ETag read just before; `none` sends no header; `stale` deliberately sends an outdated ETag to provoke 412: it reads the ETag, writes the key once with it (value `<VALUE>~pre`), then sends the request with the ETag read first, now outdated. `--wait` waits on the returned operation (`/1.0/operations/ID/wait`). The command records: request (sanitized), status, headers, operation metadata, duration, and whether a restart was triggered (instance `status` before/after). |
+| PRS-22 | `server config unset NAME KEY --method patch-empty\|patch-null\|put` tries the candidate ways of removing a single `user.*` key then reads the instance again and records whether the key is gone, present with an empty value, or unchanged. Gate L14. |
+| PRS-23 | `server config race NAME KEY --writers N` launches N concurrent writers with `--if-match auto` on the same key and records the sequence of 200/412 outcomes, the number of retries, and the final value. Each writer reads, then `PATCH`es with `If-Match`, and on 412 retries after 10–100 ms of jitter, at most 10 times. Verifies the FR-S14 retry logic empirically and the rate of spurious 412 responses (for example when volatile keys change under the writer). |
 | PRS-24 | Every write verb prints, before acting, the exact request line, and, when `--expect-instance-uuid` is supplied, reads the instance first and refuses to run (exit 5) if its `volatile.uuid` differs from the flag (guard against the wrong target). |
 
 ### Files API (gate L1, L7, L12)
