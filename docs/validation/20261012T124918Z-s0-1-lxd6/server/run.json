@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "run_id": "20261012T124918Z-s0-1-lxd6",
+  "env": "server",
+  "created": "2026-10-12T12:49:19.462729952Z",
+  "tool_version": "7398128",
+  "git_commit": "73981283a849bb24a07966a6d0b38138132ca462",
+  "host": "redacted",
+  "endpoint": "https://10.251.0.11:8443"
+}

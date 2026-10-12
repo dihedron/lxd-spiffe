@@ -1,0 +1,346 @@
+{
+  "schema": 1,
+  "id": "server/0011",
+  "time": "2026-10-12T12:49:19.2130368Z",
+  "tool_version": "7398128",
+  "env": "server",
+  "verb": "instance show",
+  "args": [
+    "lab-missing"
+  ],
+  "gate": "L15",
+  "cell": "lxd5",
+  "outcome": "unexpected",
+  "duration_ms": 29,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "instance",
+    "instance-full"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 404
+    },
+    {
+      "key": "expectation.status",
+      "value": {
+        "expectation": "instance",
+        "got": 404,
+        "want": [
+          200
+        ]
+      }
+    },
+    {
+      "key": "expectation.header.ETag",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.type",
+      "value": {
+        "expectation": "instance",
+        "got": "error",
+        "want": "sync"
+      }
+    },
+    {
+      "key": "expectation.body.name",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.project",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.status",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.status_code",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.type",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.architecture",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.location",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.profiles",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.config",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.devices",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.expanded_config",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.expanded_devices",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.created_at",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.last_used_at",
+      "value": {
+        "expectation": "instance",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "instance-full.http_status",
+      "value": 404
+    },
+    {
+      "key": "expectation.status",
+      "value": {
+        "expectation": "instance-full",
+        "got": 404,
+        "want": [
+          200
+        ]
+      }
+    },
+    {
+      "key": "expectation.header.ETag",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.type",
+      "value": {
+        "expectation": "instance-full",
+        "got": "error",
+        "want": "sync"
+      }
+    },
+    {
+      "key": "expectation.body.name",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.project",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.status",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.status_code",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.type",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.architecture",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.location",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.profiles",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.config",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.devices",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.expanded_config",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.expanded_devices",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.created_at",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.last_used_at",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.state",
+      "value": {
+        "expectation": "instance-full",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "instance.etag",
+      "value": ""
+    },
+    {
+      "key": "instance-full.etag",
+      "value": ""
+    },
+    {
+      "key": "etag.equal",
+      "value": true
+    },
+    {
+      "key": "instance.error",
+      "value": "Failed to fetch instance \"lab-missing\" in project \"default\": Instance not found"
+    },
+    {
+      "key": "instance-full.error",
+      "value": "Failed to fetch instance \"lab-missing\" in project \"default\": Instance not found"
+    }
+  ],
+  "raw": [
+    "artifacts/0011-server.json",
+    "artifacts/0011-instance.json",
+    "artifacts/0011-instance-full.json"
+  ]
+}

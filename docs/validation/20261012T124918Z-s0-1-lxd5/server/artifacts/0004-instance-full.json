@@ -1,0 +1,188 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 12:49:18 GMT"
+    ],
+    "Etag": [
+      "\"f92a1b9e0810d08d0226c40f12527cae88e36f4c147aea11dee0c24cb2243d66\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "backups": null,
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "security.nesting": "true",
+        "security.privileged": "true",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "efd5ff57-012b-47da-8b7e-c7d2c0c8f832",
+        "volatile.eth0.host_name": "vetha8ea6360",
+        "volatile.eth0.hwaddr": "mac-2",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[]",
+        "volatile.idmap.next": "[]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "b495dcba-0967-4bb4-966f-7bf7e68bf33a",
+        "volatile.uuid.generation": "b495dcba-0967-4bb4-966f-7bf7e68bf33a"
+      },
+      "created_at": "2026-10-12T10:39:51.563474113Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "security.nesting": "true",
+        "security.privileged": "true",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "efd5ff57-012b-47da-8b7e-c7d2c0c8f832",
+        "volatile.eth0.host_name": "vetha8ea6360",
+        "volatile.eth0.hwaddr": "mac-2",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[]",
+        "volatile.idmap.next": "[]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "b495dcba-0967-4bb4-966f-7bf7e68bf33a",
+        "volatile.uuid.generation": "b495dcba-0967-4bb4-966f-7bf7e68bf33a"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-12T11:10:02.318618654Z",
+      "location": "none",
+      "name": "c-priv",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "snapshots": null,
+      "state": {
+        "cpu": {
+          "usage": 5112468000
+        },
+        "disk": {
+          "root": {
+            "total": 0,
+            "usage": 12033024
+          }
+        },
+        "memory": {
+          "swap_usage": 0,
+          "swap_usage_peak": 0,
+          "total": 8326950912,
+          "usage": 100548608,
+          "usage_peak": 0
+        },
+        "network": {
+          "eth0": {
+            "addresses": [
+              {
+                "address": "10.170.74.112",
+                "family": "inet",
+                "netmask": "24",
+                "scope": "global"
+              },
+              {
+                "address": "fe80::216:3eff:fe2e:2e77",
+                "family": "inet6",
+                "netmask": "64",
+                "scope": "link"
+              }
+            ],
+            "counters": {
+              "bytes_received": 23673,
+              "bytes_sent": 6366,
+              "errors_received": 0,
+              "errors_sent": 0,
+              "packets_dropped_inbound": 0,
+              "packets_dropped_outbound": 0,
+              "packets_received": 156,
+              "packets_sent": 55
+            },
+            "host_name": "vetha8ea6360",
+            "hwaddr": "mac-2",
+            "mtu": 1500,
+            "state": "up",
+            "type": "broadcast"
+          },
+          "lo": {
+            "addresses": [
+              {
+                "address": "127.0.0.1",
+                "family": "inet",
+                "netmask": "8",
+                "scope": "local"
+              },
+              {
+                "address": "::1",
+                "family": "inet6",
+                "netmask": "128",
+                "scope": "local"
+              }
+            ],
+            "counters": {
+              "bytes_received": 1284,
+              "bytes_sent": 1284,
+              "errors_received": 0,
+              "errors_sent": 0,
+              "packets_dropped_inbound": 0,
+              "packets_dropped_outbound": 0,
+              "packets_received": 12,
+              "packets_sent": 12
+            },
+            "host_name": "",
+            "hwaddr": "",
+            "mtu": 65536,
+            "state": "up",
+            "type": "loopback"
+          }
+        },
+        "pid": 2728,
+        "processes": 24,
+        "status": "Running",
+        "status_code": 103
+      },
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "container"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

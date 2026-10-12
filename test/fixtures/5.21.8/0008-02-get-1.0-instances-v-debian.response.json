@@ -1,0 +1,96 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 12:49:18 GMT"
+    ],
+    "Etag": [
+      "\"b88d01674f0fdea71178705e9c0db3dae92a4f3fd88668e197936ddf1ee26581\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "Debian bookworm amd64 (20261012_0359)",
+        "image.os": "Debian",
+        "image.release": "bookworm",
+        "image.serial": "20261012_0359",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "e0fca4d9aaf34772cdb029ea52812438521a2e09fcde4e1ea6963efd94f8ce0c",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "f87fac3b-2801-481b-84d5-28335c0689c5",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tap8bd6b063",
+        "volatile.eth0.hwaddr": "mac-6",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "462e1b89-a305-4016-bc26-eec206836832",
+        "volatile.uuid.generation": "462e1b89-a305-4016-bc26-eec206836832",
+        "volatile.vsock_id": "156648499"
+      },
+      "created_at": "2026-10-12T10:03:57.779725431Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "Debian bookworm amd64 (20261012_0359)",
+        "image.os": "Debian",
+        "image.release": "bookworm",
+        "image.serial": "20261012_0359",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "e0fca4d9aaf34772cdb029ea52812438521a2e09fcde4e1ea6963efd94f8ce0c",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "f87fac3b-2801-481b-84d5-28335c0689c5",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tap8bd6b063",
+        "volatile.eth0.hwaddr": "mac-6",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "462e1b89-a305-4016-bc26-eec206836832",
+        "volatile.uuid.generation": "462e1b89-a305-4016-bc26-eec206836832",
+        "volatile.vsock_id": "156648499"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-12T11:10:08.964529786Z",
+      "location": "none",
+      "name": "v-debian",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "virtual-machine"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}
