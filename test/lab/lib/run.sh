@@ -88,3 +88,45 @@ cmd_guest() {
 	vm_lxc "$server" exec "$instance" --project "$project" --user "$uid" --group "$uid" --cwd / \
 		"${env[@]}" -- "$LAB_GUEST_PROBE" "$@"
 }
+
+# cmd_pull SERVER INSTANCE [--project P] [--user UID] RUN_ID: copies the
+# guest run RUN_ID, written as root or as UID, from the instance into
+# LAB_EVIDENCE_DIR/RUN_ID/, streamed through tar (no files left on the VM).
+# Files already pulled are replaced.
+cmd_pull() {
+	require_state
+	local usage="usage: lab.sh pull <server> <instance> [--project <project>] [--user <uid>] <run_id>"
+	local server="${1:-}" instance="${2:-}" project=default uid=0 run=""
+	[[ -n "$server" && -n "$instance" ]] || die "$usage"
+	shift 2
+	require_server "$server"
+	while (($#)); do
+		case "$1" in
+		--project)
+			[[ $# -ge 2 ]] || die "$usage"
+			project="$2"
+			shift 2
+			;;
+		--user)
+			[[ $# -ge 2 && "$2" =~ ^[0-9]+$ ]] || die "--user takes a numeric uid; $usage"
+			uid="$2"
+			shift 2
+			;;
+		-*) die "$usage" ;;
+		*)
+			[[ -z "$run" ]] || die "$usage"
+			run="$1"
+			shift
+			;;
+		esac
+	done
+	# a run id is one path element (evidence.NewRunID, PRE-07)
+	[[ "$run" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "not a run id: \"$run\"; $usage"
+	local dir
+	dir="$(guest_evidence_dir "$uid")"
+	mkdir -p "$LAB_EVIDENCE_DIR"
+	vm_lxc "$server" exec "$instance" --project "$project" -- tar -C "$dir" -cf - "$run" |
+		tar -xf - -C "$LAB_EVIDENCE_DIR" ||
+		die "$server: cannot pull run $run from $project/$instance ($dir)"
+	info "pulled $project/$instance:$dir/$run into $LAB_EVIDENCE_DIR/$run"
+}

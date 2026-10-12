@@ -118,12 +118,14 @@ func newLab(t *testing.T) *lab {
 	return l
 }
 
-// run is one lxd-probe invocation through lab.sh.
+// run is one lxd-probe invocation through lab.sh: its first record, and
+// all of them for verbs that write several (guest devlxd dump).
 type run struct {
 	code   int
 	stdout string
 	stderr string
 	rec    *evidence.Record
+	recs   []*evidence.Record
 }
 
 // String describes the invocation's result for failure messages.
@@ -197,14 +199,39 @@ func (l *lab) lxdProbe(t *testing.T, s session, args []string) *run {
 	default:
 		t.Fatalf("lab.sh %s: %v", strings.Join(args, " "), err)
 	}
-	var rec evidence.Record
-	if json.Unmarshal(stdout.Bytes(), &rec) == nil && rec.ID != "" {
-		r.rec = &rec
+	dec := json.NewDecoder(bytes.NewReader(stdout.Bytes()))
+	for dec.More() {
+		var rec evidence.Record
+		if dec.Decode(&rec) != nil || rec.ID == "" {
+			break
+		}
+		r.recs = append(r.recs, &rec)
+	}
+	if len(r.recs) > 0 {
+		r.rec = r.recs[0]
 	}
 	if probeFailure(r.code) || r.rec == nil {
 		t.Fatalf("lab.sh %s: the probe failed: %s", strings.Join(args, " "), r)
 	}
 	return r
+}
+
+// guest runs "lab.sh guest SERVER INSTANCE --project P -- ARGS --json" as
+// root; the guest writes its evidence in the instance (lab.sh pull).
+func (l *lab) guest(t *testing.T, s session, server, project, instance string, args ...string) *run {
+	t.Helper()
+	full := append([]string{"guest", server, instance, "--project", project, "--"}, args...)
+	return l.lxdProbe(t, s, append(full, "--json"))
+}
+
+// pull copies a guest run into the evidence directory (lab.sh pull).
+func (l *lab) pull(t *testing.T, server, project, instance, runID string) {
+	t.Helper()
+	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), "pull", server, instance, "--project", project, runID)
+	cmd.Env = append(os.Environ(), "LAB_EVIDENCE_DIR="+l.evidence)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("lab.sh pull %s %s/%s %s: %v\n%s", server, project, instance, runID, err, out)
+	}
 }
 
 // ssh runs a shell command on a lab VM and returns its standard output.

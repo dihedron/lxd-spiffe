@@ -10,6 +10,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/dihedron/lxd-spiffe/internal/evidence"
 )
 
 // DevLXD is an assumption-based devLXD on a Unix socket, modelled on what
@@ -153,4 +155,34 @@ func (d *DevLXD) text(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(status)
 	w.Write([]byte(msg)) //nolint:errcheck // test server
+}
+
+// NewDevLXDReplay starts a devLXD on a Unix socket that answers only with
+// the fixtures under dir, as NewReplay does for the LXD API, and returns
+// the socket's path.
+func NewDevLXDReplay(t testing.TB, dir string) string {
+	t.Helper()
+	fixtures, err := evidence.LoadFixtures(dir)
+	if err != nil {
+		t.Fatalf("fakelxd: %v", err)
+	}
+	s := &Server{t: t, replay: map[string][]evidence.Fixture{}}
+	for _, f := range fixtures {
+		key := replayKey(f.Request.Method, f.Request.Path, f.Request.Query)
+		s.replay[key] = append(s.replay[key], f)
+	}
+	tmp, err := os.MkdirTemp("", "devlxd")
+	if err != nil {
+		t.Fatalf("fakelxd: %v", err)
+	}
+	t.Cleanup(func() { os.RemoveAll(tmp) }) //nolint:errcheck
+	socket := filepath.Join(tmp, "sock")
+	l, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatalf("fakelxd: %v", err)
+	}
+	srv := &http.Server{Handler: http.HandlerFunc(s.replayed), ReadHeaderTimeout: time.Second}
+	go srv.Serve(l)                   //nolint:errcheck
+	t.Cleanup(func() { srv.Close() }) //nolint:errcheck
+	return socket
 }

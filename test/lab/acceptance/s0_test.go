@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dihedron/lxd-spiffe/internal/evidence"
 )
 
 // The decision rules S0-1's gates end with (probe spec, Gate runbooks): the
@@ -21,7 +23,22 @@ const (
 		"is confirmed, and each additional extension found necessary is added. Q3: whether LXD accepts TLS 1.2."
 	ruleL15 = "L15 decision: the committed fixtures become the contract of the fake LXD API (PRT-10); " +
 		"any decode failure results in a client struct fix."
+	ruleL3 = "L3 decision: which fields (instance name, project) the guest can obtain on its own through devLXD; " +
+		"updates the claim tables of the attestor spec (What claims can be made reliably) and what the agent may send."
 )
+
+// guestEvidence is where lxd-probe writes its evidence in a guest as root
+// (lab.sh guest; test/lab/lib/deploy.sh).
+const guestEvidence = "/var/lib/lxd-probe/evidence"
+
+// instanceDir names a baseline instance in run ids and fixture paths:
+// its name, prefixed by its project outside default.
+func instanceDir(project, name string) string {
+	if project == "default" {
+		return name
+	}
+	return project + "-" + name
+}
 
 // TestS01LabZeroServer is S0-1, the server half of Lab 0 (gates L8 and
 // L15): server info, whoami and instance show for every baseline instance,
@@ -81,6 +98,74 @@ func TestS01LabZeroServer(t *testing.T) {
 	}
 }
 
+// TestS02LabZeroGuest is S0-2, the guest half of Lab 0: as root, guest
+// preflight (L4) and guest devlxd dump (L3, with --record) in every
+// baseline instance, one run per server and instance, pulled back with
+// lab.sh pull. Like S0-1, it fails only when the probe fails or the
+// evidence is not sanitized; with LAB_COLLECT=yes it copies each run to
+// docs/validation/ and its devLXD fixtures to
+// test/fixtures/<lxd-version>/devlxd/<instance>/.
+func TestS02LabZeroGuest(t *testing.T) {
+	l := newLab(t)
+	stamp := time.Now().UTC().Format("20060102T150405Z")
+	collect := os.Getenv("LAB_COLLECT") == "yes"
+	for _, server := range l.servers() {
+		for _, b := range baseline() {
+			inst := instanceDir(b.project, b.name)
+			t.Run(server+"/"+inst, func(t *testing.T) {
+				runID := stamp + "-s0-2-" + server + "-" + inst
+				s := session{runID: runID}
+				cell := server + "-" + inst
+				pre := l.guest(t, s, server, b.project, b.name, "guest", "preflight", "--gate", "L4", "--cell", cell)
+				dump := l.guest(t, s, server, b.project, b.name, "guest", "devlxd", "dump", "--gate", "L3", "--cell", cell,
+					"--record", guestEvidence+"/"+runID+"/fixtures")
+				if len(dump.recs) < 7 {
+					t.Fatalf("devlxd dump wrote %d records; want at least 7 (PRF-11): %s", len(dump.recs), dump)
+				}
+				l.pull(t, server, b.project, b.name, runID)
+
+				runDir := filepath.Join(l.evidence, runID)
+				staging := filepath.Join(t.TempDir(), runID)
+				l.sanitize(t, runDir, staging)
+				l.sanitizeCheck(t, staging)
+				t.Logf("run %s, in %s", runID, runDir)
+				for _, r := range append([]*evidence.Record{pre.rec}, dump.recs...) {
+					t.Logf("  %s  %-3s %-12s %-36s %s", r.ID, r.Gate, r.Verb, strings.Join(r.Args, " "), r.Outcome)
+				}
+				t.Log(ruleL3)
+				if collect && !t.Failed() {
+					l.collectGuest(t, server, inst, runID, staging)
+				}
+			})
+		}
+	}
+}
+
+// collectGuest copies a sanitized guest run, without its fixtures, to
+// docs/validation/<run_id>/, and replaces
+// test/fixtures/<lxd-version>/devlxd/<instance>/ with its devLXD fixtures.
+func (l *lab) collectGuest(t *testing.T, server, inst, runID, staging string) {
+	t.Helper()
+	validation := filepath.Join(l.repo, "docs", "validation", runID)
+	if err := copyTree(staging, validation, func(top string) bool { return top != "fixtures" }); err != nil {
+		t.Fatalf("collecting the evidence: %v", err)
+	}
+	l.sanitizeCheck(t, validation)
+	version := l.env.Servers[server].Version
+	if version == "" || strings.ContainsAny(version, `/\`) {
+		t.Fatalf("server %s: no usable version in env.json: %q", server, version)
+	}
+	dst := filepath.Join(l.repo, "test", "fixtures", version, "devlxd", inst)
+	if err := os.RemoveAll(dst); err != nil {
+		t.Fatal(err)
+	}
+	if err := copyTree(filepath.Join(staging, "fixtures", "devlxd"), dst, nil); err != nil {
+		t.Fatalf("collecting the fixtures: %v", err)
+	}
+	l.sanitizeCheck(t, dst)
+	t.Logf("collected: %s, %s", validation, dst)
+}
+
 // sanitize writes the sanitized copy of the run dir to out (util sanitize
 // --out), without its aliases.json.
 func (l *lab) sanitize(t *testing.T, dir, out string) {
@@ -128,8 +213,18 @@ func (l *lab) collect(t *testing.T, server, runID, staging string) {
 	if version == "" || strings.ContainsAny(version, `/\`) {
 		t.Fatalf("server %s: no usable version in env.json: %q", server, version)
 	}
-	if err := os.RemoveAll(dst); err != nil {
+	// the server's fixtures are replaced; S0-2's devlxd/ stays
+	old, err := os.ReadDir(dst)
+	if err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
+	}
+	for _, e := range old {
+		if e.Name() == "devlxd" {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(dst, e.Name())); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, e := range entries {
 		if !e.IsDir() || (e.Name() != version && e.Name() != "unknown") {

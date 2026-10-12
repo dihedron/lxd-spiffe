@@ -100,11 +100,16 @@ func sanitizeBody(s *Sanitizer, data []byte) (json.RawMessage, string) {
 }
 
 // LoadFixtures reads every fixture pair under dir, sorted by file name.
+// devLXD fixtures, filed under a devlxd/ directory below dir (the lab's
+// S0-2), are not the server's: they load when that directory is given.
 func LoadFixtures(dir string) ([]Fixture, error) {
 	var fixtures []Fixture
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if d.IsDir() && d.Name() == "devlxd" && path != dir {
+			return filepath.SkipDir
 		}
 		stem, ok := strings.CutSuffix(path, ".request.json")
 		if d.IsDir() || !ok {

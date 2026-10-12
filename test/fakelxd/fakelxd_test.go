@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dihedron/lxd-spiffe/internal/devlxd"
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
 	"github.com/dihedron/lxd-spiffe/test/fakelxd"
@@ -140,5 +141,49 @@ func TestHideProject(t *testing.T) {
 	}
 	if resp, err := c.Raw(context.Background(), lxd.RawRequest{Method: http.MethodGet, Path: "/1.0/instances/c1"}); err != nil || resp.Status != http.StatusOK {
 		t.Errorf("default/c1: %v %v", resp, err)
+	}
+}
+
+// TestDevLXDRecordThenReplay records devLXD exchanges as fixtures and
+// replays them on a Unix socket.
+func TestDevLXDRecordThenReplay(t *testing.T) {
+	fake := fakelxd.NewDevLXD(t)
+	fake.Config["user.lxd-probe.a"] = "1" // not redacted: the lab's own key
+	dir := t.TempDir()
+	writer := &evidence.FixtureWriter{Dir: dir, Sanitizer: evidence.NewSanitizer(evidence.NewAliases())}
+	seq := 0
+	rec, err := devlxd.Connect(context.Background(), devlxd.Config{Socket: fake.Socket, Recorder: func(x lxd.Exchange) {
+		seq++
+		if err := writer.Write("devlxd", 1, seq, x.Method, x.Path, x.Query, x.RequestHeader, x.RequestBody, x.Status, x.ResponseHeader, x.ResponseBody); err != nil {
+			t.Errorf("recording: %v", err)
+		}
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := []string{"/1.0", "/1.0/config", "/1.0/config/user.lxd-probe.a", "/1.0/config/volatile.x"}
+	var recorded []*devlxd.Response
+	for _, p := range paths {
+		resp, err := rec.Get(context.Background(), p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		recorded = append(recorded, resp)
+	}
+
+	replay, err := devlxd.Connect(context.Background(), devlxd.Config{Socket: fakelxd.NewDevLXDReplay(t, filepath.Join(dir, "devlxd"))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, p := range paths {
+		resp, err := replay.Get(context.Background(), p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// JSON bodies are stored as JSON, re-indented
+		same := jsonEqual(resp.Body, recorded[i].Body) || bytes.Equal(bytes.TrimSpace(resp.Body), bytes.TrimSpace(recorded[i].Body))
+		if resp.Status != recorded[i].Status || !same {
+			t.Errorf("%s: replayed %d %q; recorded %d %q", p, resp.Status, resp.Body, recorded[i].Status, recorded[i].Body)
+		}
 	}
 }

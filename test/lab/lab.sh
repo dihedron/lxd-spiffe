@@ -53,6 +53,8 @@ commands:
   guest <server> <instance> [--project <project>] [--user <uid>] -- <args>
                             run lxd-probe inside an instance (as root
                             unless --user is given)
+  pull <server> <instance> [--project <project>] [--user <uid>] <run_id>
+                            copy a guest run into the evidence directory
   refresh                   move the LXD servers to their channels' newest
                             revision, then offer a new snapshot
   test [-run REGEX] [--collect] [--record-host]
@@ -360,6 +362,7 @@ main() {
 	deploy) cmd_deploy ;;
 	probe) cmd_probe "${args[@]}" ;;
 	guest) cmd_guest "${args[@]}" ;;
+	pull) cmd_pull "${args[@]}" ;;
 	refresh) cmd_refresh ;;
 	test) cmd_test "${args[@]}" ;;
 	help | -h | --help) usage ;;
