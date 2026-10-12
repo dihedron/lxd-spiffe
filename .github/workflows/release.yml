@@ -31,6 +31,12 @@ jobs:
           version: "~> v2"
           install-only: true
 
+      - name: Ensure golangci-lint is installed (make lint, before every build)
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14
+          install-only: true
+
       - name: Install Syft
         uses: anchore/sbom-action/download-syft@v0
         with:

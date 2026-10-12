@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "id": "server/0001",
+  "time": "0001-01-01T00:00:00Z",
+  "tool_version": "",
+  "env": "server",
+  "verb": "whoami",
+  "args": [],
+  "gate": "",
+  "cell": "",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "server": {
+    "version": "6.5",
+    "api_extensions_hash": "sha256:c213b7b67b753a2ca7ba8e013fdfe3e95d115d2fe6fd13a96f11ec23f201530c"
+  },
+  "expectations": [
+    "identity-current"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.authentication_method",
+      "value": "tls"
+    },
+    {
+      "key": "identity.type",
+      "value": "Client certificate"
+    },
+    {
+      "key": "identity.id",
+      "value": "<client-fingerprint>"
+    },
+    {
+      "key": "identity.name",
+      "value": "probe"
+    },
+    {
+      "key": "identity.groups",
+      "value": [
+        "spire"
+      ]
+    },
+    {
+      "key": "identity.effective_groups",
+      "value": [
+        "spire"
+      ]
+    },
+    {
+      "key": "identity.effective_permissions",
+      "value": [
+        {
+          "entitlement": "can_view",
+          "entity_type": "project",
+          "url": "/1.0/projects/default"
+        }
+      ]
+    },
+    {
+      "key": "identity.fine_grained",
+      "value": true
+    }
+  ],
+  "raw": [
+    "artifacts/0001-server.json",
+    "artifacts/0001-identity.json"
+  ]
+}

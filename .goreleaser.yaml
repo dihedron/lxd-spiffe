@@ -107,6 +107,51 @@ builds:
       - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GitBranch={{.Branch}}'
       - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GoReleaserVersion={{.Env._GORELEASER_VERSION}}'
     mod_timestamp: "{{ .CommitTimestamp }}"
+  # lab-only validation harness (.specs/lxd-probe.md): archives only, never
+  # part of the plugin packages
+  - id: lxd-probe
+    main: ./cmd/lxd-probe
+    binary: lxd-probe
+    goos:
+      - linux
+#      - windows
+#      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # v1 runs on any x86-64 CPU; v2 and v3 are optimized variants
+    goamd64:
+      - v1
+      - v2
+      - v3
+    tags:
+      - osusergo
+      - netgo
+      - static_build
+    flags:
+      - -trimpath  
+    ldflags:
+      - -s -w 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Name={{.ArtifactName}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Description={{.Env._GO_MK_VARS_DESCRIPTION}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Copyright={{.Env._GO_MK_VARS_COPYRIGHT}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.License={{.Env._GO_MK_VARS_LICENSE}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.LicenseURL={{.Env._GO_MK_VARS_LICENSE_URL}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Version={{.Version}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.VersionMajor={{.Major}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.VersionMinor={{.Minor}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.VersionPatch={{.Patch}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Vendor={{.Env._GO_MK_VARS_VENDOR}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.Maintainer={{.Env._GO_MK_VARS_MAINTAINER}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.DotEnvVarName={{.Env._GO_MK_VARS_DOTENV_VAR_NAME}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.BuildTime={{.Now}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GitTag={{.Tag}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GitCommit={{.Commit}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GitTime={{.CommitDate}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GitTreeState={{.GitTreeState}}' 
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GitBranch={{.Branch}}'
+      - -X '{{.Env._GO_MK_VARS_METADATA_PACKAGE}}.GoReleaserVersion={{.Env._GORELEASER_VERSION}}'
+    mod_timestamp: "{{ .CommitTimestamp }}"
 
 # one archive per application
 archives:
@@ -135,6 +180,24 @@ archives:
       - tar.gz
     name_template: >-
       lxd-agent-plugin_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}{{ .Arm }}{{ end }}
+      {{- if and .Amd64 (ne .Amd64 "v1") }}{{ .Amd64 }}{{ end }}
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+  - id: lxd-probe
+    ids:
+      - lxd-probe
+    formats:
+      - tar.gz
+    name_template: >-
+      lxd-probe_
       {{- .Version }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64

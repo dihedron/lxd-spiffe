@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "id": "server/0013",
+  "time": "2026-10-12T12:49:19.31848023Z",
+  "tool_version": "7398128",
+  "env": "server",
+  "verb": "instance show",
+  "args": [
+    "c-unpriv",
+    "--expect-denied"
+  ],
+  "gate": "L15",
+  "cell": "lxd5",
+  "outcome": "ok",
+  "duration_ms": 15,
+  "server": {
+    "version": "",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "instance+denied",
+    "instance-full+denied"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 403
+    },
+    {
+      "key": "instance-full.http_status",
+      "value": 403
+    },
+    {
+      "key": "instance.etag",
+      "value": ""
+    },
+    {
+      "key": "instance-full.etag",
+      "value": ""
+    },
+    {
+      "key": "etag.equal",
+      "value": true
+    },
+    {
+      "key": "instance.error",
+      "value": "Forbidden"
+    },
+    {
+      "key": "instance-full.error",
+      "value": "Forbidden"
+    }
+  ],
+  "raw": [
+    "artifacts/0013-server.json",
+    "artifacts/0013-instance.json",
+    "artifacts/0013-instance-full.json"
+  ]
+}
