@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "id": "guest/0006",
+  "time": "2026-10-12T14:33:06.262499431Z",
+  "tool_version": "987956e",
+  "env": "guest",
+  "verb": "devlxd dump",
+  "args": [
+    "/1.0/meta-data"
+  ],
+  "gate": "L3",
+  "cell": "lxd5-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 8,
+  "expectations": [
+    "devlxd-meta-data"
+  ],
+  "observations": [
+    {
+      "key": "devlxd.http_status",
+      "value": 200
+    },
+    {
+      "key": "devlxd.format",
+      "value": "plain"
+    },
+    {
+      "key": "devlxd.latency_ms",
+      "value": 7
+    },
+    {
+      "key": "devlxd.content",
+      "value": "instance-id: dac4ee48-ef59-48e4-9354-bbbb6628d951\nlocal-hostname: v-ubuntu\n"
+    }
+  ],
+  "raw": [
+    "artifacts/0006-devlxd.json"
+  ]
+}
