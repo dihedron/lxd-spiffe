@@ -28,21 +28,6 @@ type Fixtures struct {
 	Verify FixturesVerify `command:"verify" description:"Decode every recorded response with the client's typed structs (PRU-06)."`
 }
 
-// Diff is util diff A B.
-type Diff struct {
-	probe.GlobalOptions
-	IgnoreETag bool `long:"ignore-etag" description:"Ignore ETag values."`
-	Args       struct {
-		A string `positional-arg-name:"A" description:"First record."`
-		B string `positional-arg-name:"B" description:"Second record."`
-	} `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *Diff) Execute(args []string) error {
-	return probe.NotImplemented("util diff")
-}
-
 // Overlap is util overlap RECORD.
 type Overlap struct {
 	probe.GlobalOptions
