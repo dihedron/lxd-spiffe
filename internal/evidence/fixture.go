@@ -1,11 +1,15 @@
 package evidence
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -64,7 +68,11 @@ func (w *FixtureWriter) Write(version string, record, seq int, method, path, que
 
 	req := FixtureRequest{Method: method, Path: w.Sanitizer.String(path), Query: w.Sanitizer.String(query), Header: w.Sanitizer.Headers(reqHeader)}
 	req.Body, req.BodyText = sanitizeBody(w.Sanitizer, reqBody)
-	resp := sanitizeResponse(w.Sanitizer, status, respHeader, RedactConfigBody(path, status, respBody))
+	body := RedactConfigBody(path, status, respBody)
+	if filePath, ok := FilesAPIPath(path, query); ok {
+		body = FileBody(filePath, respHeader, body, true)
+	}
+	resp := sanitizeResponse(w.Sanitizer, status, respHeader, body)
 
 	for suffix, v := range map[string]any{".request.json": req, ".response.json": resp} {
 		data, err := json.MarshalIndent(v, "", "  ")
@@ -76,6 +84,41 @@ func (w *FixtureWriter) Write(version string, record, seq int, method, path, que
 		}
 	}
 	return nil
+}
+
+// labDirPrefix is the guest directory whose files the lab makes; their
+// content may stay in fixtures (PRS-35).
+const labDirPrefix = "/run/lxd-probe/"
+
+// FilesAPIPath returns the file path of a files-API request
+// (/1.0/instances/<name>/files?path=...), and whether it is one.
+func FilesAPIPath(apiPath, query string) (string, bool) {
+	rest, ok := strings.CutPrefix(apiPath, "/1.0/instances/")
+	if !ok || !strings.HasSuffix(rest, "/files") || strings.Count(rest, "/") != 1 {
+		return "", false
+	}
+	q, err := url.ParseQuery(query)
+	if err != nil {
+		return "", true // a files-API request all the same: its body is content
+	}
+	return q.Get("path"), true
+}
+
+// FileBody returns a files-API response body as evidence may hold it
+// (probe spec PRS-35): a file's content is replaced by its size and
+// SHA-256, but for a directory listing or a symlink (metadata, by their
+// X-LXD-type header) and, when keepLab is set (fixtures), a file under the
+// lab directory, given as a clean path. An unknown type counts as content.
+func FileBody(filePath string, header http.Header, body []byte, keepLab bool) []byte {
+	switch header.Get("X-LXD-type") {
+	case "directory", "symlink":
+		return body
+	}
+	if keepLab && path.Clean(filePath) == filePath && strings.HasPrefix(filePath, labDirPrefix) {
+		return body
+	}
+	sum := sha256.Sum256(body)
+	return []byte(fmt.Sprintf("[content omitted: %d bytes, sha256 %s]", len(body), hex.EncodeToString(sum[:])))
 }
 
 // sanitizeResponse returns a response as stored in fixtures and artifacts.

@@ -140,3 +140,25 @@ func TestDevLXD(t *testing.T) {
 		}
 	}
 }
+
+// TestFileExpectations checks the files-API expectations: a raw body, not
+// checked, and at least one X-LXD-* header.
+func TestFileExpectations(t *testing.T) {
+	lxdHeaders := http.Header{"X-Lxd-Uid": {"0"}, "X-Lxd-Type": {"file"}}
+	if got := keys(FileRead.Check(200, lxdHeaders, []byte("any content"))); len(got) != 0 {
+		t.Errorf("file read: %v", got)
+	}
+	if got := keys(FileRead.Check(200, http.Header{"Content-Type": {"application/octet-stream"}}, []byte("x"))); !slices.Equal(got, []string{"expectation.header.X-LXD-*"}) {
+		t.Errorf("file read without X-LXD headers: %v", got)
+	}
+	if got := keys(FileHead.Check(200, lxdHeaders, nil)); len(got) != 0 {
+		t.Errorf("file head: %v", got)
+	}
+	dir := []byte(`{"type":"sync","status":"Success","status_code":200,"metadata":["a","b"]}`)
+	if got := keys(FileDir.Check(200, http.Header{"X-Lxd-Type": {"directory"}}, dir)); len(got) != 0 {
+		t.Errorf("file dir: %v", got)
+	}
+	if got := keys(FileDir.Check(200, lxdHeaders, []byte("content"))); !slices.Equal(got, []string{"expectation.body"}) {
+		t.Errorf("file dir on a file: %v", got)
+	}
+}

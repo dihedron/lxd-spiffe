@@ -41,6 +41,9 @@ type Expectation struct {
 	Fields []string
 	// JSON requires a JSON body (DevLXD, where bodies may be text).
 	JSON bool
+	// HeaderPrefixes each need at least one header starting with them, as
+	// X-LXD- on a files read, whose exact names gate L1 learns.
+	HeaderPrefixes []string
 }
 
 // Envelope types.
@@ -51,6 +54,9 @@ const (
 	// DevLXD is a devLXD response: its own plain format (the content
 	// itself, JSON or text) or an LXD envelope (PRF-10, PRE-06).
 	DevLXD = "devlxd"
+	// Raw is a body that is not an LXD document, as a file's content: it
+	// is not checked.
+	Raw = "raw"
 )
 
 // The expectations of the stage-0 server verbs.
@@ -130,10 +136,29 @@ var (
 	}
 )
 
+// The expectations of the files API (server file stat, get, head and dir,
+// PRS-30 to PRS-33): a file's content is not checked; a directory is a
+// sync listing. Every answer carries X-LXD-* headers.
+var (
+	FileRead = Expectation{
+		Name: "file", Method: http.MethodGet, Path: "/1.0/instances/{name}/files", Query: "path={path}",
+		Status: []int{http.StatusOK}, Envelope: Raw, HeaderPrefixes: []string{"X-LXD-"},
+	}
+	FileHead = Expectation{
+		Name: "file-head", Method: http.MethodHead, Path: "/1.0/instances/{name}/files", Query: "path={path}",
+		Status: []int{http.StatusOK}, Envelope: Raw, HeaderPrefixes: []string{"X-LXD-"},
+	}
+	FileDir = Expectation{
+		Name: "file-dir", Method: http.MethodGet, Path: "/1.0/instances/{name}/files", Query: "path={path}",
+		Status: []int{http.StatusOK}, Envelope: Sync, HeaderPrefixes: []string{"X-LXD-"},
+	}
+)
+
 // Table lists every expectation, for documentation and tests.
 var Table = []Expectation{
 	Server, IdentityCurrent, Instance, InstanceFull,
 	DevLXDRoot, DevLXDServer, DevLXDConfig, DevLXDConfigKey, DevLXDMetadata, DevLXDDevices,
+	FileRead, FileHead, FileDir,
 }
 
 // Denied returns the expectation of the same call when a 403 is the expected
@@ -179,8 +204,23 @@ func (e Expectation) Check(status int, header http.Header, body []byte) []eviden
 			add("header."+name, "present", "absent")
 		}
 	}
-	if e.Envelope == DevLXD {
+	for _, prefix := range e.HeaderPrefixes {
+		found := false
+		for name := range header {
+			if strings.HasPrefix(strings.ToLower(name), strings.ToLower(prefix)) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			add("header."+prefix+"*", "present", "absent")
+		}
+	}
+	switch e.Envelope {
+	case DevLXD:
 		return append(out, e.checkDevLXD(body)...)
+	case Raw:
+		return out
 	}
 	var env struct {
 		Type     string          `json:"type"`

@@ -64,6 +64,9 @@ type File struct {
 	GID     int
 	Mode    int
 	Type    string
+	// Entries list a directory (Type "directory"), answered as a sync
+	// envelope, as assumed until gate L1.
+	Entries []string
 }
 
 type instance struct {
@@ -258,7 +261,7 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 		s.identity(w, r)
 	case len(parts) == 3 && parts[1] == "instances":
 		s.instance(w, r, project, parts[2])
-	case len(parts) == 4 && parts[1] == "instances" && parts[3] == "files" && r.Method == http.MethodGet:
+	case len(parts) == 4 && parts[1] == "instances" && parts[3] == "files" && (r.Method == http.MethodGet || r.Method == http.MethodHead):
 		s.file(w, r, project, parts[2])
 	case len(parts) == 4 && parts[1] == "operations" && parts[3] == "wait":
 		writeSync(w, map[string]any{"id": parts[2], "status": "Success", "status_code": 200, "err": ""}, "")
@@ -349,6 +352,13 @@ func (s *Server) file(w http.ResponseWriter, r *http.Request, project, name stri
 	w.Header().Set("X-LXD-gid", fmt.Sprint(f.GID))
 	w.Header().Set("X-LXD-mode", fmt.Sprintf("%04o", f.Mode))
 	w.Header().Set("X-LXD-type", f.Type)
+	if r.Method == http.MethodHead {
+		return
+	}
+	if f.Type == "directory" {
+		writeSync(w, f.Entries, "")
+		return
+	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	io.WriteString(w, f.Content) //nolint:errcheck // test server
 }

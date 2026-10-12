@@ -135,7 +135,8 @@ func (s *session) finding(key string, value any) {
 	s.unexpected = true
 }
 
-// call sends a request, stores the response as the artifact name and, when
+// call sends a request, stores the response as the artifact name (a
+// file's content replaced by its size and hash, PRS-35) and, when
 // exp is not nil, checks it against exp, or against exp.Denied() under
 // --expect-denied and exp.Hidden() under --expect-hidden. It returns an error only when no response was received.
 func (s *session) call(ctx context.Context, name string, req lxd.RawRequest, exp *expect.Expectation) (*lxd.RawResponse, error) {
@@ -143,7 +144,12 @@ func (s *session) call(ctx context.Context, name string, req lxd.RawRequest, exp
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.entry.ArtifactResponse(name, resp.Status, resp.Header, resp.Body); err != nil {
+	body := resp.Body
+	if filePath, ok := evidence.FilesAPIPath(req.Path, req.Query.Encode()); ok {
+		// a file's content never reaches evidence (PRS-35)
+		body = evidence.FileBody(filePath, resp.Header, body, false)
+	}
+	if _, err := s.entry.ArtifactResponse(name, resp.Status, resp.Header, body); err != nil {
 		return nil, err
 	}
 	s.observe(name+".http_status", resp.Status)

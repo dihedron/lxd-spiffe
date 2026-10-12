@@ -151,51 +151,6 @@ func (cmd *ConfigRace) Execute(args []string) error {
 	return probe.NotImplemented("server config race")
 }
 
-// FileStat is server file stat NAME PATH.
-type FileStat struct {
-	probe.ServerCommand
-	Args pathArgs `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *FileStat) Execute(args []string) error {
-	return probe.NotImplemented("server file stat")
-}
-
-// FileGet is server file get NAME PATH.
-type FileGet struct {
-	probe.ServerCommand
-	MaxBytes int64    `long:"max-bytes" description:"Read limit, in bytes." default:"1048576"`
-	Args     pathArgs `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *FileGet) Execute(args []string) error {
-	return probe.NotImplemented("server file get")
-}
-
-// FileHead is server file head NAME PATH.
-type FileHead struct {
-	probe.ServerCommand
-	Args pathArgs `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *FileHead) Execute(args []string) error {
-	return probe.NotImplemented("server file head")
-}
-
-// FileDir is server file dir NAME PATH.
-type FileDir struct {
-	probe.ServerCommand
-	Args pathArgs `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *FileDir) Execute(args []string) error {
-	return probe.NotImplemented("server file dir")
-}
-
 // Permissions is server permissions NAME.
 type Permissions struct {
 	probe.ServerCommand
