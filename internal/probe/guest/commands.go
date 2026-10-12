@@ -39,16 +39,6 @@ type Idmap struct {
 	Show IdmapShow `command:"show" description:"Record the parsed /proc/self/uid_map and gid_map (PRF-30)."`
 }
 
-// Preflight is guest preflight.
-type Preflight struct {
-	probe.GuestCommand
-}
-
-// Execute runs the command.
-func (cmd *Preflight) Execute(args []string) error {
-	return probe.NotImplemented("guest preflight")
-}
-
 // DevlxdGet is guest devlxd get PATH.
 type DevlxdGet struct {
 	probe.GuestCommand

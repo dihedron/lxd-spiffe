@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -263,26 +262,7 @@ func (s *session) writeFixtures() error {
 	return nil
 }
 
-// print writes the committed record: as JSON with --json, else as a summary
-// and one line per observation.
+// print writes the committed record (probe.PrintRecord).
 func (s *session) print() error {
-	if s.opts.JSON {
-		data, err := json.MarshalIndent(s.rec, "", "  ")
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprintf(s.stdout, "%s\n", data)
-		return err
-	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "%s %s: %s (%s)\n", s.rec.ID, s.rec.Verb, s.rec.Outcome, s.entry.Path())
-	for _, o := range s.rec.Observations {
-		v, err := json.Marshal(o.Value)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(&b, "  %s = %s\n", o.Key, v)
-	}
-	_, err := io.WriteString(s.stdout, b.String())
-	return err
+	return probe.PrintRecord(s.stdout, &s.rec, s.entry.Path(), s.opts.JSON)
 }
