@@ -1,0 +1,79 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "1853"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 20:04:17 GMT"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "authentication_method": "tls",
+      "effective_groups": [
+        "lab-outsider"
+      ],
+      "effective_permissions": [
+        {
+          "entitlement": "can_view",
+          "entity_type": "project",
+          "url": "/1.0/projects/default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-iso?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-raw?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-ubuntu?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-debian?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-alpine?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-unpriv?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-priv?project=default"
+        }
+      ],
+      "expires_at": "2028-10-11T11:07:31Z",
+      "fine_grained": true,
+      "groups": [
+        "lab-outsider"
+      ],
+      "id": "4dc83cc1d6ab44f658e2fad1cf40453d6a8ab26053a9de888b617f365edf09c8",
+      "name": "lab-outsider",
+      "tls_certificate": "[redacted]\n",
+      "type": "Client certificate"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

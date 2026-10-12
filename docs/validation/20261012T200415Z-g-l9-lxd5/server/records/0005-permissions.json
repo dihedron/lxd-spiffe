@@ -1,0 +1,111 @@
+{
+  "schema": 1,
+  "id": "server/0005",
+  "time": "2026-10-12T20:04:15.731117878Z",
+  "tool_version": "26b6b17",
+  "env": "server",
+  "verb": "permissions",
+  "args": [
+    "c-unpriv"
+  ],
+  "gate": "L9",
+  "cell": "lxd5-files",
+  "outcome": "ok",
+  "duration_ms": 55,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "state.http_status",
+      "value": 200
+    },
+    {
+      "key": "files.http_status",
+      "value": 200
+    },
+    {
+      "key": "operations.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.http_status",
+      "value": 200
+    },
+    {
+      "key": "permissions",
+      "value": {
+        "events": "allowed",
+        "files": "allowed",
+        "identity": "allowed",
+        "instance": "allowed",
+        "operations": "allowed",
+        "state": "allowed"
+      }
+    },
+    {
+      "key": "permissions.calls",
+      "value": [
+        {
+          "call": "instance",
+          "method": "GET",
+          "path": "/1.0/instances/c-unpriv",
+          "status": 200,
+          "verdict": "allowed"
+        },
+        {
+          "call": "state",
+          "method": "GET",
+          "path": "/1.0/instances/c-unpriv/state",
+          "status": 200,
+          "verdict": "allowed"
+        },
+        {
+          "call": "files",
+          "method": "GET",
+          "path": "/1.0/instances/c-unpriv/files",
+          "status": 200,
+          "verdict": "allowed"
+        },
+        {
+          "call": "operations",
+          "method": "GET",
+          "path": "/1.0/operations",
+          "status": 200,
+          "verdict": "allowed"
+        },
+        {
+          "call": "identity",
+          "method": "GET",
+          "path": "/1.0/auth/identities/current",
+          "status": 200,
+          "verdict": "allowed"
+        },
+        {
+          "call": "events",
+          "method": "GET (websocket)",
+          "path": "/1.0/events",
+          "status": 101,
+          "verdict": "allowed"
+        }
+      ]
+    }
+  ],
+  "raw": [
+    "artifacts/0005-server.json",
+    "artifacts/0005-instance.json",
+    "artifacts/0005-state.json",
+    "artifacts/0005-files.json",
+    "artifacts/0005-operations.json",
+    "artifacts/0005-identity.json"
+  ]
+}

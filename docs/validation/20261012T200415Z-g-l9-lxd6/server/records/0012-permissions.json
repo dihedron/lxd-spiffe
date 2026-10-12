@@ -1,0 +1,115 @@
+{
+  "schema": 1,
+  "id": "server/0012",
+  "time": "2026-10-12T20:04:17.301892225Z",
+  "tool_version": "26b6b17",
+  "env": "server",
+  "verb": "permissions",
+  "args": [
+    "c-unpriv"
+  ],
+  "gate": "L9",
+  "cell": "lxd6-outsider",
+  "outcome": "ok",
+  "duration_ms": 49,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 404
+    },
+    {
+      "key": "state.http_status",
+      "value": 404
+    },
+    {
+      "key": "files.http_status",
+      "value": 404
+    },
+    {
+      "key": "operations.http_status",
+      "value": 404
+    },
+    {
+      "key": "identity.http_status",
+      "value": 200
+    },
+    {
+      "key": "permissions",
+      "value": {
+        "events": "allowed",
+        "files": "hidden",
+        "identity": "allowed",
+        "instance": "hidden",
+        "operations": "hidden",
+        "state": "hidden"
+      }
+    },
+    {
+      "key": "permissions.calls",
+      "value": [
+        {
+          "call": "instance",
+          "error": "Not Found",
+          "method": "GET",
+          "path": "/1.0/instances/c-unpriv",
+          "status": 404,
+          "verdict": "hidden"
+        },
+        {
+          "call": "state",
+          "error": "Not Found",
+          "method": "GET",
+          "path": "/1.0/instances/c-unpriv/state",
+          "status": 404,
+          "verdict": "hidden"
+        },
+        {
+          "call": "files",
+          "error": "Not Found",
+          "method": "GET",
+          "path": "/1.0/instances/c-unpriv/files",
+          "status": 404,
+          "verdict": "hidden"
+        },
+        {
+          "call": "operations",
+          "error": "Not Found",
+          "method": "GET",
+          "path": "/1.0/operations",
+          "status": 404,
+          "verdict": "hidden"
+        },
+        {
+          "call": "identity",
+          "method": "GET",
+          "path": "/1.0/auth/identities/current",
+          "status": 200,
+          "verdict": "allowed"
+        },
+        {
+          "call": "events",
+          "method": "GET (websocket)",
+          "path": "/1.0/events",
+          "status": 101,
+          "verdict": "allowed"
+        }
+      ]
+    }
+  ],
+  "raw": [
+    "artifacts/0012-server.json",
+    "artifacts/0012-instance.json",
+    "artifacts/0012-state.json",
+    "artifacts/0012-files.json",
+    "artifacts/0012-operations.json",
+    "artifacts/0012-identity.json"
+  ]
+}

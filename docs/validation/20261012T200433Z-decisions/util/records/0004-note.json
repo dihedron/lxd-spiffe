@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0004",
+  "time": "2026-10-12T20:04:33.937322246Z",
+  "tool_version": "26b6b17",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L4",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 12, 2026): only root in the instance can use devLXD on LXD 5.21 and 6.9 (containers answer other uids 401, a VM's socket is mode 0600); recorded as a control, so threat T13 is Low for both proof modes while LXD keeps this behaviour. Evidence: runs 20261012T164937Z-g-l4-*."
+    }
+  ],
+  "raw": null
+}

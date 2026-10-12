@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0006",
+  "time": "2026-10-12T20:04:33.945712161Z",
+  "tool_version": "26b6b17",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L8",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 12, 2026): LXD 5.21 LTS and 6.x both offer the required extensions (projects, instance_generation_id), so 5.21 LTS is the minimum version and no extension is added; both refuse TLS 1.2, so the plugin requires TLS 1.3 (Q3). Evidence: runs 20261012T124918Z-s0-1-*."
+    }
+  ],
+  "raw": null
+}

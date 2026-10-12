@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0002",
+  "time": "2026-10-12T20:04:33.929600029Z",
+  "tool_version": "26b6b17",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L2",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 12, 2026): a PATCH of a user.* key on a running instance is applied live, without restart, visible through devLXD within about 1 ms, and devLXD sends a config event; propagation does not bound proof_timeout, and config_push stays a valid mode. Evidence: runs 20261012T193904Z-g-l2-*."
+    }
+  ],
+  "raw": null
+}

@@ -1,0 +1,27 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "174"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 20:04:16 GMT"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "success": [
+        "/1.0/operations/0a4d8c5e-4542-4cb1-9883-5db5211cb387"
+      ]
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}
