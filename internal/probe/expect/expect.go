@@ -105,6 +105,17 @@ func (e Expectation) Denied() Expectation {
 	}
 }
 
+// Hidden returns the expectation of the same call when a 404 is the expected
+// result (--expect-hidden): LXD answers a trusted identity that may not view
+// an entity as if it did not exist. Status 404, an error envelope, nothing
+// else.
+func (e Expectation) Hidden() Expectation {
+	return Expectation{
+		Name: e.Name + "+hidden", Method: e.Method, Path: e.Path, Query: e.Query,
+		Status: []int{http.StatusNotFound}, Envelope: Error,
+	}
+}
+
 // Deviation is the value of an expectation.* observation.
 type Deviation struct {
 	Expectation string `json:"expectation"`

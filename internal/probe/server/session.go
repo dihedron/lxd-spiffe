@@ -55,6 +55,9 @@ func newSession(ctx context.Context, opts *probe.ServerCommand, stdout io.Writer
 	if opts.Endpoint == "" {
 		return nil, exit.New(exit.Usage, fmt.Errorf("server %s: --endpoint is required", verb))
 	}
+	if opts.ExpectDenied && opts.ExpectHidden {
+		return nil, exit.New(exit.Usage, fmt.Errorf("server %s: --expect-denied and --expect-hidden exclude each other", verb))
+	}
 	token, err := bearerToken(opts)
 	if err != nil {
 		return nil, exit.New(exit.Usage, fmt.Errorf("server %s: %w", verb, err))
@@ -92,6 +95,9 @@ func newSession(ctx context.Context, opts *probe.ServerCommand, stdout io.Writer
 	}
 	if opts.ExpectDenied {
 		args = append(args, "--expect-denied")
+	}
+	if opts.ExpectHidden {
+		args = append(args, "--expect-hidden")
 	}
 	s.rec = evidence.Record{Time: s.start, Verb: verb, Args: args, Gate: opts.Gate, Cell: opts.Cell}
 	return s, nil
@@ -132,7 +138,7 @@ func (s *session) finding(key string, value any) {
 
 // call sends a request, stores the response as the artifact name and, when
 // exp is not nil, checks it against exp, or against exp.Denied() under
-// --expect-denied. It returns an error only when no response was received.
+// --expect-denied and exp.Hidden() under --expect-hidden. It returns an error only when no response was received.
 func (s *session) call(ctx context.Context, name string, req lxd.RawRequest, exp *expect.Expectation) (*lxd.RawResponse, error) {
 	resp, err := s.client.Raw(ctx, req)
 	if err != nil {
@@ -144,8 +150,11 @@ func (s *session) call(ctx context.Context, name string, req lxd.RawRequest, exp
 	s.observe(name+".http_status", resp.Status)
 	if exp != nil {
 		e := *exp
-		if s.opts.ExpectDenied {
+		switch {
+		case s.opts.ExpectDenied:
 			e = exp.Denied()
+		case s.opts.ExpectHidden:
+			e = exp.Hidden()
 		}
 		s.rec.Expectations = append(s.rec.Expectations, e.Name)
 		s.rec.Observations = append(s.rec.Observations, e.Check(resp.Status, resp.Header, resp.Body)...)

@@ -77,6 +77,9 @@ type ServerCommand struct {
 	AllowSpireKeys bool `long:"allow-spire-keys" description:"Also allow writes to user.spire.challenge.* to rehearse the real key layout."`
 	// ExpectDenied makes 403 the expected result (PRE-06).
 	ExpectDenied bool `long:"expect-denied" description:"Expect 403: record it as an observation and exit 0."`
+	// ExpectHidden makes 404 the expected result: what LXD answers a trusted
+	// identity that may not view the entity (PRE-06).
+	ExpectHidden bool `long:"expect-hidden" description:"Expect 404, as for an entity the identity may not view: record it as an observation."`
 }
 
 // UIDList is a comma-separated list of uids, as in --as-uid 0,1000,65534.

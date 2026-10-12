@@ -113,3 +113,32 @@ func jsonEqual(a, b []byte) bool {
 	}
 	return bytes.Equal(ea, eb)
 }
+
+// TestHideProject checks that a hidden project answers like LXD does to an
+// identity that may not view it: 404 Not Found, also for its own entities.
+func TestHideProject(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	fake.AddInstance("restricted", "c1", nil)
+	fake.AddInstance("default", "c1", nil)
+	fake.HideProject("restricted")
+	c, err := lxd.Connect(context.Background(), lxd.Config{Endpoint: fake.URL, Pin: fake.Fingerprint(), Project: "restricted", BearerToken: token})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"/1.0/instances/c1", "/1.0/instances/missing"} {
+		resp, err := c.Raw(context.Background(), lxd.RawRequest{Method: http.MethodGet, Path: path})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.Status != http.StatusNotFound || !strings.Contains(string(resp.Body), `"error":"Not Found"`) {
+			t.Errorf("%s in a hidden project: %d %s", path, resp.Status, resp.Body)
+		}
+	}
+	c, err = lxd.Connect(context.Background(), lxd.Config{Endpoint: fake.URL, Pin: fake.Fingerprint(), Project: "default", BearerToken: token})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp, err := c.Raw(context.Background(), lxd.RawRequest{Method: http.MethodGet, Path: "/1.0/instances/c1"}); err != nil || resp.Status != http.StatusOK {
+		t.Errorf("default/c1: %v %v", resp, err)
+	}
+}

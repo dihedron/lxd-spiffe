@@ -344,6 +344,65 @@ func TestDenied(t *testing.T) {
 	}
 }
 
+func TestHidden(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	fake.AddInstance("restricted", "c1", nil)
+	fake.HideProject("restricted")
+	show := func(fake *fakelxd.Server, flags func(*probe.ServerCommand)) (*InstanceShow, error) {
+		cmd := &InstanceShow{ServerCommand: options(t, fake), stdout: &bytes.Buffer{}}
+		cmd.Project = "restricted"
+		cmd.Args.Name = "c1"
+		flags(&cmd.ServerCommand)
+		return cmd, cmd.Execute(nil)
+	}
+
+	// a 404 without the flag is a finding, as for a missing instance
+	cmd, err := show(fake, func(*probe.ServerCommand) {})
+	if err != nil {
+		t.Fatalf("a 404 is a finding, not an error: %v", err)
+	}
+	if rec := record(t, cmd.ServerCommand, 1); rec.Outcome != evidence.OutcomeUnexpected {
+		t.Errorf("unexpected 404: outcome %q", rec.Outcome)
+	}
+
+	cmd, err = show(fake, func(o *probe.ServerCommand) { o.ExpectHidden = true })
+	if err != nil {
+		t.Fatalf("--expect-hidden: %v", err)
+	}
+	rec := record(t, cmd.ServerCommand, 1)
+	if rec.Outcome != evidence.OutcomeOK || !slices.Equal(rec.Expectations, []string{"instance+hidden", "instance-full+hidden"}) || !slices.Contains(rec.Args, "--expect-hidden") {
+		t.Errorf("--expect-hidden: outcome %q, expectations %v, args %v, observations %v", rec.Outcome, rec.Expectations, rec.Args, rec.Observations)
+	}
+
+	// a success under --expect-hidden is a finding
+	open := fakelxd.NewAssumed(t)
+	open.AddInstance("restricted", "c1", nil)
+	cmd, err = show(open, func(o *probe.ServerCommand) { o.ExpectHidden = true })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec := record(t, cmd.ServerCommand, 1); rec.Outcome != evidence.OutcomeUnexpected {
+		t.Errorf("200 under --expect-hidden: outcome %q", rec.Outcome)
+	}
+
+	// so is a 403, which stays an authorization failure (exit 4)
+	denied := fakelxd.NewAssumed(t)
+	denied.AddInstance("restricted", "c1", nil)
+	denied.Deny("/1.0/instances")
+	cmd, err = show(denied, func(o *probe.ServerCommand) { o.ExpectHidden = true })
+	if exit.Code(err) != exit.Auth {
+		t.Fatalf("403 under --expect-hidden: exit %d (%v); want %d", exit.Code(err), err, exit.Auth)
+	}
+	if rec := record(t, cmd.ServerCommand, 1); rec.Outcome != evidence.OutcomeUnexpected || !hasKeyPrefix(rec, "expectation.status") {
+		t.Errorf("403 under --expect-hidden: outcome %q, observations %v", rec.Outcome, rec.Observations)
+	}
+
+	// the two expectations exclude each other
+	if _, err := show(fake, func(o *probe.ServerCommand) { o.ExpectHidden, o.ExpectDenied = true, true }); exit.Code(err) != exit.Usage {
+		t.Errorf("--expect-hidden with --expect-denied: exit %d (%v); want %d", exit.Code(err), err, exit.Usage)
+	}
+}
+
 func TestPinMismatch(t *testing.T) {
 	fake := fakelxd.NewAssumed(t)
 	cmd := &Info{ServerCommand: options(t, fake), stdout: &bytes.Buffer{}}

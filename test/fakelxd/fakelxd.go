@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -50,6 +51,7 @@ type Server struct {
 	instances map[string]*instance // key: project/name
 	files     map[string]*File     // key: project/name/path
 	deny      []string             // path prefixes answered with 403
+	hidden    []string             // projects answered with 404
 	exts      []string             // api_extensions of GET /1.0
 	nextOp    int
 	replay    map[string][]evidence.Fixture
@@ -153,6 +155,15 @@ func (s *Server) Deny(prefix string) {
 	s.deny = append(s.deny, prefix)
 }
 
+// HideProject answers 404 Not Found to every request in project, as LXD
+// answers an identity that may not view it: the same as for an entity that
+// does not exist.
+func (s *Server) HideProject(project string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.hidden = append(s.hidden, project)
+}
+
 // SetExtensions replaces the api_extensions the fake reports; the
 // extensions do not change what the fake serves.
 func (s *Server) SetExtensions(extensions ...string) {
@@ -226,6 +237,10 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 	project := r.URL.Query().Get("project")
 	if project == "" {
 		project = "default"
+	}
+	if slices.Contains(s.hidden, project) {
+		writeError(w, http.StatusNotFound, "Not Found")
+		return
 	}
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	switch {

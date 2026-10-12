@@ -74,6 +74,22 @@ func TestDenied(t *testing.T) {
 	}
 }
 
+func TestHidden(t *testing.T) {
+	hidden := Instance.Hidden()
+	if hidden.Name != "instance+hidden" || !slices.Equal(hidden.Status, []int{404}) || hidden.Envelope != Error || len(hidden.Headers) != 0 || len(hidden.Fields) != 0 {
+		t.Fatalf("Hidden() = %+v", hidden)
+	}
+	if got := hidden.Check(404, http.Header{}, []byte(`{"type":"error","error":"Not Found","error_code":404}`)); len(got) != 0 {
+		t.Errorf("404 deviates: %v", keys(got))
+	}
+	if got := hidden.Check(403, http.Header{}, []byte(`{"type":"error","error":"Forbidden","error_code":403}`)); !slices.Equal(keys(got), []string{"expectation.status"}) {
+		t.Errorf("403 under --expect-hidden: %v", keys(got))
+	}
+	if got := hidden.Check(200, http.Header{"Etag": {"x"}}, []byte(`{"type":"sync","metadata":{}}`)); !slices.Equal(keys(got), []string{"expectation.status", "expectation.body.type"}) {
+		t.Errorf("200 under --expect-hidden: %v", keys(got))
+	}
+}
+
 // TestTable checks that every expectation is complete and named once.
 func TestTable(t *testing.T) {
 	seen := map[string]bool{}
