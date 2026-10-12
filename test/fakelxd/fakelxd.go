@@ -27,6 +27,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 )
 
@@ -297,6 +299,19 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 		}, "")
 	case r.URL.Path == "/1.0/auth/identities/current" && r.Method == http.MethodGet:
 		s.identity(w, r)
+	case r.URL.Path == "/1.0/events" && websocket.IsWebSocketUpgrade(r):
+		// the handshake is all the probe's permissions verb needs
+		if c, err := (&websocket.Upgrader{}).Upgrade(w, r, nil); err == nil {
+			c.Close() //nolint:errcheck
+		}
+	case r.URL.Path == "/1.0/operations" && r.Method == http.MethodGet:
+		writeSync(w, []string{}, "")
+	case len(parts) == 4 && parts[1] == "instances" && parts[3] == "state" && r.Method == http.MethodGet:
+		if i, ok := s.instances[project+"/"+parts[2]]; ok {
+			writeSync(w, map[string]any{"status": i.Status, "status_code": 103, "pid": 4242}, "")
+		} else {
+			writeError(w, http.StatusNotFound, "Instance not found")
+		}
 	case len(parts) == 2 && parts[1] == "instances" && r.Method == http.MethodGet:
 		s.list(w, project)
 	case len(parts) == 3 && parts[1] == "instances":

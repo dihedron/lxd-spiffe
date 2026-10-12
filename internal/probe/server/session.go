@@ -36,6 +36,9 @@ type session struct {
 	server *api.Server
 	// denied is set by a 403 that was not expected (exit code 4).
 	denied bool
+	// refusalsAreData keeps 403s from failing the command: for verbs whose
+	// result is which calls are refused (server permissions).
+	refusalsAreData bool
 	// unexpected is set by a finding that is not an expectation.* or
 	// decode.* observation.
 	unexpected bool
@@ -164,7 +167,7 @@ func (s *session) call(ctx context.Context, name string, req lxd.RawRequest, exp
 		s.rec.Expectations = append(s.rec.Expectations, e.Name)
 		s.rec.Observations = append(s.rec.Observations, e.Check(resp.Status, resp.Header, resp.Body)...)
 	}
-	if resp.Status == http.StatusForbidden && !s.opts.ExpectDenied {
+	if resp.Status == http.StatusForbidden && !s.opts.ExpectDenied && !s.refusalsAreData {
 		s.denied = true
 	}
 	return resp, nil

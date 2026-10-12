@@ -71,17 +71,6 @@ type pathArgs struct {
 	Path string `positional-arg-name:"PATH" description:"Path inside the instance."`
 }
 
-// Permissions is server permissions NAME.
-type Permissions struct {
-	probe.ServerCommand
-	Args instanceArgs `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *Permissions) Execute(args []string) error {
-	return probe.NotImplemented("server permissions")
-}
-
 // BearerCheck is server bearer check.
 type BearerCheck struct {
 	probe.ServerCommand
