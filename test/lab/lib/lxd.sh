@@ -90,6 +90,23 @@ lxd_install() {
 	vm_ssh "$server" "sudo snap refresh --hold lxd" >/dev/null
 }
 
+# lxd_allow_idmap SERVER: lets LXD map host uid and gid 1000 into c-raw
+# (raw.idmap "both 1000 1000"). The snap reads /etc/subuid and /etc/subgid:
+# root's default range (1000000, 1000000000) keeps every other map as it is
+# without these files. Done before any instance exists.
+lxd_allow_idmap() {
+	local server="$1"
+	vm_ssh "$server" "grep -qx root:1000:1 /etc/subuid && grep -qx root:1000:1 /etc/subgid" && return
+	info "$server: allowing LXD to map uid and gid 1000 (raw.idmap)"
+	vm_ssh "$server" 'set -e
+		for f in /etc/subuid /etc/subgid; do
+			grep -qx root:1000000:1000000000 "$f" || echo root:1000000:1000000000 | sudo tee -a "$f" >/dev/null
+			grep -qx root:1000:1 "$f" || echo root:1000:1 | sudo tee -a "$f" >/dev/null
+		done
+		sudo snap restart lxd.daemon >/dev/null
+		sudo lxd waitready --timeout=300' || die "$server: cannot allow LXD to map uid 1000"
+}
+
 # lxd_preseed SERVER: the server's lxd init preseed.
 lxd_preseed() {
 	local storage
@@ -171,4 +188,17 @@ lxd_check() {
 	env_set ".servers[\"$server\"].storage" "$(vm_ssh "$server" "sudo lxc query /1.0/storage-pools/default" | jq -r .driver)"
 	env_set ".servers[\"$server\"].bridge" "$(vm_ssh "$server" "sudo lxc network get lxdbr0 ipv4.address")"
 	info "$server: LXD $version at $endpoint, pin ${fp_local:0:16}..."
+}
+
+# lxd_verify SERVER: waits until the server is ready, then checks that it
+# answers over the lab network with the pin and version env.json records.
+lxd_verify() {
+	local server="$1" fp version
+	vm_ssh "$server" "sudo lxd waitready --timeout=300" || die "$server: LXD does not start (lab.sh logs $server snap.lxd.daemon)"
+	fp="$(openssl s_client -connect "$(vm_ip "$server"):$LXD_PORT" </dev/null 2>/dev/null | lxd_fingerprint_pem)"
+	[[ "$fp" == "$(env_get ".servers[\"$server\"].fingerprint")" ]] ||
+		die "$server: the certificate on $(lxd_endpoint "$server") ($fp) is not the recorded pin"
+	version="$(vm_lxc "$server" query /1.0 | jq -r .environment.server_version)"
+	[[ "$version" == "$(env_get ".servers[\"$server\"].version")" ]] ||
+		die "$server: LXD is $version, env.json records $(env_get ".servers[\"$server\"].version")"
 }

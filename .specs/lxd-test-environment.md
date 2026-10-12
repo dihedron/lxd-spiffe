@@ -54,26 +54,28 @@ Each VM runs with the host's CPU model (`host-passthrough`) and nested KVM, sinc
 
 | Instance | Kind | Image (default) | Configuration |
 | --- | --- | --- | --- |
-| `c-unpriv` | container | `images:ubuntu/24.04/cloud` | default (unprivileged) |
-| `c-priv` | container | `images:ubuntu/24.04/cloud` | `security.privileged=true` |
-| `c-iso` | container | `images:ubuntu/24.04/cloud` | `security.idmap.isolated=true` |
-| `c-raw` | container | `images:ubuntu/24.04/cloud` | `raw.idmap="both 1000 1000"` |
-| `v-ubuntu` | VM | `images:ubuntu/24.04/cloud` | 1 vCPU, 1 GiB |
+| `c-unpriv` | container | `ubuntu:24.04` | default (unprivileged) |
+| `c-priv` | container | `ubuntu:24.04` | `security.privileged=true`, `security.nesting=true` |
+| `c-iso` | container | `ubuntu:24.04` | `security.idmap.isolated=true` |
+| `c-raw` | container | `ubuntu:24.04` | `raw.idmap="both 1000 1000"` |
+| `v-ubuntu` | VM | `ubuntu:24.04` | 1 vCPU, 1 GiB |
 | `v-debian` | VM | `images:debian/12/cloud` | 1 vCPU, 1 GiB |
-| `v-alpine` | VM | `images:alpine/3.20/cloud` | 1 vCPU, 1 GiB |
+| `v-alpine` | VM | `images:alpine/3.24/cloud` | 1 vCPU, 1 GiB, secure boot off |
 
-The baseline instances belong to the `probe` scenario's runbooks; the `plugins` scenario boots its own guests per test (*Acceptance tests*). Each guest gets, through cloud-init, an unprivileged user with uid 1000 (L4 uses uids 0, 1000 and 65534). A **restricted project**, `restricted` (`restricted=true`), holds one `c-unpriv` of its own (L9). On the cluster, `c-unpriv` runs on `node1` and `v-ubuntu` on `node2`, so that requests through `node1` reach an instance on another member (L11). Instances a runbook needs only for itself (L6 copies, L12 shared disks) are created and deleted by that runbook, not by `up`.
+Ubuntu comes from Canonical's `ubuntu:` remote: `images:` publishes only Ubuntu desktop images. `c-priv` needs nesting: under LXD's AppArmor profile, a privileged Ubuntu 24.04 container cannot set up the mount namespaces of systemd's services, and boots without network; it stays fully privileged (identity uid map). Alpine's images are not signed, so `v-alpine` boots without secure boot, through `security.secureboot=false` on LXD 5.21 and `boot.mode=uefi-nosecureboot` on LXD 6 (API extension `instance_boot_mode`).
+
+The baseline instances belong to the `probe` scenario's runbooks; the `plugins` scenario boots its own guests per test (*Acceptance tests*). Each guest gets, through cloud-init, an unprivileged user `probe` with uid 1000 (L4 uses uids 0, 1000 and 65534), and no default user; the user Alpine's image ships with uid 1000 is removed first. A **restricted project**, `restricted` (`restricted=true`), holds one `c-unpriv` of its own (L9). It shares the default project's images, but has profiles of its own (LXD restricts no project without them): its `default` profile has a root disk on the `default` pool and a NIC on a bridge of its own, `lxdbr1`, since LXD keeps instance DNS names unique per network and its `c-unpriv` shares its name with the default project's. On the cluster, `c-unpriv` runs on `node1` and `v-ubuntu` on `node2`, so that requests through `node1` reach an instance on another member (L11). Instances a runbook needs only for itself (L6 copies, L12 shared disks) are created and deleted by that runbook, not by `up`.
 
 **Identities**: the bring-up creates four client certificates (ECDSA P-256), one per probe identity of the lab matrix, and trusts them on every LXD server:
 
 | Identity | Grants (fine-grained authorization) |
 | --- | --- |
-| `read` | `can_view` on the instances of `default` and `restricted` |
+| `read` | `can_view` on each baseline instance of `default` and `restricted` |
 | `files` | `read` + `can_access_files` |
 | `edit` | `read` + `can_edit` |
 | `full` | server `admin` |
 
-Grants go through LXD groups (`lab-read`, `lab-files`, `lab-edit`, `lab-full`). A server that lacks fine-grained TLS identities (no `access_management_tls` extension) gets the legacy model instead: `full` unrestricted, the others as certificates restricted to the two projects, with no finer distinction. `env.json` records which model each server uses: the difference is itself evidence for L9. When a server offers bearer identities for its remote API, the bring-up also creates a bearer identity in the `lab-files` group and stores its token (L13).
+Grants go through LXD groups (`lab-read`, `lab-files`, `lab-edit`, `lab-full`). They are per instance, since LXD has no project-wide entitlement for file access, plus `can_view` on each project, without which LXD grants nothing in it; runbooks that create instances grant them the same way (`lab_grant`). The lab needs fine-grained TLS identities (the `access_management_tls` extension, present in both 5.21 and 6.x): `up` fails on a server without them. When a server offers bearer identities for its remote API (`auth_bearer`, LXD 6), the bring-up also creates a bearer identity in the `lab-files` group and stores its token (L13). `env.json` records each server's authorization model and whether it has bearer identities.
 
 In the `plugins` scenario, a fifth certificate, `spire`, is SPIRE Server's identity on every LXD server (attestor spec *LXD integration → Least privilege*): its group, `lab-spire`, grants `can_view` and `can_access_files` on the instances of `default` (`file_pull`), plus `can_edit` when `config_push` is enabled (`LAB_SPIRE_MODES`). It is never one of the probe's identities, so that the end-to-end tests run with exactly the privileges the attestor spec prescribes. Keys and tokens never leave the lab's state directory.
 
@@ -88,7 +90,7 @@ In the `plugins` scenario, a fifth certificate, `spire`, is SPIRE Server's ident
 
 `test/lab/lab.env` holds every setting with its default, and documents it. A git-ignored `test/lab/lab.local.env` overrides it for one machine, and environment variables override both. The settings are:
 
-- **Versions**: `LAB_UBUNTU_RELEASE` (default `24.04`) for the VMs; `LAB_LXD5_CHANNEL` (default `5.21/stable`) and `LAB_LXD6_CHANNEL` (default `latest/stable`), with optional `LAB_LXD5_REVISION` and `LAB_LXD6_REVISION` to pin a snap revision; the guest images (`LAB_IMAGE_UBUNTU`, `LAB_IMAGE_DEBIAN`, `LAB_IMAGE_ALPINE`), as LXD image aliases on the `images:` remote; `LAB_UBUNTU_IMAGE_URL` for the VMs' cloud image, derived from the release by default and overridable for mirrors.
+- **Versions**: `LAB_UBUNTU_RELEASE` (default `24.04`) for the VMs; `LAB_LXD5_CHANNEL` (default `5.21/stable`) and `LAB_LXD6_CHANNEL` (default `latest/stable`), with optional `LAB_LXD5_REVISION` and `LAB_LXD6_REVISION` to pin a snap revision; the guest images (`LAB_IMAGE_UBUNTU`, `LAB_IMAGE_DEBIAN`, `LAB_IMAGE_ALPINE`), as `REMOTE:ALIAS`; `LAB_UBUNTU_IMAGE_URL` for the VMs' cloud image, derived from the release by default and overridable for mirrors.
 - **Scenarios**: `LAB_SCENARIOS` (default `probe`; `probe`, `plugins`, or `probe plugins`) is the default of every command's `--scenario`. The default becomes `probe plugins` once the plugins attest.
 - **Plugins** (`plugins` scenario): `LAB_SPIRE_VERSION` and `LAB_SPIRE_SHA256`, empty by default, meaning the most recent SPIRE release compatible with the `spire-plugin-sdk` version in `go.mod`, resolved at `up` with its checksum from the release's checksums file (a pinned version needs its SHA-256); `LAB_TRUST_DOMAIN` (default `lxd.lab`); `LAB_SPIRE_MODES` (default `file_pull config_push`).
 - **Topology**: `LAB_CLUSTER` (default `no`) adds the three cluster nodes; `LAB_LXD_STORAGE` (default `zfs`).
@@ -105,7 +107,7 @@ In the `plugins` scenario, a fifth certificate, `spire`, is SPIRE Server's ident
 
 - **Operating system**: Linux on x86-64; Debian/Ubuntu (`apt`) or Fedora/RHEL-like (`dnf`) hosts get missing software installed, others a list to install by hand; systemd running.
 - **Virtualization**: `vmx`/`svm` and `/dev/kvm`; nested virtualization enabled (`kvm_intel`/`kvm_amd` `nested`), with instructions to enable it persistently when off (preflight never reloads kernel modules).
-- **Resources**, computed from the configured sizes: vCPUs against logical CPUs (`warn` above 1.5× overcommit, `fail` above 3×); RAM plus 4 GiB for the host against the memory available now, counting only the lab's VMs not already running; disk for the VMs' actual use and their memory snapshots, plus 20%, under `LAB_POOL_DIR`, and about 2 GiB of downloads under `LAB_CACHE_DIR`. With the defaults (`probe`): 8 vCPUs, 16 GiB of RAM, about 80 GiB of disk; `plugins` adds 2 vCPUs and 3 GiB; `LAB_CLUSTER=yes` adds 6 vCPUs and 12 GiB.
+- **Resources**, computed from the configured sizes: vCPUs against logical CPUs (`warn` above 1.5× overcommit, `fail` above 3×); RAM plus 4 GiB for the host against the memory available now, counting only the lab's VMs not already running; disk for the VMs' actual use and their snapshots, plus 20%, under `LAB_POOL_DIR`, and about 2 GiB of downloads under `LAB_CACHE_DIR`. With the defaults (`probe`): 8 vCPUs, 16 GiB of RAM, about 80 GiB of disk; `plugins` adds 2 vCPUs and 3 GiB; `LAB_CLUSTER=yes` adds 6 vCPUs and 12 GiB.
 - **Software** (installed after one confirmation): libvirt, `virsh`, `virt-install`, `qemu-img`, QEMU/KVM; `cloud-localds` or `xorriso`/`genisoimage`; `ssh`, `ssh-keygen`, `openssl`, `curl`, `jq`, `git`, `make`; Go at the version `go.mod` requires; for `plugins`, goreleaser v2.
 - **Permissions**: the user manages `qemu:///system` (the `libvirt` group, or polkit); `sudo` is used for installation only.
 - **Network**: `LAB_SUBNET` overlaps no host route and no other libvirt network, and `LAB_NETWORK` is absent or the lab's own; the Ubuntu cloud image host, the Snap Store and `images.lxd.canonical.com` are reachable over HTTPS, and for `plugins` SPIRE's releases.
@@ -115,8 +117,8 @@ In the `plugins` scenario, a fifth certificate, `spire`, is SPIRE Server's ident
 Everything lives in `test/lab/`. `lab.sh` is the entry point; each command is idempotent and prints what it does. `preflight`, `up`, `deploy`, `reset` and `test` take `--scenario probe|plugins|all` (default `LAB_SCENARIOS`); `all` means both. A command never removes what another scenario built.
 
 - `preflight [--no-install]`: see above.
-- `up`: runs `preflight`, generates the lab PKI (the four client identities), creates the pool, network and VMs from the Ubuntu cloud image with cloud-init, installs LXD from the configured channels and holds refreshes, initializes each server with a preseed (storage, `lxdbr0`, `core.https_address` on the lab network), forms the cluster when `LAB_CLUSTER=yes`, then creates the identities, groups, the `restricted` project and the baseline instances, and waits until every instance is running (VMs: until `lxd-agent` answers). With `plugins` it also creates `spire` and the `spire` identity. It then records `env.json`, takes the snapshot on the first success, and runs `deploy` for the same scenarios. A second `up` on a complete lab only verifies it.
-- `snapshot` / `reset`: saves the running VMs, memory included, as the lab's baseline, or returns every VM to it in under a minute. `reset` then sets each VM's clock from the lab host and checks that every server answers with its recorded pin and version. This is the normal start of a session, and what a runbook that changes instances (L6, L11, L12) runs before and after.
+- `up`: runs `preflight`, generates the lab PKI (the four client identities), creates the pool, network and VMs from the Ubuntu cloud image with cloud-init, installs LXD from the configured channels and holds refreshes, initializes each server with a preseed (storage, `lxdbr0`, `core.https_address` on the lab network), forms the cluster when `LAB_CLUSTER=yes`, then creates the identities, groups, the `restricted` project and the baseline instances, starts any that is stopped, and waits until every instance is running (VMs: until `lxd-agent` answers) with its `probe` user. With `plugins` it also creates `spire` and the `spire` identity. It then records `env.json`, takes the snapshot on the first success, and runs `deploy` for the same scenarios. A second `up` on a complete lab only verifies it.
+- `snapshot` / `reset`: saves the VMs' disks as the lab's baseline, or returns every VM to it. Safety comes before speed: the VMs run virtual machines of their own, whose nested state a memory snapshot may not restore faithfully, so `snapshot` stops the baseline instances, shuts the VMs down, takes an internal disk-only snapshot of each, and boots them again; `reset` powers the VMs off, reverts them and boots them cold. Both then check that every server answers with its recorded pin and version, and start the baseline instances themselves (LXD does not always start again, after a host shutdown, a VM that powered off quickly), waiting until they run. This is the normal start of a session, and what a runbook that changes instances (L6, L11, L12) runs before and after.
 - `deploy`: installs what the scenarios need (*Architecture → Deployment per scenario*). `probe`: builds `lxd-probe`, pushes it into every baseline instance, and writes, for each server and identity, an environment file `probe/<server>-<identity>.env` in the state directory with the `LXD_PROBE_*` variables (endpoint, pin, client certificate and key, project; probe spec PRN-32). `plugins`: builds and verifies the packages, installs SPIRE Server and the server plugin on `spire`, publishes the guest artifacts and writes the guests' cloud-init. `deploy` after `reset` is the inner loop after a code change.
 - `guest-up <server> <name> [--image <image>]` (`plugins`): launches a guest with the SPIRE Agent cloud-init, for manual end-to-end checks; `guest-down` deletes it.
 - `probe <server> [--as <identity>] -- <args>`: runs `lxd-probe <args>` on the lab host with that server's and identity's environment (default identity `full`), for manual runbook steps. `guest <server> <instance> -- <args>`: runs `lxd-probe <args>` inside an instance, as root unless `--user` is given.
@@ -142,7 +144,7 @@ There are two kinds:
 | ID | Test | Checks | Chunk |
 | --- | --- | --- | --- |
 | LAB-1 | Servers | Every server answers `server info` with its recorded pin, version and extension hash; LXD refuses TLS 1.2 or the finding is recorded (Q3) | 4.5 |
-| LAB-2 | Identities | `server whoami` as each identity on each server reports the expected groups (or the legacy model); `server instance show c-unpriv` as `read` succeeds, and in `restricted` as an identity without that project fails with 403 under `--expect-denied` | 4.5 |
+| LAB-2 | Identities | `server whoami` as each identity on each server reports the expected groups; `server instance show c-unpriv` as `read` succeeds, and in `restricted` as an identity without that project fails with 403 under `--expect-denied` | 4.5 |
 | LAB-3 | Baseline | Every baseline instance of each server is running, with the configuration of the table above and `lxd-probe` installed | 4.5 |
 | S0-1 | Lab 0, server half | `server info`, `whoami` and `instance show` for every baseline instance on `lxd5` and `lxd6`, with `--record test/fixtures/`, plus the provoked 403 and 404; fixtures sanitized and checked; L8 evidence | 4.5 |
 | S0-2 | Lab 0, guest half | `guest preflight` and `guest devlxd get/dump` in every baseline instance; L3 evidence | 5 |
@@ -164,7 +166,7 @@ Chunk 4.5 builds the lab with the `probe` scenario and without the cluster (`LAB
 
 1. `lab.env` and `lab.sh preflight`, adapted from the openstack-spiffe lab. Done when preflight reports correctly on this machine, and with `--no-install` in a clean Ubuntu and a clean Fedora container.
 2. `up` for `lxd5` and `lxd6` (pool, network, VMs, LXD from the snap channels with refreshes held, preseed), `down`, `status`, `ssh`, `logs`. Done when both servers answer `lxc info` and `GET /1.0` over the lab network.
-3. Lab PKI, identities and groups (with the legacy fallback), the `restricted` project, the baseline instances, `env.json`, `snapshot` and `reset`.
+3. Lab PKI, identities and groups, the `restricted` project, the baseline instances, `env.json`, `snapshot` and `reset`.
 4. `deploy`, `probe`, `guest`, `refresh`.
 5. The acceptance harness and LAB-1 to LAB-3, then S0-1: the server half of Lab 0, whose fixtures are committed under `test/fixtures/<lxd-version>/`.
 6. Probe spec: *Operational guidance → Lab setup* points to this spec; the delivery plan's Lab 0 and Lab 1 checkpoints name S0-1, S0-2 and the stage-1 sessions. README: a short "Lab" section.
@@ -176,7 +178,7 @@ Chunk 4.5 builds the lab with the `probe` scenario and without the cluster (`LAB
 - LXD 6.x: the `latest/stable` channel with refreshes held; it moves only on `lab.sh refresh`, and `LAB_LXD6_REVISION` pins a revision.
 - `plugins` scenario: built with the plugins' end-to-end step (e), not by 4.5.
 
-Left to the bring-up, which records the answer in `env.json` and in this spec:
+Answered by the bring-up (step 3):
 
-- whether LXD 5.21 offers fine-grained TLS identities (`access_management_tls`), which decides whether the four identities differ there;
-- whether `images:alpine/3.20/cloud` is published as a VM image with `lxd-agent` support; if not, L7 covers Ubuntu and Debian only and records Alpine as "cannot be tested here".
+- LXD 5.21 (5.21.8) offers fine-grained TLS identities (`access_management_tls`), so the four identities differ on both servers and the legacy fallback is dropped. Bearer identities exist only on LXD 6.
+- Alpine 3.20 is no longer published; `images:alpine/3.24/cloud` boots as a VM (without secure boot) and its `lxd-agent` answers, so L7 covers Alpine.

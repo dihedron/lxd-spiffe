@@ -15,6 +15,14 @@ source "$LAB_DIR/lib/preflight.sh"
 source "$LAB_DIR/lib/vm.sh"
 # shellcheck source=lib/lxd.sh
 source "$LAB_DIR/lib/lxd.sh"
+# shellcheck source=lib/pki.sh
+source "$LAB_DIR/lib/pki.sh"
+# shellcheck source=lib/auth.sh
+source "$LAB_DIR/lib/auth.sh"
+# shellcheck source=lib/instances.sh
+source "$LAB_DIR/lib/instances.sh"
+# shellcheck source=lib/snapshot.sh
+source "$LAB_DIR/lib/snapshot.sh"
 
 usage() {
 	cat <<USAGE
@@ -104,6 +112,7 @@ cmd_up() {
 	chmod 0700 "$LAB_STATE_DIR"
 	ensure_ssh_key
 	resolve_state
+	ensure_pki
 
 	section "VMs"
 	ensure_pool
@@ -120,12 +129,30 @@ cmd_up() {
 	section "LXD"
 	for server in $(lab_servers); do
 		lxd_install "$server"
+		lxd_allow_idmap "$server"
 		lxd_init "$server"
 		lxd_check "$server"
+		auth_setup "$server"
 	done
 
+	section "Instances"
+	for server in $(lab_servers); do
+		ensure_restricted_project "$server"
+		ensure_instances "$server"
+	done
+	for server in $(lab_servers); do
+		start_instances "$server"
+		wait_instances "$server"
+		baseline_grants "$server"
+	done
+
+	if ! all_snapshots_exist; then
+		section "Snapshot"
+		LAB_ASSUME_YES=1 lab_snapshot
+	fi
+
 	section "Done"
-	info "the LXD servers are up: lab.sh status, lab.sh ssh <vm>"
+	info "the lab is up: lab.sh status, lab.sh ssh <vm>, lab.sh reset"
 }
 
 cmd_down() {
@@ -155,8 +182,16 @@ cmd_status() {
 		"\($s)\tLXD \(.version // "?") (\(.channel) rev \(.revision), held)\t\(.endpoint)",
 		"\tstorage \(.storage // "?"), lxdbr0 \(.bridge // "?")",
 		"\tpin \(.fingerprint // "?")",
-		"\textensions \(.api_extensions_hash // "?")"' |
+		"\textensions \(.api_extensions_hash // "?")",
+		"\tauthorization \(.auth.model // "?"), bearer identities: \(.auth.bearer // "?")",
+		(.instances // {} | to_entries[] | "\t\(.key)\t\(.value.type)\t\(.value.image)")' |
 		while IFS= read -r line; do info "$line"; done
+	section "Snapshot"
+	if all_snapshots_exist; then
+		info "taken $(env_get '.snapshot.taken')"
+	else
+		info "none (lab.sh snapshot)"
+	fi
 }
 
 cmd_ssh() {
@@ -226,7 +261,12 @@ main() {
 	status) cmd_status ;;
 	ssh) cmd_ssh "${args[@]}" ;;
 	logs) cmd_logs "${args[@]}" ;;
-	snapshot | reset) not_yet "$command" 3 ;;
+	snapshot | reset)
+		# the whole lab: every scenario built so far
+		require_state
+		select_scenarios "$(env_get '.scenarios | join(" ")')"
+		"lab_$command"
+		;;
 	deploy | probe | guest | refresh) not_yet "$command" 4 ;;
 	test) not_yet "$command" 5 ;;
 	help | -h | --help) usage ;;
