@@ -223,3 +223,54 @@ func TestConfigUnset(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigRace(t *testing.T) {
+	fake := configFake(t)
+	opts := writeOpts(t, fake)
+	cmd := &ConfigRace{ServerCommand: opts, Writers: 8, Retries: 10, ExpectInstanceUUID: uuid, stdout: &bytes.Buffer{}, stderr: &bytes.Buffer{}}
+	cmd.Args.Name, cmd.Args.Key = "c1", "user.lxd-probe.r"
+	if err := cmd.Execute(nil); err != nil {
+		t.Fatal(err)
+	}
+	rec := record(t, opts, 1)
+	if rec.Verb != "config race" || rec.Outcome != evidence.OutcomeOK {
+		t.Errorf("record %q %s %v", rec.Verb, rec.Outcome, rec.Observations)
+	}
+	totals, _ := observation(t, rec, "race.totals").(map[string]any)
+	if totals["200"] != float64(8) || totals["exhausted"] != float64(0) {
+		t.Errorf("totals %v; want every writer through within its budget", totals)
+	}
+	events, _ := observation(t, rec, "race.events").([]any)
+	if len(events) < 8 {
+		t.Errorf("events %d", len(events))
+	}
+	if observation(t, rec, "race.consistent") != true {
+		t.Errorf("final value is not the last successful writer's: %v", rec.Observations)
+	}
+	final := configOf(t, fake)["user.lxd-probe.r"]
+	if !strings.HasPrefix(final, "w") {
+		t.Errorf("final value %q", final)
+	}
+	// every write carried an If-Match
+	for _, w := range writes(fake) {
+		if w.Header.Get("If-Match") == "" {
+			t.Errorf("a write without If-Match: %+v", w)
+		}
+	}
+
+	// refusals, before any write
+	refused := configFake(t)
+	cmd = &ConfigRace{ServerCommand: options(t, refused), Writers: 2, Retries: 1, stdout: &bytes.Buffer{}, stderr: &bytes.Buffer{}}
+	cmd.Args.Name, cmd.Args.Key = "c1", "user.lxd-probe.r"
+	if err := cmd.Execute(nil); exit.Code(err) != exit.Refused {
+		t.Errorf("without write flags: exit %d (%v)", exit.Code(err), err)
+	}
+	cmd = &ConfigRace{ServerCommand: writeOpts(t, refused), Writers: 2, Retries: 1, ExpectInstanceUUID: "other", stdout: &bytes.Buffer{}, stderr: &bytes.Buffer{}}
+	cmd.Args.Name, cmd.Args.Key = "c1", "user.lxd-probe.r"
+	if err := cmd.Execute(nil); exit.Code(err) != exit.Refused {
+		t.Errorf("wrong instance: exit %d (%v)", exit.Code(err), err)
+	}
+	if len(writes(refused)) != 0 {
+		t.Error("a refused race wrote")
+	}
+}

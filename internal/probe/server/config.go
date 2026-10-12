@@ -1,14 +1,18 @@
 package server
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"maps"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
+	"sync"
 	"time"
 
 	"github.com/canonical/lxd/shared/api"
@@ -336,4 +340,139 @@ func observeAfter(ctx context.Context, s *session, name, key string, before *api
 	s.observe("instance.status_after", after.Status)
 	s.observe("instance.restarted", before.Status != after.Status || !before.LastUsedAt.Equal(after.LastUsedAt))
 	return nil
+}
+
+// ConfigRace is server config race NAME KEY --writers N (PRS-23).
+type ConfigRace struct {
+	probe.ServerCommand
+	Writers            int     `long:"writers" description:"Number of concurrent writers." default:"8"`
+	Retries            int     `long:"retries" description:"Retry budget per writer on 412." default:"10"`
+	ExpectInstanceUUID string  `long:"expect-instance-uuid" description:"Refuse to write unless the instance's volatile.uuid is this."`
+	Args               keyArgs `positional-args:"yes" required:"yes"`
+
+	stdout, stderr io.Writer
+}
+
+// raceEvent is one write of a racing writer.
+type raceEvent struct {
+	Writer  int    `json:"writer"`
+	Attempt int    `json:"attempt"`
+	Status  int    `json:"status"`
+	AtMS    int64  `json:"at_ms"`
+	Error   string `json:"error,omitempty"`
+}
+
+// Execute runs the command.
+func (cmd *ConfigRace) Execute(args []string) error {
+	if err := safety.Write(cmd.AllowWrite, cmd.Lab); err != nil {
+		return err
+	}
+	if err := safety.Key(cmd.Args.Key, cmd.AllowSpireKeys); err != nil {
+		return err
+	}
+	if cmd.Writers < 1 || cmd.Retries < 0 {
+		return exit.New(exit.Usage, fmt.Errorf("server config race: --writers must be at least 1 and --retries not negative"))
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+	defer cancel()
+	recorded := []string{cmd.Args.Name, cmd.Args.Key, "--writers", fmt.Sprint(cmd.Writers), "--retries", fmt.Sprint(cmd.Retries)}
+	s, err := newSession(ctx, &cmd.ServerCommand, cmd.stdout, "config race", recorded, cmd.Args.Name)
+	if err != nil {
+		return err
+	}
+	return s.finish(cmd.run(ctx, s))
+}
+
+func (cmd *ConfigRace) run(ctx context.Context, s *session) error {
+	if _, err := s.readServer(ctx, nil); err != nil {
+		return err
+	}
+	name, key := cmd.Args.Name, cmd.Args.Key
+	before, _, err := readInstance(ctx, s, name, "before")
+	if err != nil {
+		return err
+	}
+	if err := guardUUID(before, cmd.ExpectInstanceUUID); err != nil {
+		return err
+	}
+	stderr := cmd.stderr
+	if stderr == nil {
+		stderr = os.Stderr
+	}
+	fmt.Fprintf(stderr, "%d writers: GET then PATCH %s?project=%s If-Match: <ETag read>\n", cmd.Writers, instancePath(name), s.opts.Project) //nolint:errcheck // informational
+
+	// the writers call the client directly: the session's record is not
+	// for concurrent use; their events are recorded afterwards
+	var mu sync.Mutex
+	var events []raceEvent
+	start := make(chan struct{})
+	begin := time.Now()
+	var wg sync.WaitGroup
+	for w := range cmd.Writers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			value := fmt.Sprintf("w%d", w)
+			for attempt := 0; attempt <= cmd.Retries; attempt++ {
+				ev := raceEvent{Writer: w, Attempt: attempt}
+				status, err := raceWrite(ctx, s, name, key, value)
+				ev.Status, ev.AtMS = status, time.Since(begin).Milliseconds()
+				if err != nil {
+					ev.Error = err.Error()
+				}
+				mu.Lock()
+				events = append(events, ev)
+				mu.Unlock()
+				if status != http.StatusPreconditionFailed {
+					return
+				}
+				time.Sleep(time.Duration(10+rand.IntN(91)) * time.Millisecond)
+			}
+		}()
+	}
+	close(start)
+	wg.Wait()
+
+	slices.SortFunc(events, func(a, b raceEvent) int { return cmp.Compare(a.AtMS, b.AtMS) })
+	s.observe("race.events", events)
+	ok, conflicts, exhausted, last := 0, 0, 0, -1
+	perWriter := map[int][]raceEvent{}
+	for _, ev := range events {
+		perWriter[ev.Writer] = append(perWriter[ev.Writer], ev)
+		switch ev.Status {
+		case http.StatusOK:
+			ok++
+			last = ev.Writer
+		case http.StatusPreconditionFailed:
+			conflicts++
+		}
+	}
+	for _, evs := range perWriter {
+		if evs[len(evs)-1].Status == http.StatusPreconditionFailed {
+			exhausted++
+		}
+	}
+	s.observe("race.totals", map[string]int{"200": ok, "412": conflicts, "exhausted": exhausted, "writes": len(events)})
+	after, _, err := readInstance(ctx, s, name, "after")
+	if err != nil {
+		return err
+	}
+	final := after.Config[key]
+	s.observe("race.final", map[string]string{key: final})
+	s.observe("race.consistent", last >= 0 && final == fmt.Sprintf("w%d", last))
+	return nil
+}
+
+// raceWrite reads the instance's ETag and PATCHes the key with If-Match.
+func raceWrite(ctx context.Context, s *session, name, key, value string) (int, error) {
+	get, err := s.client.Raw(ctx, lxd.RawRequest{Method: http.MethodGet, Path: instancePath(name)})
+	if err != nil {
+		return 0, err
+	}
+	resp, err := s.client.Raw(ctx, lxd.RawRequest{Method: http.MethodPatch, Path: instancePath(name), Body: patchBody(key, &value), ETag: get.Header.Get("ETag")})
+	if err != nil {
+		return 0, err
+	}
+	return resp.Status, nil
 }

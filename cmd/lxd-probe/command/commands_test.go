@@ -126,7 +126,7 @@ func TestRunbookExamples(t *testing.T) {
 	})
 	t.Run("config race", func(t *testing.T) {
 		cmd := mustParse(t, "server", "config", "race", "NAME", "user.lxd-probe.r", "--writers", "8").(*server.ConfigRace)
-		if cmd.Writers != 8 || cmd.Retries != 3 {
+		if cmd.Writers != 8 || cmd.Retries != 10 { // PRS-23: at most 10 retries
 			t.Errorf("writers = %d, retries = %d", cmd.Writers, cmd.Retries)
 		}
 	})

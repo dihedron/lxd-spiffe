@@ -94,20 +94,6 @@ func (cmd *InstanceList) Execute(args []string) error {
 	return probe.NotImplemented("server instance list")
 }
 
-// ConfigRace is server config race NAME KEY.
-type ConfigRace struct {
-	probe.ServerCommand
-	Writers            int     `long:"writers" description:"Number of concurrent writers." default:"8"`
-	Retries            int     `long:"retries" description:"Retry budget per writer on 412." default:"3"`
-	ExpectInstanceUUID string  `long:"expect-instance-uuid" description:"Refuse to write unless the instance's volatile.uuid is this."`
-	Args               keyArgs `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *ConfigRace) Execute(args []string) error {
-	return probe.NotImplemented("server config race")
-}
-
 // Permissions is server permissions NAME.
 type Permissions struct {
 	probe.ServerCommand
