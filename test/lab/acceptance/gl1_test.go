@@ -86,7 +86,7 @@ func TestGL1FilesAPI(t *testing.T) {
 				t.Log(ruleL1)
 				if collect && !t.Failed() {
 					l.collectRun(t, runID, staging)
-					l.collectFiles(t, server, name, staging)
+					l.collectFixtures(t, server, "files", name, staging)
 				}
 			})
 		}
@@ -141,9 +141,9 @@ func lxdView(r *run) string {
 	return fmt.Sprintf("%s %s %s:%s", get("X-LXD-type"), get("X-LXD-mode"), get("X-LXD-uid"), get("X-LXD-gid"))
 }
 
-// collectFiles replaces test/fixtures/<version>/files/<instance>/ with the
-// run's files-API fixtures (its server's version only).
-func (l *lab) collectFiles(t *testing.T, server, name, staging string) {
+// collectFixtures replaces test/fixtures/<version>/<subdir>/<instance>/
+// with the run's server fixtures (its server's version only).
+func (l *lab) collectFixtures(t *testing.T, server, subdir, name, staging string) {
 	t.Helper()
 	version := l.env.Servers[server].Version
 	if version == "" || strings.ContainsAny(version, `/\`) {
@@ -153,7 +153,7 @@ func (l *lab) collectFiles(t *testing.T, server, name, staging string) {
 	if _, err := os.Stat(src); err != nil {
 		t.Fatalf("no fixtures for %s: %v", version, err)
 	}
-	dst := filepath.Join(l.repo, "test", "fixtures", version, "files", name)
+	dst := filepath.Join(l.repo, "test", "fixtures", version, subdir, name)
 	if err := os.RemoveAll(dst); err != nil {
 		t.Fatal(err)
 	}
