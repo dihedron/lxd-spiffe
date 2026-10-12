@@ -172,12 +172,19 @@ var (
 	}
 )
 
+// InstanceList is GET /1.0/instances?recursion=1 (server instance list,
+// PRS-12).
+var InstanceList = Expectation{
+	Name: "instance-list", Method: http.MethodGet, Path: "/1.0/instances", Query: "recursion=1",
+	Status: []int{http.StatusOK}, Envelope: Sync,
+}
+
 // Table lists every expectation, for documentation and tests.
 var Table = []Expectation{
 	Server, IdentityCurrent, Instance, InstanceFull,
 	DevLXDRoot, DevLXDServer, DevLXDConfig, DevLXDConfigKey, DevLXDMetadata, DevLXDDevices,
 	FileRead, FileHead, FileDir,
-	InstancePatch, InstancePut, OperationWait,
+	InstancePatch, InstancePut, OperationWait, InstanceList,
 }
 
 // Denied returns the expectation of the same call when a 403 is the expected

@@ -175,6 +175,33 @@ func (s *Server) SetExtensions(extensions ...string) {
 	s.exts = extensions
 }
 
+// SetInstanceConfig changes one config key of an instance, and its ETag.
+func (s *Server) SetInstanceConfig(project, name, key, value string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i, ok := s.instances[project+"/"+name]; ok {
+		i.Config[key] = value
+		i.etagSeq++
+	}
+}
+
+// SetStatus changes an instance's status, as a stop or start would.
+func (s *Server) SetStatus(project, name, status string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i, ok := s.instances[project+"/"+name]; ok {
+		i.Status = status
+		i.etagSeq++
+	}
+}
+
+// RemoveInstance deletes an instance.
+func (s *Server) RemoveInstance(project, name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.instances, project+"/"+name)
+}
+
 // Config returns a copy of an instance's config.
 func (s *Server) Config(project, name string) (map[string]string, bool) {
 	s.mu.Lock()
@@ -270,6 +297,8 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 		}, "")
 	case r.URL.Path == "/1.0/auth/identities/current" && r.Method == http.MethodGet:
 		s.identity(w, r)
+	case len(parts) == 2 && parts[1] == "instances" && r.Method == http.MethodGet:
+		s.list(w, project)
 	case len(parts) == 3 && parts[1] == "instances":
 		s.instance(w, r, project, parts[2])
 	case len(parts) == 4 && parts[1] == "instances" && parts[3] == "files" && (r.Method == http.MethodGet || r.Method == http.MethodHead):
@@ -279,6 +308,18 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusNotFound, "not found")
 	}
+}
+
+// list answers GET /1.0/instances?recursion=1 for the project.
+func (s *Server) list(w http.ResponseWriter, project string) {
+	var out []map[string]any
+	for _, i := range s.instances {
+		if i.Project == project {
+			out = append(out, map[string]any{"name": i.Name, "project": i.Project, "type": "container", "status": i.Status, "location": "none", "config": i.Config})
+		}
+	}
+	slices.SortFunc(out, func(a, b map[string]any) int { return strings.Compare(a["name"].(string), b["name"].(string)) })
+	writeSync(w, out, "")
 }
 
 func (s *Server) instance(w http.ResponseWriter, r *http.Request, project, name string) {

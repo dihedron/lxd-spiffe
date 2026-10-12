@@ -71,29 +71,6 @@ type pathArgs struct {
 	Path string `positional-arg-name:"PATH" description:"Path inside the instance."`
 }
 
-// InstanceWatch is server instance watch NAME.
-type InstanceWatch struct {
-	probe.ServerCommand
-	For      time.Duration `long:"for" description:"How long to watch." default:"10m"`
-	Interval time.Duration `long:"interval" description:"Poll interval." default:"1s"`
-	Args     instanceArgs  `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *InstanceWatch) Execute(args []string) error {
-	return probe.NotImplemented("server instance watch")
-}
-
-// InstanceList is server instance list.
-type InstanceList struct {
-	probe.ServerCommand
-}
-
-// Execute runs the command.
-func (cmd *InstanceList) Execute(args []string) error {
-	return probe.NotImplemented("server instance list")
-}
-
 // Permissions is server permissions NAME.
 type Permissions struct {
 	probe.ServerCommand
