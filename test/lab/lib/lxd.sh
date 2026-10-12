@@ -202,3 +202,39 @@ lxd_verify() {
 	[[ "$version" == "$(env_get ".servers[\"$server\"].version")" ]] ||
 		die "$server: LXD is $version, env.json records $(env_get ".servers[\"$server\"].version")"
 }
+
+# lxd_refresh_plan SERVER: prints "SERVER CURRENT NEW VERSION" when the
+# server's channel has a newer revision than the one installed; tells why
+# not otherwise.
+lxd_refresh_plan() {
+	local server="$1" channel current pinned found
+	channel="$(env_get ".servers[\"$server\"].channel")"
+	current="$(env_get ".servers[\"$server\"].revision")"
+	pinned="$(lxd_pinned_revision "$server")"
+	if [[ -n "$pinned" ]]; then
+		info "$server: pinned at revision $pinned by the settings: left alone" >&2
+		return
+	fi
+	found="$(lxd_store_revision "$channel")"
+	if [[ "${found%% *}" == "$current" ]]; then
+		info "$server: LXD $channel is up to date (revision $current)" >&2
+		return
+	fi
+	echo "$server $current ${found%% *} ${found#* }"
+}
+
+# lxd_refresh SERVER REVISION: moves the server to REVISION of its channel,
+# holds refreshes again and records the server anew.
+lxd_refresh() {
+	local server="$1" revision="$2" channel
+	channel="$(env_get ".servers[\"$server\"].channel")"
+	info "$server: refreshing LXD to revision $revision of $channel"
+	vm_ssh "$server" "set -e
+		sudo snap refresh --unhold lxd >/dev/null
+		sudo snap refresh lxd --channel=$channel --revision=$revision >/dev/null
+		sudo snap refresh --hold lxd >/dev/null
+		sudo lxd waitready --timeout=300" ||
+		die "$server: the refresh to revision $revision failed (lab.sh logs $server snap.lxd.daemon); refreshes may be unheld: lab.sh ssh $server sudo snap refresh --hold lxd"
+	env_set ".servers[\"$server\"].revision" "$revision"
+	lxd_check "$server"
+}

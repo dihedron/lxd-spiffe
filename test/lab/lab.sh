@@ -23,6 +23,10 @@ source "$LAB_DIR/lib/auth.sh"
 source "$LAB_DIR/lib/instances.sh"
 # shellcheck source=lib/snapshot.sh
 source "$LAB_DIR/lib/snapshot.sh"
+# shellcheck source=lib/deploy.sh
+source "$LAB_DIR/lib/deploy.sh"
+# shellcheck source=lib/run.sh
+source "$LAB_DIR/lib/run.sh"
 
 usage() {
 	cat <<USAGE
@@ -37,16 +41,20 @@ commands:
   status                    show the VMs, the LXD servers and the instances
   ssh <vm> [command]        open a shell, or run a command, on a VM
   logs <vm> [unit]          show a VM's cloud-init log, or a unit's journal
-  snapshot                  save the running lab as its baseline
-  reset                     return the lab to its baseline, in about a minute
-  deploy                    build and install what the scenarios need
+  snapshot                  save the lab's disks as its baseline (the VMs are
+                            shut down for it)
+  reset                     return the lab to its baseline (cold boot)
+  deploy                    build and install what the scenarios need; after
+                            reset, the inner loop after a code change
   probe <server> [--as <identity>] -- <args>
                             run lxd-probe on this host against a server, as
-                            an identity (default full)
-  guest <server> <instance> [--user <user>] -- <args>
-                            run lxd-probe inside an instance
+                            an identity: read, files, edit, full (default),
+                            outsider, or bearer where the server has one
+  guest <server> <instance> [--project <project>] [--user <uid>] -- <args>
+                            run lxd-probe inside an instance (as root
+                            unless --user is given)
   refresh                   move the LXD servers to their channels' newest
-                            revision
+                            revision, then offer a new snapshot
   test [-run REGEX]         run the acceptance tests
   help                      show this help
 
@@ -151,6 +159,8 @@ cmd_up() {
 		LAB_ASSUME_YES=1 lab_snapshot
 	fi
 
+	cmd_deploy
+
 	section "Done"
 	info "the lab is up: lab.sh status, lab.sh ssh <vm>, lab.sh reset"
 }
@@ -192,6 +202,8 @@ cmd_status() {
 	else
 		info "none (lab.sh snapshot)"
 	fi
+	section "Deployed"
+	info "lxd-probe $(env_get '.probe.version // "none (lab.sh deploy)"')"
 }
 
 cmd_ssh() {
@@ -212,6 +224,51 @@ cmd_logs() {
 		vm_ssh "$vm" "sudo journalctl --no-pager -n 300 -u $(printf '%q' "$unit")"
 	else
 		vm_ssh "$vm" "sudo tail -n 300 /var/log/cloud-init-output.log"
+	fi
+}
+
+# cmd_deploy: installs what the selected scenarios need.
+cmd_deploy() {
+	require_state
+	section "Deploy"
+	if scenario_selected probe; then
+		deploy_probe
+	fi
+}
+
+# cmd_refresh: moves the LXD servers whose revision the settings do not pin
+# to the newest revision of their channels, after confirmation, then offers a
+# new snapshot.
+cmd_refresh() {
+	require_state
+	select_scenarios "$(env_get '.scenarios | join(" ")')"
+	section "Refresh"
+	local server plans=() plan current new version
+	for server in $(lab_servers); do
+		plan="$(lxd_refresh_plan "$server")"
+		[[ -z "$plan" ]] || plans+=("$plan")
+	done
+	if ((${#plans[@]} == 0)); then
+		info "nothing to refresh"
+		return
+	fi
+	for plan in "${plans[@]}"; do
+		read -r server current new version <<<"$plan"
+		info "$server: revision $current -> $new ($version)"
+	done
+	confirm "Refresh these servers? LXD cannot go back to an older revision afterwards." || {
+		info "nothing refreshed"
+		return 1
+	}
+	for plan in "${plans[@]}"; do
+		read -r server current new version <<<"$plan"
+		lxd_refresh "$server" "$new"
+	done
+	if confirm "Replace the lab's snapshot with the refreshed lab?"; then
+		section "Snapshot"
+		LAB_ASSUME_YES=1 lab_snapshot
+	else
+		info "snapshot kept: lab.sh reset returns to the old revisions, which env.json no longer records"
 	fi
 }
 
@@ -267,7 +324,10 @@ main() {
 		select_scenarios "$(env_get '.scenarios | join(" ")')"
 		"lab_$command"
 		;;
-	deploy | probe | guest | refresh) not_yet "$command" 4 ;;
+	deploy) cmd_deploy ;;
+	probe) cmd_probe "${args[@]}" ;;
+	guest) cmd_guest "${args[@]}" ;;
+	refresh) cmd_refresh ;;
 	test) not_yet "$command" 5 ;;
 	help | -h | --help) usage ;;
 	*)

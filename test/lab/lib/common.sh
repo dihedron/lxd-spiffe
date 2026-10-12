@@ -20,8 +20,10 @@ load_settings() {
 	for pair in "${saved[@]}"; do
 		printf -v "${pair%%=*}" '%s' "${pair#*=}"
 	done
-	# relative locations are relative to the lab directory
+	# relative locations are relative to the lab directory, the evidence's to
+	# the repository
 	[[ "$LAB_STATE_DIR" = /* ]] || LAB_STATE_DIR="$LAB_DIR/$LAB_STATE_DIR"
+	[[ "$LAB_EVIDENCE_DIR" = /* ]] || LAB_EVIDENCE_DIR="$REPO_DIR/$LAB_EVIDENCE_DIR"
 	export PATH="$LAB_TOOLS_DIR/bin:$LAB_TOOLS_DIR/go/bin:$PATH"
 }
 
