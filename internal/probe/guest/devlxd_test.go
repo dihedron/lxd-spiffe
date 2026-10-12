@@ -176,3 +176,12 @@ func TestDevlxdDump(t *testing.T) {
 	notIn(t, "hunter2", opts.EvidenceDir, opts.Record)
 	notIn(t, "00:16:3e:0e:4b:fd", opts.EvidenceDir, opts.Record) // a MAC address, aliased
 }
+
+// json2 decodes a generic observation value into v.
+func json2(in, v any) error {
+	data, err := json.Marshal(in)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, v)
+}

@@ -223,3 +223,18 @@ func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp.ContentLength = int64(len(body))
 	return resp, nil
 }
+
+// Events subscribes to devLXD's event stream (through the SDK's
+// websocket) and calls handler for each event, from another goroutine,
+// until stop is called. An error means the stream is not available.
+func (c *Client) Events(handler func(api.Event)) (stop func(), err error) {
+	listener, err := c.sdk.GetEvents()
+	if err != nil {
+		return nil, &lxd.Error{Kind: lxd.KindOf(err), Err: err}
+	}
+	if _, err := listener.AddHandler(nil, handler); err != nil {
+		listener.Disconnect()
+		return nil, &lxd.Error{Kind: lxd.KindOther, Err: err}
+	}
+	return listener.Disconnect, nil
+}

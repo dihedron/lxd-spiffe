@@ -3,12 +3,6 @@
 // (spec: Guest environment).
 package guest
 
-import (
-	"time"
-
-	"github.com/dihedron/lxd-spiffe/internal/probe"
-)
-
 // Commands is the command tree of the guest environment.
 type Commands struct {
 	Preflight Preflight `command:"preflight" description:"Record the guest's view of itself: ids, uid/gid maps, devLXD socket, lxd-agent, /run (PRF-01)."`
@@ -37,18 +31,4 @@ type File struct {
 // Idmap groups the idmap verbs.
 type Idmap struct {
 	Show IdmapShow `command:"show" description:"Record the parsed /proc/self/uid_map and gid_map (PRF-30)."`
-}
-
-// DevlxdWatch is guest devlxd watch KEY.
-type DevlxdWatch struct {
-	probe.GuestCommand
-	For  time.Duration `long:"for" description:"How long to watch." default:"60s"`
-	Args struct {
-		Key string `positional-arg-name:"KEY" description:"Config key to watch."`
-	} `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *DevlxdWatch) Execute(args []string) error {
-	return probe.NotImplemented("guest devlxd watch")
 }

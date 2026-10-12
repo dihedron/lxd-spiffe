@@ -4,6 +4,7 @@ go 1.27.1
 
 require (
 	github.com/canonical/lxd v0.0.0-20261009201946-d2f5e0ca1f9e
+	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/hashicorp/hcl v1.0.0
 	github.com/jessevdk/go-flags v1.6.1
@@ -23,7 +24,6 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/go-plugin v1.4.0 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
 	github.com/kr/fs v0.1.0 // indirect

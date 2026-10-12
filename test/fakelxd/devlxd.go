@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 )
 
@@ -33,9 +35,29 @@ type DevLXD struct {
 	Devices map[string]map[string]string
 	// Envelope wraps answers in the LXD envelope, as over vsock.
 	Envelope bool
+	// NoEvents refuses the event stream (404), as without the events API.
+	NoEvents bool
 
 	mu       sync.Mutex
 	requests []string
+	streams  []*websocket.Conn
+}
+
+// SetConfig changes a config key while the fake runs, and sends the config
+// event LXD sends (type config, with the key, old and new values) to the
+// event streams.
+func (d *DevLXD) SetConfig(key, value string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	old := d.Config[key]
+	d.Config[key] = value
+	event := map[string]any{
+		"type": "config", "timestamp": time.Now().UTC().Format(time.RFC3339Nano),
+		"metadata": map[string]string{"key": key, "old_value": old, "value": value},
+	}
+	for _, c := range d.streams {
+		c.WriteJSON(event) //nolint:errcheck // a closed stream drops the event
+	}
 }
 
 // NewDevLXD starts a fake devLXD for a container named c1.
@@ -83,6 +105,12 @@ func (d *DevLXD) serve(w http.ResponseWriter, r *http.Request) {
 	d.mu.Lock()
 	d.requests = append(d.requests, r.URL.Path)
 	d.mu.Unlock()
+	if r.URL.Path == "/1.0/events" && websocket.IsWebSocketUpgrade(r) {
+		d.events(w, r)
+		return
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	if r.Method != http.MethodGet {
 		d.text(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
@@ -120,9 +148,34 @@ func (d *DevLXD) serve(w http.ResponseWriter, r *http.Request) {
 	case path == "/1.0/devices":
 		d.json(w, d.Devices)
 	case path == "/1.0/events":
-		<-r.Context().Done() // a stream: nothing until the client gives up
+		// a plain GET of the stream: nothing until the client gives up
+		d.mu.Unlock()
+		<-r.Context().Done()
+		d.mu.Lock()
 	default:
 		d.text(w, http.StatusNotFound, "not found")
+	}
+}
+
+// events upgrades to the event stream and keeps it until the client
+// leaves.
+func (d *DevLXD) events(w http.ResponseWriter, r *http.Request) {
+	if d.NoEvents {
+		d.text(w, http.StatusNotFound, "not found")
+		return
+	}
+	c, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	d.mu.Lock()
+	d.streams = append(d.streams, c)
+	d.mu.Unlock()
+	for {
+		if _, _, err := c.ReadMessage(); err != nil {
+			c.Close() //nolint:errcheck
+			return
+		}
 	}
 }
 
