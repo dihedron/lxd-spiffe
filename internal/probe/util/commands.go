@@ -55,20 +55,6 @@ func (cmd *FixturesVerify) Execute(args []string) error {
 	return probe.NotImplemented("util fixtures verify")
 }
 
-// Note is util note TEXT.
-type Note struct {
-	probe.GlobalOptions
-	Decision bool `long:"decision" description:"Record the operator's decision for the gate."`
-	Args     struct {
-		Text string `positional-arg-name:"TEXT" description:"Note text."`
-	} `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *Note) Execute(args []string) error {
-	return probe.NotImplemented("util note")
-}
-
 // Report is util report RUN_DIR...
 type Report struct {
 	probe.GlobalOptions
