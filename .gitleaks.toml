@@ -1,0 +1,33 @@
+# Gitleaks configuration: the default rules, with two narrow allowlists. Each
+# allows a match only when ALL its conditions hold; anything else is still
+# reported.
+title = "lxd-spiffe"
+
+[extend]
+useDefault = true
+
+# The lab's evidence and fixtures carry the SHA-256 fingerprints of lab-only
+# client certificates (for example "auth_user_name" in GET /1.0): public
+# values that generic-api-key mistakes for keys.
+[[rules]]
+id = "generic-api-key"
+[[rules.allowlists]]
+description = "SHA-256 certificate fingerprints in lab evidence and fixtures"
+condition = "AND"
+paths = ['''(^|/)(docs/validation|test/fixtures)/''']
+regexes = ['''^[0-9a-f]{64}$''']
+[[rules.allowlists]]
+description = "made-up JWTs in tests (see the jwt rule below)"
+condition = "AND"
+paths = ['''_test\.go$''']
+regexes = ['''\.c2lnbmF0dXJl$''']
+
+# Tests use made-up bearer tokens whose signature is the word "signature"
+# (base64 c2lnbmF0dXJl), to check that the sanitizer removes them.
+[[rules]]
+id = "jwt"
+[[rules.allowlists]]
+description = "made-up JWTs in tests"
+condition = "AND"
+paths = ['''_test\.go$''']
+regexes = ['''\.c2lnbmF0dXJl$''']
