@@ -175,6 +175,17 @@ func (s *Server) SetExtensions(extensions ...string) {
 	s.exts = extensions
 }
 
+// Config returns a copy of an instance's config.
+func (s *Server) Config(project, name string) (map[string]string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	i, ok := s.instances[project+"/"+name]
+	if !ok {
+		return nil, false
+	}
+	return maps.Clone(i.Config), true
+}
+
 // BumpETag changes an instance's ETag without changing its config, as an
 // LXD-internal volatile update would.
 func (s *Server) BumpETag(project, name string) {
@@ -314,6 +325,11 @@ func (s *Server) instance(w http.ResponseWriter, r *http.Request, project, name 
 			}
 		}
 		i.etagSeq++
+		if r.Method == http.MethodPatch {
+			// synchronous, as LXD 6.9 answered in the lab
+			writeSync(w, map[string]any{}, "")
+			return
+		}
 		s.nextOp++
 		op := fmt.Sprintf("/1.0/operations/op-%d", s.nextOp)
 		w.Header().Set("Location", op)

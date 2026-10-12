@@ -154,11 +154,30 @@ var (
 	}
 )
 
+// The expectations of config writes (server config set, unset and race,
+// PRS-21 to PRS-23), from what LXD 6.9 answered in the lab: PATCH is
+// synchronous, PUT answers with an operation, which --wait waits for.
+var (
+	InstancePatch = Expectation{
+		Name: "instance-patch", Method: http.MethodPatch, Path: "/1.0/instances/{name}",
+		Status: []int{http.StatusOK}, Envelope: Sync,
+	}
+	InstancePut = Expectation{
+		Name: "instance-put", Method: http.MethodPut, Path: "/1.0/instances/{name}",
+		Status: []int{http.StatusAccepted}, Envelope: Async,
+	}
+	OperationWait = Expectation{
+		Name: "operation-wait", Method: http.MethodGet, Path: "/1.0/operations/{id}/wait",
+		Status: []int{http.StatusOK}, Envelope: Sync, Fields: []string{"status", "status_code"},
+	}
+)
+
 // Table lists every expectation, for documentation and tests.
 var Table = []Expectation{
 	Server, IdentityCurrent, Instance, InstanceFull,
 	DevLXDRoot, DevLXDServer, DevLXDConfig, DevLXDConfigKey, DevLXDMetadata, DevLXDDevices,
 	FileRead, FileHead, FileDir,
+	InstancePatch, InstancePut, OperationWait,
 }
 
 // Denied returns the expectation of the same call when a 403 is the expected
@@ -167,6 +186,15 @@ func (e Expectation) Denied() Expectation {
 	return Expectation{
 		Name: e.Name + "+denied", Method: e.Method, Path: e.Path, Query: e.Query,
 		Status: []int{http.StatusForbidden}, Envelope: Error,
+	}
+}
+
+// Precondition returns the expectation of the same call when a 412 is the
+// expected result (--if-match stale): an error envelope, nothing else.
+func (e Expectation) Precondition() Expectation {
+	return Expectation{
+		Name: e.Name + "+412", Method: e.Method, Path: e.Path, Query: e.Query,
+		Status: []int{http.StatusPreconditionFailed}, Envelope: Error,
 	}
 }
 
