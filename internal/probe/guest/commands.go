@@ -52,24 +52,3 @@ type DevlxdWatch struct {
 func (cmd *DevlxdWatch) Execute(args []string) error {
 	return probe.NotImplemented("guest devlxd watch")
 }
-
-// DevlxdAccess is guest devlxd access --as-uid N[,N...].
-type DevlxdAccess struct {
-	probe.GuestCommand
-	AsUID probe.UIDList `long:"as-uid" description:"Comma-separated uids to try." required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *DevlxdAccess) Execute(args []string) error {
-	return probe.NotImplemented("guest devlxd access")
-}
-
-// DevlxdAccessChild is the hidden child of guest devlxd access.
-type DevlxdAccessChild struct {
-	probe.GuestCommand
-}
-
-// Execute runs the command.
-func (cmd *DevlxdAccessChild) Execute(args []string) error {
-	return probe.NotImplemented("guest devlxd access-child")
-}
