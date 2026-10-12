@@ -34,6 +34,7 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 12, 2026 (chunk 4.5, docs) | *Lab setup* points to the lab spec (`test/lab/lab.sh`) instead of indicative `lxc` commands; the lab matrix adds the `outsider` identity; the delivery plan names its lab checkpoints (S0-1, S0-2, G-L1, G-L2, G-L4, G-L14). |
 | Oct 12, 2026 (chunk 5) | devLXD before the guest verbs: two response formats (plain, as devLXD's own, or the LXD envelope) recorded and accepted by the expectations (PRF-10, PRE-06); a config key's bare value redacted by its name (PRF-10); raw access through `DoHTTP` with the agent's limits (PRF-14); `/1.0/events` probed with a short plain `GET` (PRF-11); `--record` in the guest environment (PRE-10); the guest code is Linux-only, as the binary (PRN-22). |
 | Oct 12, 2026 (chunk 6) | `devlxd access` takes `--path` and its child reports statuses only (PRF-13); `rm` may remove anything under the lab directory and, under the SPIRE directory, only what `put` marked (PRF-20, PRF-22); the layout's symlink points outside the lab directory (PRF-23); guest writes go through `os.Root` (PRN-05); L4 also tries `cloud-init.user-data`. |
+| Oct 12, 2026 (chunk 7) | A file's content never reaches records or artifacts, and fixtures keep it only under the lab directory (PRS-35, PRE-10); `file stat` also records size and hash (PRS-30); `file get` records a body over the limit (PRS-31); L1 runs its server steps as `files`, once as `read`, with `--record`. |
 
 ## Overview
 
@@ -96,7 +97,7 @@ Working runs write to `--evidence-dir` (default `./evidence`). Sanitized evidenc
 
 | ID | Requirement |
 |---|---|
-| PRE-10 | With `--record DIR`, every HTTP exchange of the `server` environment is stored, after sanitization, as `DIR/<lxd-version>/NNNN-SS-<method>-<path>.request.json` and `.response.json`, where `NNNN` is the record number and `SS` the exchange's sequence within the command. The request holds method, path, query, headers and body; the response status, headers and body (JSON bodies as JSON, others as text). The replaying fake matches on method, path and query (PRT-10). Fixtures live only under `DIR`, not in the run directory. In the `guest` environment, `--record DIR` stores the devLXD exchanges the same way, as `DIR/devlxd/NNNN-SS-<method>-<path>.*`: the guest cannot learn the LXD version through devLXD, so whoever collects them files them by server version (the lab: `test/fixtures/<lxd-version>/devlxd/<instance>/`). |
+| PRE-10 | With `--record DIR`, every HTTP exchange of the `server` environment is stored, after sanitization, as `DIR/<lxd-version>/NNNN-SS-<method>-<path>.request.json` and `.response.json`, where `NNNN` is the record number and `SS` the exchange's sequence within the command. The request holds method, path, query, headers and body; the response status, headers and body (JSON bodies as JSON, others as text). The replaying fake matches on method, path and query (PRT-10). Fixtures live only under `DIR`, not in the run directory. In the `guest` environment, `--record DIR` stores the devLXD exchanges the same way, as `DIR/devlxd/NNNN-SS-<method>-<path>.*`: the guest cannot learn the LXD version through devLXD, so whoever collects them files them by server version (the lab: `test/fixtures/<lxd-version>/devlxd/<instance>/`). A files-API response body is kept only for paths under `/run/lxd-probe/` (PRS-35). |
 | PRE-11 | Fixtures include the error cases 403, 404, 412 and the `operation` envelopes (sync/async/error), which the lab runbooks provoke on purpose. |
 | PRE-12 | A fixture set can be replayed by the fake LXD API of the test suite (PRT-10) with no network. |
 
@@ -226,11 +227,12 @@ All verbs in this subsection require `--allow-write --lab`, and only touch keys 
 
 | ID | Requirement |
 |---|---|
-| PRS-30 | `server file stat NAME PATH` performs `GET /1.0/instances/NAME/files?path=PATH` (with and without body reading as appropriate) and records **all** response headers, in particular the `X-LXD-uid`, `X-LXD-gid`, `X-LXD-mode`, `X-LXD-type` family, with their raw values. No header name is assumed: the verb dumps every `X-LXD-*` header found (resolves the "header names unverified" note of the attestor spec). |
-| PRS-31 | `server file get NAME PATH [--max-bytes N]` reads the content with a limit reader and records size, hash, and latency. The `--max-bytes` default is 1 MiB. |
+| PRS-30 | `server file stat NAME PATH` performs `GET /1.0/instances/NAME/files?path=PATH` and records **all** response headers, in particular the `X-LXD-uid`, `X-LXD-gid`, `X-LXD-mode`, `X-LXD-type` family, with their raw values, and the body's size and SHA-256. No header name is assumed: the verb dumps every `X-LXD-*` header found (resolves the "header names unverified" note of the attestor spec). |
+| PRS-31 | `server file get NAME PATH [--max-bytes N]` reads the content with a limit reader and records size, hash, and latency. The `--max-bytes` default is 1 MiB; a body over it is recorded (PRS-34), not a failure. |
 | PRS-32 | `server file head NAME PATH` tries `HEAD` and records whether metadata is obtainable without the body. |
 | PRS-33 | `server file dir NAME PATH` lists a directory and records what the API returns for a directory, symlink target, or special file. |
 | PRS-34 | Behaviour for a missing file (404 body), a permission-denied file, an oversize file (`--max-bytes` exceeded) and a stopped or frozen instance is recorded verbatim. |
+| PRS-35 | A file's content never reaches records or artifacts: the files API can return anything the identity may read, a real proof value included. They hold its size and SHA-256; a directory listing, which is metadata, is kept. Under `--record`, fixtures keep the content of files under `/run/lxd-probe/` (made by the lab) and replace any other with a placeholder giving its size and SHA-256 (PRE-10). |
 
 ### Permissions and identities (gates L9, L13)
 
@@ -427,8 +429,8 @@ Each runbook gives the question, the matrix cells, the commands, the evidence, a
 
 **Procedure:**
 1. In the guest: `$G preflight`, `$G idmap show`, `$G file layout`, `$G file put /run/lxd-probe/proof --mode 0600`.
-2. On the server: `$S instance show NAME`, `$S file stat NAME /run/lxd-probe/proof`, and the same for each layout item.
-3. Offline: `lxd-probe util idmap check <instance record> <preflight record>`, `lxd-probe util idmap translate ...`.
+2. On the server, as `files` (the least privilege the attestor uses for `file_pull`): `$S instance show NAME`, `$S file stat NAME /run/lxd-probe/proof`, the same for each layout item, `file get`, `file head` and `file dir` on them, with `--record`; and once as `read`, to record the 403 of an identity without `can_access_files`.
+3. Offline, on the committed records: `lxd-probe util idmap check <instance record> <preflight record>`, `lxd-probe util idmap translate ...`.
 
 **Decision rules:**
 - Header names found → update attestor spec *Server-side plugin → LXD integration → Minimal API contract* with the exact names and check that the SDK's `GetInstanceFile` reads the same headers; remove `[V:L1]` tag.
