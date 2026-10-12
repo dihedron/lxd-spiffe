@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "id": "server/0008",
+  "time": "2026-10-12T18:16:00.875319772Z",
+  "tool_version": "0c2d75c",
+  "env": "server",
+  "verb": "file get",
+  "args": [
+    "v-alpine",
+    "/run/lxd-probe/proof",
+    "--max-bytes",
+    "1048576"
+  ],
+  "gate": "L1",
+  "cell": "lxd5-v-alpine",
+  "outcome": "ok",
+  "duration_ms": 26,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.latency_ms",
+      "value": 11
+    },
+    {
+      "key": "file.size",
+      "value": 37
+    },
+    {
+      "key": "file.sha256",
+      "value": "7ca1f01aafa2247ddccc8defa2d0fbe9ae5fb415203ef1072546976314e15610"
+    }
+  ],
+  "raw": [
+    "artifacts/0008-server.json",
+    "artifacts/0008-file.json"
+  ]
+}

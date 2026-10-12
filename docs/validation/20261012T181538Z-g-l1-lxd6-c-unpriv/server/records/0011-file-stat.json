@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "id": "server/0011",
+  "time": "2026-10-12T18:16:04.370468657Z",
+  "tool_version": "0c2d75c",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "c-unpriv",
+    "/run/lxd-probe/proof",
+    "--expect-denied"
+  ],
+  "gate": "L1",
+  "cell": "lxd6-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 22,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "file+denied"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 403
+    },
+    {
+      "key": "file.headers",
+      "value": {}
+    },
+    {
+      "key": "file.error",
+      "value": "Forbidden"
+    }
+  ],
+  "raw": [
+    "artifacts/0011-server.json",
+    "artifacts/0011-file.json"
+  ]
+}

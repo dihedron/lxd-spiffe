@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "server/0002",
+  "time": "2026-10-12T18:15:57.313077746Z",
+  "tool_version": "0c2d75c",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "v-debian",
+    "/run/lxd-probe/proof"
+  ],
+  "gate": "L1",
+  "cell": "lxd5-v-debian",
+  "outcome": "ok",
+  "duration_ms": 29,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0600"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-12 18:15:57 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "file.size",
+      "value": 37
+    },
+    {
+      "key": "file.sha256",
+      "value": "becebce7af1ae92d3f57d573157c9f76cf59dc7608a99c35756752ae2fd041e0"
+    }
+  ],
+  "raw": [
+    "artifacts/0002-server.json",
+    "artifacts/0002-file.json"
+  ]
+}
