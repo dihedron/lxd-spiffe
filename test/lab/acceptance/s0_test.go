@@ -146,11 +146,7 @@ func TestS02LabZeroGuest(t *testing.T) {
 // test/fixtures/<lxd-version>/devlxd/<instance>/ with its devLXD fixtures.
 func (l *lab) collectGuest(t *testing.T, server, inst, runID, staging string) {
 	t.Helper()
-	validation := filepath.Join(l.repo, "docs", "validation", runID)
-	if err := copyTree(staging, validation, func(top string) bool { return top != "fixtures" }); err != nil {
-		t.Fatalf("collecting the evidence: %v", err)
-	}
-	l.sanitizeCheck(t, validation)
+	validation := l.collectRun(t, runID, staging)
 	version := l.env.Servers[server].Version
 	if version == "" || strings.ContainsAny(version, `/\`) {
 		t.Fatalf("server %s: no usable version in env.json: %q", server, version)
@@ -164,6 +160,18 @@ func (l *lab) collectGuest(t *testing.T, server, inst, runID, staging string) {
 	}
 	l.sanitizeCheck(t, dst)
 	t.Logf("collected: %s, %s", validation, dst)
+}
+
+// collectRun copies a sanitized run, without its fixtures, to
+// docs/validation/<run_id>/, checks it and returns its path.
+func (l *lab) collectRun(t *testing.T, runID, staging string) string {
+	t.Helper()
+	validation := filepath.Join(l.repo, "docs", "validation", runID)
+	if err := copyTree(staging, validation, func(top string) bool { return top != "fixtures" }); err != nil {
+		t.Fatalf("collecting the evidence: %v", err)
+	}
+	l.sanitizeCheck(t, validation)
+	return validation
 }
 
 // sanitize writes the sanitized copy of the run dir to out (util sanitize
