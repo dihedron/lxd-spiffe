@@ -33,6 +33,7 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 12, 2026 (chunk 4.5, host) | `run.json` records the host name as `redacted` unless `--record-host` (environment `LXD_PROBE_RECORD_HOST=true`) is given (PRE-03, global flags): the operator's machine name is not lab evidence, and committed evidence should not carry it by default. |
 | Oct 12, 2026 (chunk 4.5, docs) | *Lab setup* points to the lab spec (`test/lab/lab.sh`) instead of indicative `lxc` commands; the lab matrix adds the `outsider` identity; the delivery plan names its lab checkpoints (S0-1, S0-2, G-L1, G-L2, G-L4, G-L14). |
 | Oct 12, 2026 (chunk 5) | devLXD before the guest verbs: two response formats (plain, as devLXD's own, or the LXD envelope) recorded and accepted by the expectations (PRF-10, PRE-06); a config key's bare value redacted by its name (PRF-10); raw access through `DoHTTP` with the agent's limits (PRF-14); `/1.0/events` probed with a short plain `GET` (PRF-11); `--record` in the guest environment (PRE-10); the guest code is Linux-only, as the binary (PRN-22). |
+| Oct 12, 2026 (chunk 6) | `devlxd access` takes `--path` and its child reports statuses only (PRF-13); `rm` may remove anything under the lab directory and, under the SPIRE directory, only what `put` marked (PRF-20, PRF-22); the layout's symlink points outside the lab directory (PRF-23); guest writes go through `os.Root` (PRN-05); L4 also tries `cloud-init.user-data`. |
 
 ## Overview
 
@@ -142,6 +143,7 @@ Build: same module, toolchain and goreleaser configuration as the plugins (attes
 | PRN-02 | Writes are limited to: config keys `user.lxd-probe.*` (and `user.spire.challenge.*` with `--allow-spire-keys`); guest paths under `/run/lxd-probe/` (and `/run/spire/lxd/` with `--allow-spire-paths`). Any other target is rejected before a request is sent. |
 | PRN-03 | The tool never performs state-changing instance operations (start, stop, freeze, restore, delete, snapshot, copy, move, publish). Experiments requiring them (gate L6) are performed by the operator with `lxc`, and observed with `server instance watch` and `util note`. |
 | PRN-04 | With `--dry-run`, a write verb prints the request it would send (or, in the guest, the file operation) and exits 0 without acting. Read-only verbs ignore it. |
+| PRN-05 | Guest writes (`file put`, `rm`, `layout`) go through an `os.Root` opened on the lab directory, so that a symlink or `..` planted in the path cannot make them touch anything outside it, whatever the lexical check of PRN-02 saw. The lab directory is created mode 0700 when missing. |
 
 ### Credentials and logging
 
@@ -171,17 +173,17 @@ Negative privilege tests (for example, "a client with only `can_view` receives 4
 | PRF-10 | `guest devlxd get PATH` performs `GET` on the devLXD socket and records status, headers, body (sanitized), latency, and the response format: devLXD's own (a plain body: JSON, or text for a single config key, the meta-data and errors) or the LXD envelope (which the SDK expects over vsock). Paths used by runbooks: `/`, `/1.0`, `/1.0/config`, `/1.0/config/<key>`, `/1.0/meta-data`, `/1.0/devices`, `/1.0/events` (when available). The body of a successful `/1.0/config/<key>` is the bare value, so it is redacted by the key's name (PRE-03), not only by the JSON sanitizer: a `cloud-init.*` or `user.*` value never reaches evidence or fixtures. An error response carries a message, not the value, and stays readable. |
 | PRF-11 | `guest devlxd dump` walks all known read paths (PRF-10 list, and `/1.0/config/<key>` for every key `/1.0/config` lists) and stores one record per path. Unknown or failing paths are recorded with their status, not skipped. `/1.0/events` streams: it gets a plain `GET` with a 2-second deadline, and its status and headers (or the timeout) are recorded, not the stream. |
 | PRF-12 | `guest devlxd watch KEY [--for DUR]` polls `/1.0/config/KEY` (and uses the events endpoint when it exists) and records timestamps of each change, to measure propagation delay after a host-side `config set` (gate L2). |
-| PRF-13 | `guest devlxd access --as-uid N[,N...]` performs the preflight `GET /1.0` as each uid and records allowed/denied (gate L4). It requires root in the guest. For each uid, the probe re-executes its own binary (`/proc/self/exe`) with `SysProcAttr.Credential` set to that uid (and its primary gid, or the same number when the uid has no passwd entry), running the hidden command `guest devlxd access-child`. The child performs the call and writes its result as JSON on stdout; the parent writes the record. Failure to switch uid or to start the child is recorded as an observation. |
+| PRF-13 | `guest devlxd access --as-uid N[,N...] [--path P]...` performs `GET` of each path (default `/1.0`) as each uid and records allowed/denied (gate L4). It requires root in the guest. For each uid, the probe re-executes its own binary (`/proc/self/exe`) with `SysProcAttr.Credential` set to that uid (and its primary gid, or the same number when the uid has no passwd entry), running the hidden command `guest devlxd access-child`. The child performs the calls and writes, as JSON on stdout, only each call's status, format or error, never a body, so that no value read as another uid reaches evidence; the parent writes the record. Failure to switch uid or to start the child is recorded as an observation. |
 | PRF-14 | The devLXD client is `internal/devlxd`, built on the SDK's `ConnectDevLXD`. Calls go through the SDK connection's raw HTTP access (`DoHTTP`), with a recording transport as in `internal/lxd`, so that every path of PRF-10 is reachable, including those the SDK has no typed method for, and the response is recorded as received in either format (the SDK's `RawQuery` parses it first). It applies the agent's limits (attestor spec FR-A3): 5 s per request, response bodies ≤ 64 KiB. The guest code may use Linux-only interfaces (`/proc`, credentials): the probe is built for Linux only (PRN-22). |
 
 ### Local files (proof path rehearsal)
 
 | ID | Requirement |
 |---|---|
-| PRF-20 | `guest file put PATH --content-file F [--mode 0600]` writes a file under `/run/lxd-probe/` (or under `/run/spire/lxd/` with `--allow-spire-paths`, PRN-02) using `O_CREAT\|O_EXCL`, mode as requested, and records the resulting `stat` (uid, gid, mode, size, mtime, inode). |
+| PRF-20 | `guest file put PATH --content-file F [--mode 0600]` writes a file under `/run/lxd-probe/` (or under `/run/spire/lxd/` with `--allow-spire-paths`, PRN-02) using `O_CREAT\|O_EXCL`, mode as requested, and records the resulting `stat` (uid, gid, mode, size, mtime, inode). Under `/run/spire/lxd/` it also writes a marker, `.<name>.lxd-probe`, next to the file (PRF-22). |
 | PRF-21 | `guest file stat PATH` records `lstat` (so symlinks are visible) and `stat`. |
-| PRF-22 | `guest file rm PATH` removes a file created by `lxd-probe` only (checks a sidecar marker or the lab directory). |
-| PRF-23 | `guest file layout` creates the set of "hostile layouts" used by L1: a regular file, a symlink to a file, a directory, a file with mode 0666, a file owned by another uid (when root). Used with `server file stat` (*Server environment → Files API*) to learn what the files API reports for each. Created only under `/run/lxd-probe/layout/`. |
+| PRF-22 | `guest file rm PATH` removes a file `lxd-probe` may own: anything but a directory under `/run/lxd-probe/`, the probe's own directory; under `/run/spire/lxd/` (with `--allow-spire-paths`) only a file with the marker `put` wrote, and the marker with it. |
+| PRF-23 | `guest file layout` creates the set of "hostile layouts" used by L1: a regular file, a symlink to a file outside the lab directory (`/etc/hostname`: a proof path redirected elsewhere, the attack on `file_pull`), a directory, a file with mode 0666, a file owned by another uid (uid 1000, when root). Used with `server file stat` (*Server environment → Files API*) to learn what the files API reports for each. Created only under `/run/lxd-probe/layout/`. |
 
 ### idmap
 
@@ -330,6 +332,7 @@ Each verb also accepts the global flags and the flags of its environment. Positi
 | `server info` | `--probe-tls12` | bool | also try a TLS 1.2 handshake and record the result (PRS-03) |
 | `guest devlxd watch KEY` | `--for` | duration, 60s | how long to watch (PRF-12) |
 | `guest devlxd access` | `--as-uid` | list of uids, required | uids to try (PRF-13) |
+| `guest devlxd access` | `--path` | devLXD path, repeatable; default `/1.0` | paths to try as each uid (PRF-13) |
 | `guest file put PATH` | `--content-file` | path, required | content to write; `-` reads stdin |
 | | `--mode` | octal, 0600 | file mode |
 | `server instance watch NAME` | `--for` | duration, 10m | how long to watch (PRS-11) |
@@ -448,7 +451,7 @@ Each runbook gives the question, the matrix cells, the commands, the evidence, a
 
 #### L4 — Who can open `/dev/lxd/sock`
 
-**Commands:** `$G preflight`, `$G devlxd access --as-uid 0,1000,65534` in an unprivileged container, a privileged container, and a VM. **Decision:** if non-root users can open the socket, `config_push` challenge data is readable by any local process → FR/SEC for `config_push` states that the challenge is not secret and that proof strength relies on the nonce binding only; add the corresponding threat entry. If only root can, record it as a control.
+**Commands:** `$G preflight`, `$G devlxd access --as-uid 0,1000,65534 --path /1.0 --path /1.0/config/cloud-init.user-data` in an unprivileged container, a privileged container, and a VM. The second path answers whether a non-root process can read cloud-init data through devLXD (attestor spec *Alternatives → Keys delivered through cloud-init*). **Decision:** if non-root users can open the socket, `config_push` challenge data is readable by any local process → FR/SEC for `config_push` states that the challenge is not secret and that proof strength relies on the nonce binding only; add the corresponding threat entry. If only root can, record it as a control.
 
 #### L5 — Withdrawn
 
