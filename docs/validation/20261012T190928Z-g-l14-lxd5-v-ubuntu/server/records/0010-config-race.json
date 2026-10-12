@@ -1,0 +1,191 @@
+{
+  "schema": 1,
+  "id": "server/0010",
+  "time": "2026-10-12T19:09:31.236252611Z",
+  "tool_version": "4d3c1d1",
+  "env": "server",
+  "verb": "config race",
+  "args": [
+    "v-ubuntu",
+    "user.lxd-probe.l14-race",
+    "--writers",
+    "8",
+    "--retries",
+    "10"
+  ],
+  "gate": "L14",
+  "cell": "lxd5-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 397,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "instance",
+    "instance"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "before.http_status",
+      "value": 200
+    },
+    {
+      "key": "race.events",
+      "value": [
+        {
+          "at_ms": 63,
+          "attempt": 0,
+          "status": 200,
+          "writer": 7
+        },
+        {
+          "at_ms": 64,
+          "attempt": 0,
+          "status": 412,
+          "writer": 0
+        },
+        {
+          "at_ms": 64,
+          "attempt": 0,
+          "status": 412,
+          "writer": 5
+        },
+        {
+          "at_ms": 65,
+          "attempt": 0,
+          "status": 412,
+          "writer": 3
+        },
+        {
+          "at_ms": 66,
+          "attempt": 0,
+          "status": 412,
+          "writer": 1
+        },
+        {
+          "at_ms": 67,
+          "attempt": 0,
+          "status": 412,
+          "writer": 2
+        },
+        {
+          "at_ms": 67,
+          "attempt": 0,
+          "status": 412,
+          "writer": 4
+        },
+        {
+          "at_ms": 68,
+          "attempt": 0,
+          "status": 412,
+          "writer": 6
+        },
+        {
+          "at_ms": 135,
+          "attempt": 1,
+          "status": 200,
+          "writer": 3
+        },
+        {
+          "at_ms": 173,
+          "attempt": 1,
+          "status": 200,
+          "writer": 0
+        },
+        {
+          "at_ms": 197,
+          "attempt": 1,
+          "status": 200,
+          "writer": 2
+        },
+        {
+          "at_ms": 199,
+          "attempt": 1,
+          "status": 412,
+          "writer": 6
+        },
+        {
+          "at_ms": 200,
+          "attempt": 1,
+          "status": 412,
+          "writer": 1
+        },
+        {
+          "at_ms": 200,
+          "attempt": 1,
+          "status": 412,
+          "writer": 5
+        },
+        {
+          "at_ms": 201,
+          "attempt": 1,
+          "status": 412,
+          "writer": 4
+        },
+        {
+          "at_ms": 257,
+          "attempt": 2,
+          "status": 200,
+          "writer": 1
+        },
+        {
+          "at_ms": 258,
+          "attempt": 2,
+          "status": 412,
+          "writer": 6
+        },
+        {
+          "at_ms": 285,
+          "attempt": 2,
+          "status": 200,
+          "writer": 4
+        },
+        {
+          "at_ms": 309,
+          "attempt": 2,
+          "status": 200,
+          "writer": 5
+        },
+        {
+          "at_ms": 369,
+          "attempt": 3,
+          "status": 200,
+          "writer": 6
+        }
+      ]
+    },
+    {
+      "key": "race.totals",
+      "value": {
+        "200": 8,
+        "412": 12,
+        "exhausted": 0,
+        "writes": 20
+      }
+    },
+    {
+      "key": "after.http_status",
+      "value": 200
+    },
+    {
+      "key": "race.final",
+      "value": {
+        "user.lxd-probe.l14-race": "w6"
+      }
+    },
+    {
+      "key": "race.consistent",
+      "value": true
+    }
+  ],
+  "raw": [
+    "artifacts/0010-server.json",
+    "artifacts/0010-before.json",
+    "artifacts/0010-after.json"
+  ]
+}

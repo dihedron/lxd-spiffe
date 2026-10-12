@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "id": "server/0011",
+  "time": "2026-10-12T19:09:33.957028731Z",
+  "tool_version": "4d3c1d1",
+  "env": "server",
+  "verb": "config set",
+  "args": [
+    "c-unpriv",
+    "user.lxd-probe.l14-denied",
+    "x",
+    "--method",
+    "patch",
+    "--if-match",
+    "auto"
+  ],
+  "gate": "L14",
+  "cell": "lxd6-c-unpriv",
+  "outcome": "unexpected",
+  "duration_ms": 38,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "instance",
+    "instance-patch",
+    "instance"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "before.http_status",
+      "value": 200
+    },
+    {
+      "key": "write.http_status",
+      "value": 403
+    },
+    {
+      "key": "expectation.status",
+      "value": {
+        "expectation": "instance-patch",
+        "got": 403,
+        "want": [
+          200
+        ]
+      }
+    },
+    {
+      "key": "expectation.body.type",
+      "value": {
+        "expectation": "instance-patch",
+        "got": "error",
+        "want": "sync"
+      }
+    },
+    {
+      "key": "write.duration_ms",
+      "value": 8
+    },
+    {
+      "key": "write.error",
+      "value": "Forbidden"
+    },
+    {
+      "key": "after.http_status",
+      "value": 200
+    },
+    {
+      "key": "config.after",
+      "value": {}
+    },
+    {
+      "key": "instance.status_before",
+      "value": "Running"
+    },
+    {
+      "key": "instance.status_after",
+      "value": "Running"
+    },
+    {
+      "key": "instance.restarted",
+      "value": false
+    }
+  ],
+  "raw": [
+    "artifacts/0011-server.json",
+    "artifacts/0011-before.json",
+    "artifacts/0011-write.json",
+    "artifacts/0011-after.json"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "method": "PATCH",
+  "path": "/1.0/instances/c-unpriv",
+  "query": "project=default",
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "If-Match": [
+      "\"4753801063bc65d6beebc777afc6e2dc1e40f3de4048dc18af2154ab620363c2\""
+    ],
+    "User-Agent": [
+      "lxd-spiffe/4d3c1d1"
+    ]
+  },
+  "body": {
+    "config": {
+      "user.lxd-probe.l14-denied": "x"
+    }
+  }
+}

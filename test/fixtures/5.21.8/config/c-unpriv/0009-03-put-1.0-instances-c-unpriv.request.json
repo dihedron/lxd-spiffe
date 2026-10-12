@@ -1,0 +1,48 @@
+{
+  "method": "PUT",
+  "path": "/1.0/instances/c-unpriv",
+  "query": "project=default",
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "If-Match": [
+      "\"c31c276c0063ef91e67fbb49672745134ca2fa4f8762ec60842f05d019ae81f7\""
+    ],
+    "User-Agent": [
+      "lxd-spiffe/4d3c1d1"
+    ]
+  },
+  "body": {
+    "architecture": "x86_64",
+    "config": {
+      "cloud-init.user-data": "[redacted]",
+      "image.architecture": "amd64",
+      "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+      "image.label": "release",
+      "image.os": "ubuntu",
+      "image.release": "noble",
+      "image.serial": "20260926",
+      "image.type": "squashfs",
+      "image.version": "24.04",
+      "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+      "volatile.cloud-init.instance-id": "9e687c81-f0ee-4d10-ac3a-aed64b8ad303",
+      "volatile.eth0.host_name": "veth3e86f24e",
+      "volatile.eth0.hwaddr": "mac-1",
+      "volatile.idmap.base": "0",
+      "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+      "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+      "volatile.last_state.idmap": "[]",
+      "volatile.last_state.power": "RUNNING",
+      "volatile.uuid": "3cb23dd6-564e-4840-8717-0489564dd14a",
+      "volatile.uuid.generation": "3cb23dd6-564e-4840-8717-0489564dd14a"
+    },
+    "description": "",
+    "devices": {},
+    "ephemeral": false,
+    "profiles": [
+      "default"
+    ],
+    "stateful": false
+  }
+}
