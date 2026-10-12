@@ -1,0 +1,162 @@
+{
+  "schema": 1,
+  "id": "guest/0001",
+  "time": "2026-10-12T19:39:31.826535989Z",
+  "tool_version": "0ed0eb1",
+  "env": "guest",
+  "verb": "devlxd watch",
+  "args": [
+    "user.lxd-probe.l2",
+    "--for",
+    "25s"
+  ],
+  "gate": "L2",
+  "cell": "lxd5-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 25048,
+  "observations": [
+    {
+      "key": "watch.key",
+      "value": "user.lxd-probe.l2"
+    },
+    {
+      "key": "watch.started",
+      "value": "2026-10-12T19:39:31.826969875Z"
+    },
+    {
+      "key": "watch.initial",
+      "value": {
+        "present": false
+      }
+    },
+    {
+      "key": "watch.events_available",
+      "value": true
+    },
+    {
+      "key": "watch.polls",
+      "value": 219
+    },
+    {
+      "key": "watch.changes",
+      "value": [
+        {
+          "at": "2026-10-12T19:39:35.494594842Z",
+          "present": true,
+          "source": "event",
+          "value": "v1"
+        },
+        {
+          "at": "2026-10-12T19:39:35.502395909Z",
+          "present": true,
+          "source": "poll",
+          "value": "v1"
+        },
+        {
+          "at": "2026-10-12T19:39:37.580501747Z",
+          "present": true,
+          "source": "event",
+          "value": "v2"
+        },
+        {
+          "at": "2026-10-12T19:39:37.673165276Z",
+          "present": true,
+          "source": "poll",
+          "value": "v2"
+        },
+        {
+          "at": "2026-10-12T19:39:39.665398054Z",
+          "present": true,
+          "source": "event",
+          "value": "v3"
+        },
+        {
+          "at": "2026-10-12T19:39:39.724271994Z",
+          "present": true,
+          "source": "poll",
+          "value": "v3"
+        },
+        {
+          "at": "2026-10-12T19:39:41.754296455Z",
+          "present": true,
+          "source": "event",
+          "value": "v4"
+        },
+        {
+          "at": "2026-10-12T19:39:41.773242319Z",
+          "present": true,
+          "source": "poll",
+          "value": "v4"
+        },
+        {
+          "at": "2026-10-12T19:39:43.83217986Z",
+          "present": true,
+          "source": "event",
+          "value": "v5"
+        },
+        {
+          "at": "2026-10-12T19:39:43.838515828Z",
+          "present": true,
+          "source": "poll",
+          "value": "v5"
+        }
+      ]
+    },
+    {
+      "key": "watch.events",
+      "value": [
+        {
+          "at": "2026-10-12T19:39:35.494594842Z",
+          "metadata": {
+            "key": "user.lxd-probe.l2",
+            "old_value": "",
+            "value": "v1"
+          },
+          "sent": "2026-10-12T19:39:35.49419475Z",
+          "type": "config"
+        },
+        {
+          "at": "2026-10-12T19:39:37.580501747Z",
+          "metadata": {
+            "key": "user.lxd-probe.l2",
+            "old_value": "v1",
+            "value": "v2"
+          },
+          "sent": "2026-10-12T19:39:37.579821836Z",
+          "type": "config"
+        },
+        {
+          "at": "2026-10-12T19:39:39.665398054Z",
+          "metadata": {
+            "key": "user.lxd-probe.l2",
+            "old_value": "v2",
+            "value": "v3"
+          },
+          "sent": "2026-10-12T19:39:39.66485138Z",
+          "type": "config"
+        },
+        {
+          "at": "2026-10-12T19:39:41.754296455Z",
+          "metadata": {
+            "key": "user.lxd-probe.l2",
+            "old_value": "v3",
+            "value": "v4"
+          },
+          "sent": "2026-10-12T19:39:41.753998582Z",
+          "type": "config"
+        },
+        {
+          "at": "2026-10-12T19:39:43.83217986Z",
+          "metadata": {
+            "key": "user.lxd-probe.l2",
+            "old_value": "v4",
+            "value": "v5"
+          },
+          "sent": "2026-10-12T19:39:43.83196985Z",
+          "type": "config"
+        }
+      ]
+    }
+  ],
+  "raw": null
+}
