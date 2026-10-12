@@ -3,6 +3,8 @@ package evidence
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -226,4 +228,47 @@ func encode(t *testing.T, v any) string {
 		t.Fatal(err)
 	}
 	return string(b)
+}
+
+// TestRedactConfigBody checks that the bare value devLXD returns for a
+// config key is redacted by the key's name (probe spec PRF-10), in
+// fixtures too.
+func TestRedactConfigBody(t *testing.T) {
+	const secret = "#cloud-config\npassword: hunter2\n"
+	for path, redact := range map[string]bool{
+		"/1.0/config/cloud-init.user-data":    true,
+		"/1.0/config/user.secret":             true,
+		"/1.0/config/environment.TOKEN":       true,
+		"/1.0/config/user.lxd-probe.a":        false,
+		"/1.0/config/user.spire.challenge.n1": false,
+		"/1.0/config":                         false,
+		"/1.0/meta-data":                      false,
+	} {
+		got := string(RedactConfigBody(path, http.StatusOK, []byte(secret)))
+		if want := map[bool]string{true: Redacted, false: secret}[redact]; got != want {
+			t.Errorf("RedactConfigBody(%s) = %q; want %q", path, got, want)
+		}
+	}
+
+	// an error carries a message, not the value: it stays readable
+	const denied = "Access denied for non-root user"
+	if got := string(RedactConfigBody("/1.0/config/cloud-init.user-data", http.StatusUnauthorized, []byte(denied))); got != denied {
+		t.Errorf("error body = %q; want %q", got, denied)
+	}
+
+	dir := t.TempDir()
+	w := &FixtureWriter{Dir: dir, Sanitizer: NewSanitizer(NewAliases())}
+	if err := w.Write("devlxd", 1, 1, http.MethodGet, "/1.0/config/cloud-init.user-data", "", http.Header{}, nil, 200, http.Header{}, []byte(secret)); err != nil {
+		t.Fatal(err)
+	}
+	files, _ := filepath.Glob(filepath.Join(dir, "devlxd", "*.json"))
+	if len(files) != 2 {
+		t.Fatalf("fixture files: %v", files)
+	}
+	for _, f := range files {
+		data, _ := os.ReadFile(f)
+		if strings.Contains(string(data), "hunter2") {
+			t.Errorf("%s holds the value", filepath.Base(f))
+		}
+	}
 }

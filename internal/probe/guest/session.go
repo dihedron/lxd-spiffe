@@ -1,15 +1,20 @@
 package guest
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/dihedron/lxd-spiffe/internal/devlxd"
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
+	"github.com/dihedron/lxd-spiffe/internal/lxd"
 	"github.com/dihedron/lxd-spiffe/internal/probe"
 	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
+	"github.com/dihedron/lxd-spiffe/internal/probe/expect"
 )
 
 // session is one invocation of a guest verb: its run and its record being
@@ -24,6 +29,9 @@ type session struct {
 	// unexpected makes the outcome unexpected besides expectation.*
 	// observations.
 	unexpected bool
+
+	mu        sync.Mutex
+	exchanges []lxd.Exchange
 }
 
 // newSession opens the run of the guest environment and reserves the record
@@ -51,6 +59,62 @@ func (s *session) observe(key string, value any) {
 	s.rec.Observations = append(s.rec.Observations, evidence.Observation{Key: key, Value: value})
 }
 
+// finding adds an observation that makes the outcome unexpected.
+func (s *session) finding(key string, value any) {
+	s.observe(key, value)
+	s.unexpected = true
+}
+
+// connect opens the devLXD socket; every exchange is kept for --record.
+func (s *session) connect(ctx context.Context) (*devlxd.Client, error) {
+	return devlxd.Connect(ctx, devlxd.Config{Socket: s.opts.Socket, Recorder: func(x lxd.Exchange) {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		s.exchanges = append(s.exchanges, x)
+	}})
+}
+
+// call GETs path, stores the response as the artifact name (a redacted
+// key's bare value redacted, PRF-10) and records its status, format and
+// latency, checked against exp when not nil. It returns an error only when
+// no response was received.
+func (s *session) call(ctx context.Context, c *devlxd.Client, name, path string, exp *expect.Expectation) (*devlxd.Response, error) {
+	resp, err := c.Get(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+	body := evidence.RedactConfigBody(path, resp.Status, resp.Body)
+	if _, err := s.entry.ArtifactResponse(name, resp.Status, resp.Header, body); err != nil {
+		return nil, err
+	}
+	s.observe(name+".http_status", resp.Status)
+	s.observe(name+".format", string(resp.Format))
+	s.observe(name+".latency_ms", resp.Latency.Milliseconds())
+	if exp != nil {
+		s.rec.Expectations = append(s.rec.Expectations, exp.Name)
+		s.rec.Observations = append(s.rec.Observations, exp.Check(resp.Status, resp.Header, body)...)
+	}
+	resp.Body = body
+	return resp, nil
+}
+
+// writeFixtures stores the exchanges under --record, in DIR/devlxd/: the
+// guest cannot learn the LXD version (PRE-10).
+func (s *session) writeFixtures() error {
+	if s.opts.Record == "" {
+		return nil
+	}
+	w := &evidence.FixtureWriter{Dir: s.opts.Record, Sanitizer: s.run.Sanitizer}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, x := range s.exchanges {
+		if err := w.Write("devlxd", s.entry.Number, i+1, x.Method, x.Path, x.Query, x.RequestHeader, x.RequestBody, x.Status, x.ResponseHeader, x.ResponseBody); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // deviates reports whether an observation is an expectation deviation.
 func (s *session) deviates() bool {
 	for _, o := range s.rec.Observations {
@@ -74,6 +138,10 @@ func (s *session) finish(err error) error {
 	default:
 		s.rec.Outcome = evidence.OutcomeOK
 	}
+	if ferr := s.writeFixtures(); ferr != nil {
+		s.entry.Abort()
+		return ferr
+	}
 	if cerr := s.entry.Commit(&s.rec); cerr != nil {
 		s.entry.Abort()
 		return cerr
@@ -83,7 +151,7 @@ func (s *session) finish(err error) error {
 	}
 	switch {
 	case err != nil:
-		return exit.New(exit.Internal, fmt.Errorf("guest %s: %w", s.rec.Verb, err))
+		return probe.LXDError(fmt.Errorf("guest %s: %w", s.rec.Verb, err))
 	case s.opts.Strict && s.rec.Outcome == evidence.OutcomeUnexpected:
 		return exit.New(exit.Strict, fmt.Errorf("guest %s: unexpected outcome", s.rec.Verb))
 	}

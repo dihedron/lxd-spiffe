@@ -39,29 +39,6 @@ type Idmap struct {
 	Show IdmapShow `command:"show" description:"Record the parsed /proc/self/uid_map and gid_map (PRF-30)."`
 }
 
-// DevlxdGet is guest devlxd get PATH.
-type DevlxdGet struct {
-	probe.GuestCommand
-	Args struct {
-		Path string `positional-arg-name:"PATH" description:"devLXD path, e.g. /1.0/config."`
-	} `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *DevlxdGet) Execute(args []string) error {
-	return probe.NotImplemented("guest devlxd get")
-}
-
-// DevlxdDump is guest devlxd dump.
-type DevlxdDump struct {
-	probe.GuestCommand
-}
-
-// Execute runs the command.
-func (cmd *DevlxdDump) Execute(args []string) error {
-	return probe.NotImplemented("guest devlxd dump")
-}
-
 // DevlxdWatch is guest devlxd watch KEY.
 type DevlxdWatch struct {
 	probe.GuestCommand

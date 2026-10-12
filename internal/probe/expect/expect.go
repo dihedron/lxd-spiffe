@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/dihedron/lxd-spiffe/internal/devlxd"
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 )
 
@@ -34,9 +35,12 @@ type Expectation struct {
 	Headers []string
 	// Envelope is the expected envelope type: sync, async or error.
 	Envelope string
-	// Fields must be present in the envelope's metadata; nested fields are
-	// written with dots, as in environment.server_version.
+	// Fields must be present in the envelope's metadata (for DevLXD: in
+	// the content, whichever its format); nested fields are written with
+	// dots, as in environment.server_version.
 	Fields []string
+	// JSON requires a JSON body (DevLXD, where bodies may be text).
+	JSON bool
 }
 
 // Envelope types.
@@ -44,6 +48,9 @@ const (
 	Sync  = "sync"
 	Async = "async"
 	Error = "error"
+	// DevLXD is a devLXD response: its own plain format (the content
+	// itself, JSON or text) or an LXD envelope (PRF-10, PRE-06).
+	DevLXD = "devlxd"
 )
 
 // The expectations of the stage-0 server verbs.
@@ -93,8 +100,41 @@ var RequiredExtensions = []string{"projects", "instance_generation_id"}
 // server offers it (PRS-02).
 const IdentityExtension = "access_management"
 
+// The expectations of the devLXD reads (guest devlxd get and dump,
+// PRF-10), from what LXD 5.21 and 6.9 answered in the lab.
+var (
+	DevLXDRoot = Expectation{
+		Name: "devlxd-root", Method: http.MethodGet, Path: "/",
+		Status: []int{http.StatusOK}, Envelope: DevLXD, JSON: true,
+	}
+	DevLXDServer = Expectation{
+		Name: "devlxd-server", Method: http.MethodGet, Path: "/1.0",
+		Status: []int{http.StatusOK}, Envelope: DevLXD, JSON: true,
+		Fields: []string{"api_version", "instance_type", "location", "state"},
+	}
+	DevLXDConfig = Expectation{
+		Name: "devlxd-config", Method: http.MethodGet, Path: "/1.0/config",
+		Status: []int{http.StatusOK}, Envelope: DevLXD, JSON: true,
+	}
+	DevLXDConfigKey = Expectation{
+		Name: "devlxd-config-key", Method: http.MethodGet, Path: "/1.0/config/{key}",
+		Status: []int{http.StatusOK}, Envelope: DevLXD,
+	}
+	DevLXDMetadata = Expectation{
+		Name: "devlxd-meta-data", Method: http.MethodGet, Path: "/1.0/meta-data",
+		Status: []int{http.StatusOK}, Envelope: DevLXD,
+	}
+	DevLXDDevices = Expectation{
+		Name: "devlxd-devices", Method: http.MethodGet, Path: "/1.0/devices",
+		Status: []int{http.StatusOK}, Envelope: DevLXD, JSON: true,
+	}
+)
+
 // Table lists every expectation, for documentation and tests.
-var Table = []Expectation{Server, IdentityCurrent, Instance, InstanceFull}
+var Table = []Expectation{
+	Server, IdentityCurrent, Instance, InstanceFull,
+	DevLXDRoot, DevLXDServer, DevLXDConfig, DevLXDConfigKey, DevLXDMetadata, DevLXDDevices,
+}
 
 // Denied returns the expectation of the same call when a 403 is the expected
 // result (--expect-denied): status 403, an error envelope, nothing else.
@@ -139,6 +179,9 @@ func (e Expectation) Check(status int, header http.Header, body []byte) []eviden
 			add("header."+name, "present", "absent")
 		}
 	}
+	if e.Envelope == DevLXD {
+		return append(out, e.checkDevLXD(body)...)
+	}
 	var env struct {
 		Type     string          `json:"type"`
 		Metadata json.RawMessage `json:"metadata"`
@@ -163,6 +206,43 @@ func (e Expectation) Check(status int, header http.Header, body []byte) []eviden
 	}
 	for _, field := range e.Fields {
 		if !has(metadata, field) {
+			add("body."+field, "present", "absent")
+		}
+	}
+	return out
+}
+
+// checkDevLXD checks a devLXD body: an envelope must be a sync one with
+// the fields in its metadata; a plain body has them at the top level.
+func (e Expectation) checkDevLXD(body []byte) []evidence.Observation {
+	var out []evidence.Observation
+	add := func(key string, want, got any) {
+		out = append(out, evidence.Observation{Key: "expectation." + key, Value: Deviation{Expectation: e.Name, Want: want, Got: got}})
+	}
+	content := body
+	if devlxd.DetectFormat(body) == devlxd.FormatEnvelope {
+		var env struct {
+			Type     string          `json:"type"`
+			Metadata json.RawMessage `json:"metadata"`
+		}
+		_ = json.Unmarshal(body, &env) // DetectFormat decoded it already
+		if env.Type != Sync {
+			add("body.type", Sync, env.Type)
+		}
+		content = env.Metadata
+	}
+	if !e.JSON && len(e.Fields) == 0 {
+		return out
+	}
+	var v any
+	dec := json.NewDecoder(bytes.NewReader(content))
+	dec.UseNumber()
+	if err := dec.Decode(&v); err != nil {
+		add("body", "JSON", "not JSON")
+		return out
+	}
+	for _, field := range e.Fields {
+		if !has(v, field) {
 			add("body."+field, "present", "absent")
 		}
 	}

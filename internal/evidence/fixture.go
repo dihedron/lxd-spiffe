@@ -64,7 +64,7 @@ func (w *FixtureWriter) Write(version string, record, seq int, method, path, que
 
 	req := FixtureRequest{Method: method, Path: w.Sanitizer.String(path), Query: w.Sanitizer.String(query), Header: w.Sanitizer.Headers(reqHeader)}
 	req.Body, req.BodyText = sanitizeBody(w.Sanitizer, reqBody)
-	resp := sanitizeResponse(w.Sanitizer, status, respHeader, respBody)
+	resp := sanitizeResponse(w.Sanitizer, status, respHeader, RedactConfigBody(path, status, respBody))
 
 	for suffix, v := range map[string]any{".request.json": req, ".response.json": resp} {
 		data, err := json.MarshalIndent(v, "", "  ")
