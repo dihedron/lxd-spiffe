@@ -115,12 +115,17 @@ func (a *Aliases) allocate(kind, value string) string {
 
 // allocateShared re-reads the file under an exclusive lock, so that another
 // process's aliases are seen, allocates if still needed and writes it back.
-func (a *Aliases) allocateShared(kind, value string) (string, error) {
+func (a *Aliases) allocateShared(kind, value string) (alias string, err error) {
 	f, err := os.OpenFile(a.path, os.O_RDWR|os.O_CREATE, 0o600)
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() {
+		// the file was written: its Close error counts
+		if cerr := f.Close(); cerr != nil && err == nil {
+			alias, err = "", cerr
+		}
+	}()
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
 		return "", err
 	}
@@ -140,7 +145,7 @@ func (a *Aliases) allocateShared(kind, value string) (string, error) {
 	if alias, ok := a.m[kind][value]; ok {
 		return alias, nil
 	}
-	alias := a.allocate(kind, value)
+	alias = a.allocate(kind, value)
 	data, err = json.MarshalIndent(a.m, "", "  ")
 	if err != nil {
 		return "", err

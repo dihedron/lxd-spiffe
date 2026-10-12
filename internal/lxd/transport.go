@@ -40,7 +40,7 @@ func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.Body != nil && req.GetBody != nil {
 		if body, err := req.GetBody(); err == nil {
 			reqBody, _ = io.ReadAll(body)
-			body.Close()
+			body.Close() //nolint:errcheck // a copy, only recorded
 		}
 	}
 	resp, err := t.base.RoundTrip(req)
@@ -52,7 +52,7 @@ func (t *transport) RoundTrip(req *http.Request) (*http.Response, error) {
 		limit = l
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
-	resp.Body.Close()
+	resp.Body.Close() //nolint:errcheck // read: the body is replaced below
 	if err != nil {
 		return nil, wrapTransportError(err)
 	}

@@ -115,8 +115,8 @@ func (s *Server) start(h http.Handler) {
 		s.record(r)
 		h.ServeHTTP(w, r)
 	}))
-	s.Server.TLS = &tls.Config{ClientAuth: tls.RequestClientCert, MinVersion: tls.VersionTLS12}
-	s.Server.StartTLS()
+	s.TLS = &tls.Config{ClientAuth: tls.RequestClientCert, MinVersion: tls.VersionTLS12}
+	s.StartTLS()
 	s.t.Cleanup(s.Close)
 }
 

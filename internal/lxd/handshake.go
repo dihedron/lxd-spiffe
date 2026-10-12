@@ -52,7 +52,7 @@ func ProbeTLS(ctx context.Context, endpoint, pin string, min, max uint16) (*Hand
 	if err != nil {
 		return nil, &Error{Kind: classify(err), Err: err}
 	}
-	defer conn.Close()
+	defer conn.Close() //nolint:errcheck // nothing is written but the handshake
 	tc := tls.Client(conn, &tls.Config{
 		ServerName: u.Hostname(),
 		MinVersion: min,

@@ -325,8 +325,8 @@ func TestUnixEndpoint(t *testing.T) {
 		gotQuery = r.URL.Query()
 		w.Write([]byte(`{"type":"sync","status":"Success","status_code":200,"metadata":{"api_version":"1.0"}}`)) //nolint:errcheck
 	})}
-	go srv.Serve(l) //nolint:errcheck
-	defer srv.Close()
+	go srv.Serve(l)   //nolint:errcheck
+	defer srv.Close() //nolint:errcheck
 
 	c := connect(t, Config{Endpoint: "unix://" + sock, Project: "p1"})
 	resp, err := c.Raw(context.Background(), RawRequest{Method: http.MethodGet, Path: "/1.0"})

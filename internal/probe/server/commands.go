@@ -108,8 +108,8 @@ func (cmd *ConfigGet) Execute(args []string) error {
 // ConfigSet is server config set NAME KEY VALUE.
 type ConfigSet struct {
 	probe.ServerCommand
-	Method             string `long:"method" description:"PATCH with only the key, or PUT of the whole instance." choice:"patch" choice:"put" default:"patch"`
-	IfMatch            string `long:"if-match" description:"ETag to send: the one read just before, none, or a stale one." choice:"auto" choice:"none" choice:"stale" default:"auto"`
+	Method             string `long:"method" description:"PATCH with only the key, or PUT of the whole instance." choice:"patch" choice:"put" default:"patch"`                        //nolint:staticcheck // go-flags lists the allowed values as repeated choice tags
+	IfMatch            string `long:"if-match" description:"ETag to send: the one read just before, none, or a stale one." choice:"auto" choice:"none" choice:"stale" default:"auto"` //nolint:staticcheck // go-flags lists the allowed values as repeated choice tags
 	Wait               bool   `long:"wait" description:"Wait for the operation to complete."`
 	ExpectInstanceUUID string `long:"expect-instance-uuid" description:"Refuse to write unless the instance's volatile.uuid is this."`
 	Args               struct {
@@ -127,7 +127,7 @@ func (cmd *ConfigSet) Execute(args []string) error {
 // ConfigUnset is server config unset NAME KEY.
 type ConfigUnset struct {
 	probe.ServerCommand
-	Method             string  `long:"method" description:"Way of removing the key." choice:"patch-empty" choice:"patch-null" choice:"put" required:"yes"`
+	Method             string  `long:"method" description:"Way of removing the key." choice:"patch-empty" choice:"patch-null" choice:"put" required:"yes"` //nolint:staticcheck // go-flags lists the allowed values as repeated choice tags
 	ExpectInstanceUUID string  `long:"expect-instance-uuid" description:"Refuse to write unless the instance's volatile.uuid is this."`
 	Args               keyArgs `positional-args:"yes" required:"yes"`
 }

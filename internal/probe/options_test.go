@@ -54,7 +54,9 @@ func TestRecordHostFromEnvironment(t *testing.T) {
 	for value, want := range map[string]bool{"unset": false, "true": true, "false": false} {
 		if value == "unset" {
 			t.Setenv("LXD_PROBE_RECORD_HOST", "")
-			os.Unsetenv("LXD_PROBE_RECORD_HOST")
+			if err := os.Unsetenv("LXD_PROBE_RECORD_HOST"); err != nil {
+				t.Fatal(err)
+			}
 		} else {
 			t.Setenv("LXD_PROBE_RECORD_HOST", value)
 		}

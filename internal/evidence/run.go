@@ -203,8 +203,12 @@ func (e *Entry) artifact(name string, data []byte) (string, error) {
 
 // Commit completes rec (schema, id, environment, tool version, artifacts),
 // sanitizes its free-form fields and writes it.
-func (e *Entry) Commit(rec *Record) error {
-	defer e.file.Close()
+func (e *Entry) Commit(rec *Record) (err error) {
+	defer func() {
+		if err != nil {
+			e.file.Close() //nolint:errcheck // the caller aborts the entry
+		}
+	}()
 	s := e.run.Sanitizer
 	rec.Schema = Schema
 	rec.ID = fmt.Sprintf("%s/%04d", e.run.Env, e.Number)
@@ -249,7 +253,7 @@ func (e *Entry) Path() string {
 
 // Abort releases the reserved record number by removing its file.
 func (e *Entry) Abort() {
-	e.file.Close()
+	e.file.Close()           //nolint:errcheck // best effort
 	os.Remove(e.file.Name()) //nolint:errcheck // best effort
 }
 
@@ -270,7 +274,7 @@ func createFile(path string, data []byte) error {
 		return err
 	}
 	if _, err := f.Write(data); err != nil {
-		f.Close()
+		f.Close() //nolint:errcheck // the write error is the one to report
 		return err
 	}
 	return f.Close()

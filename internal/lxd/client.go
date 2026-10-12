@@ -222,7 +222,7 @@ func (c *Client) Raw(ctx context.Context, r RawRequest) (*RawResponse, error) {
 		}
 		return nil, wrapTransportError(err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck // read in full below
 	data := new(bytes.Buffer)
 	if _, err := data.ReadFrom(resp.Body); err != nil {
 		return nil, wrapTransportError(err)
