@@ -55,10 +55,12 @@ commands:
                             unless --user is given)
   refresh                   move the LXD servers to their channels' newest
                             revision, then offer a new snapshot
-  test [-run REGEX] [--collect]
+  test [-run REGEX] [--collect] [--record-host]
                             run the acceptance tests: the lab checks, then
                             the gate sessions (--collect: copy the sessions'
-                            evidence and fixtures into the repository)
+                            evidence and fixtures into the repository;
+                            --record-host: record this machine's host name,
+                            redacted otherwise)
   help                      show this help
 
 preflight, up, deploy, reset and test take --scenario probe|plugins|all
@@ -275,15 +277,16 @@ cmd_refresh() {
 	fi
 }
 
-# cmd_test [-run REGEX] [--collect]: runs the acceptance tests of the
-# selected scenarios (test/lab/acceptance, build tag "lab").
+# cmd_test [-run REGEX] [--collect] [--record-host]: runs the acceptance
+# tests of the selected scenarios (test/lab/acceptance, build tag "lab").
 cmd_test() {
 	require_state
+	local usage="usage: lab.sh test [-run REGEX] [--collect] [--record-host]"
 	local run="" collect=no
 	while (($#)); do
 		case "$1" in
 		-run | --run)
-			[[ $# -ge 2 ]] || die "usage: lab.sh test [-run REGEX] [--collect]"
+			[[ $# -ge 2 ]] || die "$usage"
 			run="$2"
 			shift 2
 			;;
@@ -291,7 +294,11 @@ cmd_test() {
 			collect=yes
 			shift
 			;;
-		*) die "usage: lab.sh test [-run REGEX] [--collect]" ;;
+		--record-host)
+			export LXD_PROBE_RECORD_HOST=true
+			shift
+			;;
+		*) die "$usage" ;;
 		esac
 	done
 	scenario_selected probe || die "no tests for the selected scenarios yet"

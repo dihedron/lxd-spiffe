@@ -2,9 +2,10 @@
 # Running lxd-probe by hand, for runbook steps: on this host against a server
 # as one of the identities ("probe"), or inside an instance ("guest"). The
 # session variables LXD_PROBE_RUN_ID, LXD_PROBE_GATE and LXD_PROBE_CELL pass
-# through from the caller, so that one run can span both environments.
+# through from the caller, so that one run can span both environments, and
+# so do LXD_PROBE_LOG_LEVEL and LXD_PROBE_RECORD_HOST.
 
-readonly LAB_PROBE_SESSION_VARS=(LXD_PROBE_RUN_ID LXD_PROBE_GATE LXD_PROBE_CELL LXD_PROBE_LOG_LEVEL)
+readonly LAB_PROBE_SESSION_VARS=(LXD_PROBE_RUN_ID LXD_PROBE_GATE LXD_PROBE_CELL LXD_PROBE_LOG_LEVEL LXD_PROBE_RECORD_HOST)
 
 # require_server SERVER: dies unless SERVER is one of the lab's LXD servers.
 require_server() {

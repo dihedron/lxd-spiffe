@@ -30,6 +30,7 @@ Oct 8, 2026 · @Andrea Funtò
 | v0.3 (Oct 9, 2026) | Follows attestor spec v0.4: `internal/lxd` and `internal/devlxd` wrap the LXD Go client SDK (principle 5, PRF-14, PRN-24); observations use the SDK's raw access so that headers and bodies are recorded as sent. The TLS 1.2 question becomes a separate handshake of `server info --probe-tls12` (PRS-03), which replaces `--allow-tls12`. PRT-11 tests the wrapper's own rules. L10 keeps only the coverage check. |
 | Oct 9, 2026 (chunk 3) | The run directory no longer has a `fixtures/` subdirectory: fixtures are written only under `--record DIR`, with the file names of PRE-10. |
 | Oct 12, 2026 (chunk 4.5) | `--expect-hidden` (PRE-06, server flags, PRS-40): the lab showed that LXD 5.21 and 6.9 answer a trusted identity that may not view an entity with 404 Not Found, exactly as for an entity that does not exist, and keep 403 for untrusted clients and for actions on entities the identity can view. |
+| Oct 12, 2026 (chunk 4.5, host) | `run.json` records the host name as `redacted` unless `--record-host` (environment `LXD_PROBE_RECORD_HOST=true`) is given (PRE-03, global flags): the operator's machine name is not lab evidence, and committed evidence should not carry it by default. |
 
 ## Overview
 
@@ -63,7 +64,7 @@ The attestor spec contains documented facts `[D]` and unverified assumptions `[V
 ```
 evidence/<run_id>/
   <env>/                # one run directory per environment: guest/, server/, util/ (PRE-07)
-    run.json            # run metadata: tool version, git commit, host, LXD endpoint (no credentials), flags
+    run.json            # run metadata: tool version, git commit, host (redacted unless --record-host), LXD endpoint (no credentials), flags
     records/            # one JSON file per command execution: NNNN-<verb>.json
     artifacts/          # raw bodies, file contents (hashes + optional content for small files)
     notes.jsonl         # operator notes
@@ -80,7 +81,7 @@ Working runs write to `--evidence-dir` (default `./evidence`). Sanitized evidenc
 |---|---|
 | PRE-01 | Every record contains: `schema` (integer), `id`, `time` (UTC RFC3339), `tool_version`, `env`, `verb`, `args` (sanitized), `gate`, `cell`, `outcome` (`ok`, `unexpected`, `error`), `duration_ms`, `observations` (structured key/values), and `raw` (reference to artifact). |
 | PRE-02 | The `server` records include the LXD `version` and `api_extensions` hash, so that a record can always be attributed to a server version. |
-| PRE-03 | **Sanitization (mandatory, applied at write time, not afterwards):** remove `Authorization` and cookie headers; remove client certificates/keys and any bearer tokens; redact the values of `cloud-init.*`, `user.*` (except `user.lxd-probe.*` and `user.spire.challenge.*`) and `environment.*` config keys; replace MAC addresses and, when `--redact-names` is set, instance and project names with stable aliases (PRE-09). Apart from the alias map of PRE-09, the unsanitized data is never persisted. |
+| PRE-03 | **Sanitization (mandatory, applied at write time, not afterwards):** remove `Authorization` and cookie headers; remove client certificates/keys and any bearer tokens; redact the values of `cloud-init.*`, `user.*` (except `user.lxd-probe.*` and `user.spire.challenge.*`) and `environment.*` config keys; replace MAC addresses and, when `--redact-names` is set, instance and project names with stable aliases (PRE-09). The host name in `run.json` is `redacted` unless `--record-host` is given. Apart from the alias map of PRE-09, the unsanitized data is never persisted. |
 | PRE-04 | `outcome: unexpected` is assigned whenever the status code, a header, or a body shape differs from the tool's built-in expectation table (PRE-06). This is a finding, not an error: the exit code is still 0 unless `--strict` is given (exit 8). |
 | PRE-05 | Evidence files are written with mode 0600, directories 0700. |
 | PRE-06 | **Expectation table.** Each verb that calls an API has one or more expectations, kept as data in `internal/probe` (not as code paths). An expectation names the call (method and path template) and lists: the accepted status codes; the headers that must be present (for example `ETag` on an instance read, at least one `X-LXD-*` header on a files read); and the body shape (the envelope `type`, `sync`, `async` or `error`, and the `metadata` fields that must be present). With `--expect-denied`, 403 is the accepted status instead; with `--expect-hidden`, 404 (what LXD answers a trusted identity that may not view the entity, indistinguishable from a missing one); both expect an `error` envelope and nothing else. The record names the expectation it was checked against, and each deviation becomes an observation (`expectation.status`, `expectation.header.<name>`, `expectation.body.<field>`). Calls without an expectation are recorded with outcome `ok`. |
@@ -291,6 +292,7 @@ lxd-probe version [--verbose]
 | `--timeout DUR` | per-command timeout (default 30s) |
 | `--record DIR` | additionally store raw sanitized request/response pairs as fixture candidates (*Overview → Evidence model → Fixtures*) |
 | `--strict` | exit 8 when at least one record of the invocation has outcome `unexpected` (PRE-04) |
+| `--record-host` | record this machine's host name in `run.json` instead of `redacted` (PRE-03); environment `LXD_PROBE_RECORD_HOST` (`true` or `false`: go-flags reads a set but empty variable as `true`) |
 | `--redact-names` | replace instance and project names with aliases (PRE-09) |
 | `--allow-write` | required by every verb that modifies anything, in the guest or on a server (PRN-01) |
 | `--lab` | explicit acknowledgement "this is a lab system"; required together with `--allow-write` |

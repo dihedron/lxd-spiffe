@@ -39,3 +39,33 @@ func TestOpenRun(t *testing.T) {
 		t.Errorf("bad run id accepted")
 	}
 }
+
+// TestOpenRunHost checks that run.json records the host name only with
+// --record-host (PRE-03).
+func TestOpenRunHost(t *testing.T) {
+	host, err := os.Hostname()
+	if err != nil {
+		t.Skip("no host name:", err)
+	}
+	for _, tt := range []struct {
+		record bool
+		want   string
+	}{{false, RedactedHost}, {true, host}} {
+		g := &GlobalOptions{EvidenceDir: t.TempDir(), RecordHost: tt.record}
+		run, err := g.OpenRun("server", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var info evidence.RunInfo
+		data, err := os.ReadFile(filepath.Join(run.Dir, "run.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(data, &info); err != nil {
+			t.Fatal(err)
+		}
+		if info.Host != tt.want {
+			t.Errorf("--record-host=%v: host %q; want %q", tt.record, info.Host, tt.want)
+		}
+	}
+}

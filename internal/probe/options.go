@@ -33,6 +33,10 @@ type GlobalOptions struct {
 	Record string `long:"record" description:"Also store sanitized request/response pairs in this directory as fixture candidates."`
 	// Strict turns unexpected outcomes into exit code 8.
 	Strict bool `long:"strict" description:"Exit 8 when a record has an unexpected outcome."`
+	// RecordHost records the host name in run.json instead of
+	// RedactedHost (PRE-03). From the environment, set it to true or false:
+	// go-flags reads a bool variable that is set but empty as true.
+	RecordHost bool `long:"record-host" description:"Record this machine's host name in run.json (default: redacted)." env:"LXD_PROBE_RECORD_HOST"`
 	// RedactNames replaces instance and project names with aliases.
 	RedactNames bool `long:"redact-names" description:"Replace instance and project names with aliases."`
 	// AllowWrite is required by every write verb (PRN-01); never from the environment.

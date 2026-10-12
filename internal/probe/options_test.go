@@ -1,8 +1,11 @@
 package probe
 
 import (
+	"os"
 	"slices"
 	"testing"
+
+	"github.com/jessevdk/go-flags"
 
 	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
 )
@@ -42,5 +45,25 @@ func TestNotImplemented(t *testing.T) {
 	}
 	if err.Error() != "server info: not implemented yet" {
 		t.Errorf("Error() = %q", err.Error())
+	}
+}
+
+// TestRecordHostFromEnvironment checks that LXD_PROBE_RECORD_HOST sets
+// --record-host, as lab.sh passes it ("unset": not in the environment).
+func TestRecordHostFromEnvironment(t *testing.T) {
+	for value, want := range map[string]bool{"unset": false, "true": true, "false": false} {
+		if value == "unset" {
+			t.Setenv("LXD_PROBE_RECORD_HOST", "")
+			os.Unsetenv("LXD_PROBE_RECORD_HOST")
+		} else {
+			t.Setenv("LXD_PROBE_RECORD_HOST", value)
+		}
+		var g GlobalOptions
+		if _, err := flags.NewParser(&g, flags.None).ParseArgs(nil); err != nil {
+			t.Fatalf("LXD_PROBE_RECORD_HOST=%q: %v", value, err)
+		}
+		if g.RecordHost != want {
+			t.Errorf("LXD_PROBE_RECORD_HOST=%q: RecordHost %v; want %v", value, g.RecordHost, want)
+		}
 	}
 }
