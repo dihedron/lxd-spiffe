@@ -1,0 +1,255 @@
+//go:build lab
+
+// Package acceptance holds the lab's acceptance tests (lab test environment
+// spec, Acceptance tests): lab checks, which pass or fail, and gate
+// sessions, which collect evidence and fail only when the probe itself
+// fails. They drive the lab through lab.sh, as an operator would, and need
+// a lab that is up and deployed: run them with "lab.sh test".
+package acceptance
+
+import (
+	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/json"
+	"encoding/pem"
+	"errors"
+	"math/big"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/dihedron/lxd-spiffe/internal/evidence"
+	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
+)
+
+// lab is the lab under test: its locations and its env.json.
+type lab struct {
+	dir      string // test/lab
+	repo     string
+	state    string
+	evidence string
+	env      labEnv
+}
+
+// labEnv is the part of env.json the tests read.
+type labEnv struct {
+	Servers map[string]struct {
+		Version           string `json:"version"`
+		APIExtensionsHash string `json:"api_extensions_hash"`
+		Fingerprint       string `json:"fingerprint"`
+		Endpoint          string `json:"endpoint"`
+		Auth              struct {
+			Bearer     string            `json:"bearer"`
+			Identities map[string]string `json:"identities"`
+		} `json:"auth"`
+	} `json:"servers"`
+	Probe struct {
+		Version string `json:"version"`
+		SHA256  string `json:"sha256"`
+	} `json:"probe"`
+}
+
+// servers returns the lab's servers in name order.
+func (l *lab) servers() []string {
+	var out []string
+	for name := range l.env.Servers {
+		out = append(out, name)
+	}
+	slices.Sort(out)
+	return out
+}
+
+// identities returns the server's probe identities in name order, bearer
+// last where the server has one.
+func (l *lab) identities(server string) []string {
+	var out []string
+	for id := range l.env.Servers[server].Auth.Identities {
+		out = append(out, id)
+	}
+	slices.Sort(out)
+	if l.env.Servers[server].Auth.Bearer == "yes" {
+		out = append(out, "bearer")
+	}
+	return out
+}
+
+// setting returns a lab setting exported by lab.sh, or def.
+func setting(name, def string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	return def
+}
+
+// newLab finds the lab from the variables lab.sh exports, or from this
+// package's location when run with go test directly, and reads env.json.
+func newLab(t *testing.T) *lab {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := setting("LAB_DIR", filepath.Dir(wd))
+	l := &lab{
+		dir:      dir,
+		repo:     setting("REPO_DIR", filepath.Join(dir, "..", "..")),
+		state:    setting("LAB_STATE_DIR", filepath.Join(dir, ".state")),
+		evidence: setting("LAB_EVIDENCE_DIR", filepath.Join(dir, "..", "..", "evidence")),
+	}
+	data, err := os.ReadFile(filepath.Join(l.state, "env.json"))
+	if err != nil {
+		t.Fatalf("no lab: %v (lab.sh up, then lab.sh test)", err)
+	}
+	if err := json.Unmarshal(data, &l.env); err != nil {
+		t.Fatalf("env.json: %v", err)
+	}
+	if l.env.Probe.SHA256 == "" {
+		t.Fatal("lxd-probe is not deployed: lab.sh deploy")
+	}
+	return l
+}
+
+// run is one lxd-probe invocation through lab.sh.
+type run struct {
+	code   int
+	stdout string
+	stderr string
+	rec    *evidence.Record
+}
+
+// String describes the invocation's result for failure messages.
+func (r *run) String() string {
+	var b strings.Builder
+	b.WriteString("exit " + strconv.Itoa(r.code))
+	if r.rec != nil {
+		b.WriteString(", record " + r.rec.ID + ", outcome " + string(r.rec.Outcome))
+		obs, _ := json.MarshalIndent(r.rec.Observations, "  ", "  ")
+		b.WriteString("\n  observations: " + string(obs))
+	}
+	if s := strings.TrimSpace(r.stderr); s != "" {
+		b.WriteString("\n  stderr: " + s)
+	}
+	return b.String()
+}
+
+// observation returns the value of the record's first observation key.
+func (r *run) observation(key string) (any, bool) {
+	if r.rec == nil {
+		return nil, false
+	}
+	for _, o := range r.rec.Observations {
+		if o.Key == key {
+			return o.Value, true
+		}
+	}
+	return nil, false
+}
+
+// probeFailure reports the exit codes that mean the probe itself failed
+// (spec: gate sessions fail only on these, or on a missing record).
+func probeFailure(code int) bool {
+	switch code {
+	case exit.Internal, exit.Connection, exit.Refused, exit.Sanitize, exit.Timeout:
+		return true
+	}
+	return false
+}
+
+// session is how a test runs the probe: where evidence goes and what tags it.
+type session struct {
+	evidenceDir string
+	runID       string
+}
+
+// probe runs "lab.sh probe SERVER --as IDENTITY -- ARGS --json" and fails
+// the test when the probe itself fails or writes no record.
+func (l *lab) probe(t *testing.T, s session, server, identity string, args ...string) *run {
+	t.Helper()
+	full := append([]string{"probe", server, "--as", identity, "--"}, args...)
+	full = append(full, "--json", "--evidence-dir", s.evidenceDir)
+	return l.lxdProbe(t, s, full)
+}
+
+// lxdProbe runs lab.sh with args (a probe or guest command) and parses the
+// record lxd-probe prints with --json.
+func (l *lab) lxdProbe(t *testing.T, s session, args []string) *run {
+	t.Helper()
+	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), args...)
+	cmd.Env = append(os.Environ(), "LXD_PROBE_RUN_ID="+s.runID)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	r := &run{stdout: stdout.String(), stderr: stderr.String()}
+	var ee *exec.ExitError
+	switch {
+	case err == nil:
+	case errors.As(err, &ee):
+		r.code = ee.ExitCode()
+	default:
+		t.Fatalf("lab.sh %s: %v", strings.Join(args, " "), err)
+	}
+	var rec evidence.Record
+	if json.Unmarshal(stdout.Bytes(), &rec) == nil && rec.ID != "" {
+		r.rec = &rec
+	}
+	if probeFailure(r.code) || r.rec == nil {
+		t.Fatalf("lab.sh %s: the probe failed: %s", strings.Join(args, " "), r)
+	}
+	return r
+}
+
+// ssh runs a shell command on a lab VM and returns its standard output.
+func (l *lab) ssh(t *testing.T, vm, command string) string {
+	t.Helper()
+	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), "ssh", vm, command)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("lab.sh ssh %s %q: %v\n%s", vm, command, err, stderr.String())
+	}
+	return stdout.String()
+}
+
+// untrustedCert writes a self-signed client certificate that no lab server
+// trusts, and returns its certificate and key files.
+func untrustedCert(t *testing.T) (certFile, keyFile string) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(time.Now().UnixNano()),
+		Subject:      pkix.Name{CommonName: "lxd-lab-untrusted"},
+		NotBefore:    time.Now().Add(-time.Hour),
+		NotAfter:     time.Now().Add(24 * time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyDER, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	certFile, keyFile = filepath.Join(dir, "untrusted.crt"), filepath.Join(dir, "untrusted.key")
+	if err := os.WriteFile(certFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(keyFile, pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return certFile, keyFile
+}

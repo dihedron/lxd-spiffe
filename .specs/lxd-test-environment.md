@@ -124,7 +124,7 @@ Everything lives in `test/lab/`. `lab.sh` is the entry point; each command is id
 - `guest-up <server> <name> [--image <image>]` (`plugins`): launches a guest with the SPIRE Agent cloud-init, for manual end-to-end checks; `guest-down` deletes it.
 - `probe <server> [--as <identity>] -- <args>`: runs `lxd-probe <args>` on the lab host with that server's and identity's environment file (default identity `full`; `bearer` where the server has one), for manual runbook steps; flags in `<args>` override the file. `guest <server> <instance> [--project <project>] [--user <uid>] -- <args>`: runs `lxd-probe <args>` inside an instance with `lxc exec`, as root unless `--user` gives a uid (the gid is the same number). Both pass `LXD_PROBE_RUN_ID`, `LXD_PROBE_GATE`, `LXD_PROBE_CELL` and `LXD_PROBE_LOG_LEVEL` through from the caller, so that one run spans both environments.
 - `refresh`: moves each LXD server whose revision the settings do not pin to the newest revision of its channel. It shows the changes and asks for confirmation (LXD cannot go back to an older revision), lifts the hold, refreshes, holds again, records the server in `env.json` anew, and then offers to replace the snapshot. Servers already up to date, and pinned ones, are left alone.
-- `test [-run REGEX]`: runs the acceptance tests.
+- `test [-run REGEX] [--collect]`: runs the acceptance tests (`go test -tags lab ./test/lab/acceptance`). Gate sessions write their evidence to `LAB_EVIDENCE_DIR` only; `--collect` also copies it into the repository (*Acceptance tests*).
 - `status`, `ssh <vm>`, `logs <vm> [unit]`: inspection; `status` shows the VMs, the servers' versions, pins and authorization models, and the baseline instances.
 - `down`: destroys the VMs with their snapshots, the network, the storage pool and the state directory, after confirmation. The download cache stays.
 
@@ -134,20 +134,20 @@ Downloads are verified as an operator would: the Ubuntu cloud image against its 
 
 The acceptance tests are Go tests in `test/lab/acceptance`, behind the `lab` build tag, so that `go test ./...` never runs them. They read `env.json`, reach the VMs with the system `ssh` client, and run the `lxd-probe` that `deploy` built; they add no dependencies to `go.mod`.
 
-There are two kinds:
+There are three kinds:
 
 - **Lab checks** pass or fail: the lab is what this spec says it is.
 - **End-to-end tests** (`plugins`) pass or fail like the openstack-spiffe lab's: each boots the guests it needs from the cloud-init `deploy` wrote, checks attestation, and deletes them, so tests are independent.
-- **Gate sessions** (`probe`) run a gate's runbook (probe spec *Testing → Gate runbooks*) over its cells and collect the evidence into one run, `docs/validation/<run_id>/`, merging the guest and server run directories (PRE-07) and passing `util sanitize --check`. They fail only when the probe itself fails (exit codes 1, 3, 5, 6 or 7, or a missing record): an `unexpected` outcome is evidence, not a failure. They never decide a gate; they end by printing the decision rules of the gate next to the records, for the operator's `util note --decision`.
+- **Gate sessions** (`probe`) run a gate's runbook (probe spec *Testing → Gate runbooks*) over its cells, one run per server (a run directory records one endpoint), in `LAB_EVIDENCE_DIR`. A run directory is a working one: its `aliases.json` maps aliases back to MAC addresses and names (PRE-09). What a session checks with `util sanitize --check` is the run's sanitized copy (`util sanitize --out`, without `aliases.json`), and with `lab.sh test --collect` that copy goes to `docs/validation/<run_id>/` and its fixtures replace `test/fixtures/<lxd-version>/`. Fixtures recorded as an untrusted client land under `unknown` (LXD tells untrusted clients no version) and join the server's version. Sessions fail only when the probe itself fails (exit codes 1, 3, 5, 6 or 7, or a missing record) or the evidence is not sanitized: an `unexpected` outcome is evidence, not a failure. They never decide a gate; they end by printing the decision rules of the gate next to the records, for the operator's `util note --decision`.
 
 `lab.sh test` runs the tests of the selected scenarios: the lab checks of every built scenario, then the gate sessions or the end-to-end tests. Tests run one after another; each session starts from `reset` when it changes instances. The tests of later chunks are written together with those chunks; until then they do not exist, rather than being skipped.
 
 | ID | Test | Checks | Chunk |
 | --- | --- | --- | --- |
 | LAB-1 | Servers | Every server answers `server info` with its recorded pin, version and extension hash; LXD refuses TLS 1.2 or the finding is recorded (Q3) | 4.5 |
-| LAB-2 | Identities | `server whoami` as each identity on each server reports the expected groups; `server instance show c-unpriv` as `read` succeeds; in `restricted` as `outsider` it fails with 404 under `--expect-denied`, the same answer as for a missing instance, and with an untrusted certificate with 403 | 4.5 |
-| LAB-3 | Baseline | Every baseline instance of each server is running, with the configuration of the table above and `lxd-probe` installed | 4.5 |
-| S0-1 | Lab 0, server half | `server info`, `whoami` and `instance show` for every baseline instance on `lxd5` and `lxd6`, with `--record test/fixtures/`, plus the provoked 403 and 404; fixtures sanitized and checked; L8 evidence | 4.5 |
+| LAB-2 | Identities | `server whoami` as each identity (and the bearer identity where there is one) on each server reports exactly its own group; `server instance show c-unpriv` as `read` succeeds; in `restricted` as `outsider` it fails with 404 under `--expect-hidden`, the same answer as for a missing instance, and with an untrusted certificate with 403 under `--expect-denied` | 4.5 |
+| LAB-3 | Baseline | Every baseline instance of each server is running, with the type, image, configuration and bridge of the table above, and the `lxd-probe` that `deploy` built (its SHA-256) | 4.5 |
+| S0-1 | Lab 0, server half | As `full`, `server info --probe-tls12` (L8), `whoami` and `instance show` for every baseline instance on `lxd5` and `lxd6`, with `--record`, plus the provoked 403 (untrusted certificate), 404 (missing instance) and hidden 404 (`outsider` in `restricted`); the 412 of a stale ETag waits for `server config set` (stage 1). The sanitized copy is checked; the fixtures are replayed by `test/fixtures`'s Go test, which decodes each one into the LXD type the probe uses and stands in for `util fixtures verify` until stage 2 | 4.5 |
 | S0-2 | Lab 0, guest half | `guest preflight` and `guest devlxd get/dump` in every baseline instance; L3 evidence | 5 |
 | G-L1, G-L2, G-L4, G-L14 | Stage 1 gates | The runbooks of L1, L2, L4 and L14 over their cells | 6–9 |
 | G-L6 … G-L13 | Stage 2 gates | The runbooks of L6, L7, L9, L11 (needs `LAB_CLUSTER=yes`), L12 and L13 | 10–11 |

@@ -55,7 +55,10 @@ commands:
                             unless --user is given)
   refresh                   move the LXD servers to their channels' newest
                             revision, then offer a new snapshot
-  test [-run REGEX]         run the acceptance tests
+  test [-run REGEX] [--collect]
+                            run the acceptance tests: the lab checks, then
+                            the gate sessions (--collect: copy the sessions'
+                            evidence and fixtures into the repository)
   help                      show this help
 
 preflight, up, deploy, reset and test take --scenario probe|plugins|all
@@ -272,9 +275,32 @@ cmd_refresh() {
 	fi
 }
 
-# not_yet COMMAND STEP: the commands of later steps of chunk 4.5.
-not_yet() {
-	die "lab.sh $1 is not implemented yet (chunk 4.5, step $2)"
+# cmd_test [-run REGEX] [--collect]: runs the acceptance tests of the
+# selected scenarios (test/lab/acceptance, build tag "lab").
+cmd_test() {
+	require_state
+	local run="" collect=no
+	while (($#)); do
+		case "$1" in
+		-run | --run)
+			[[ $# -ge 2 ]] || die "usage: lab.sh test [-run REGEX] [--collect]"
+			run="$2"
+			shift 2
+			;;
+		--collect)
+			collect=yes
+			shift
+			;;
+		*) die "usage: lab.sh test [-run REGEX] [--collect]" ;;
+		esac
+	done
+	scenario_selected probe || die "no tests for the selected scenarios yet"
+	[[ -n "$(env_get '.probe.sha256 // empty')" ]] || die "lxd-probe is not deployed: run lab.sh deploy"
+	export LAB_DIR REPO_DIR LAB_STATE_DIR LAB_EVIDENCE_DIR LAB_GUEST_VM_VCPUS LAB_GUEST_VM_RAM_GIB
+	export LAB_COLLECT="$collect"
+	local args=(-tags lab -count=1 -v -timeout 60m)
+	[[ -z "$run" ]] || args+=(-run "$run")
+	(cd "$REPO_DIR" && go test "${args[@]}" ./test/lab/acceptance)
 }
 
 main() {
@@ -328,7 +354,7 @@ main() {
 	probe) cmd_probe "${args[@]}" ;;
 	guest) cmd_guest "${args[@]}" ;;
 	refresh) cmd_refresh ;;
-	test) not_yet "$command" 5 ;;
+	test) cmd_test "${args[@]}" ;;
 	help | -h | --help) usage ;;
 	*)
 		usage >&2
