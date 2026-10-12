@@ -43,33 +43,6 @@ func (cmd *Diff) Execute(args []string) error {
 	return probe.NotImplemented("util diff")
 }
 
-// IdmapTranslate is util idmap translate.
-type IdmapTranslate struct {
-	probe.GlobalOptions
-	UIDMap        string `long:"uid-map" description:"Guest uid_map: a file or the map itself." required:"yes"`
-	VolatileIdmap string `long:"volatile-idmap" description:"volatile.idmap.current: a file or the JSON itself." required:"yes"`
-	UID           uint32 `long:"uid" description:"Guest uid to translate." required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *IdmapTranslate) Execute(args []string) error {
-	return probe.NotImplemented("util idmap translate")
-}
-
-// IdmapCheck is util idmap check INSTANCE_RECORD PREFLIGHT_RECORD.
-type IdmapCheck struct {
-	probe.GlobalOptions
-	Args struct {
-		Instance  string `positional-arg-name:"INSTANCE_RECORD" description:"Record of server instance show."`
-		Preflight string `positional-arg-name:"PREFLIGHT_RECORD" description:"Record of guest preflight."`
-	} `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *IdmapCheck) Execute(args []string) error {
-	return probe.NotImplemented("util idmap check")
-}
-
 // Overlap is util overlap RECORD.
 type Overlap struct {
 	probe.GlobalOptions
