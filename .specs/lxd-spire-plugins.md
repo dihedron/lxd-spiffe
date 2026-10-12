@@ -29,6 +29,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Oct 8, 2026 (later) | Aligned with the lxprobe spec, now `lxd-probe.md`: v0.3 section map removed (no document cites v0.3 numbers any more); repository layout gains `internal/devlxd`, `internal/evidence`, `internal/probe` and `test/fakelxd`; *UID translation* names `util idmap check` for the cross-check; NFR-03 allow-list extended to the command line, configuration and logging libraries already in use. |
 | Oct 9, 2026 | The validation probe is renamed `lxd-probe` (`cmd/lxd-probe/`). |
 | v0.4 (Oct 9, 2026) | The LXD client is built on the LXD Go client SDK instead of a bespoke HTTP client: its `client` and `shared` packages are Apache-2.0 (per-package `COPYING`), so the licence question of L10 is closed and L10 keeps only the coverage check. FR-S17 rewritten as a wrapper with the project's own rules (fingerprint pin through the SDK's transport hook, body limits, explicit project, `RawQuery` where the SDK has no method); NFR-03 allow-list and tests adjusted. `GET /1.0/auth/identities/current` added to the API usage and the minimal API contract for the SEC-16 warning. NFR-05 no longer cites a gate of the vSphere spec. |
+| Oct 12, 2026 | *Alternatives* gains *Keys delivered through cloud-init*: a public key or signed statement in the instance proves nothing about it, a private key proves possession, not presence; the signed variant of `bootstrap_token` and a possible weaker possession mode are recorded, with the lab measurements that would decide them (L4, L6). |
 
 ## Overview
 
@@ -220,11 +221,26 @@ Mechanics: the operator runs `spire-server token generate` (one SPIFFE ID, short
 
 Assessment: `join_token` is acceptable for bootstrapping a first test environment or where SPIRE must have no LXD access at all, but it does not answer the requirement of asserting facts about the node. Its strength (no LXD privileges) and weakness (bearer secret, no claims) are the mirror image of this plugin.
 
-**Optional later phase: `bootstrap_token` as a second factor.** The orchestrator mints a stateless, HMAC-signed, short-lived token bound to `server_id`, project, name and `volatile.uuid`, delivered through a channel that does not use instance config (for example a file pushed into `/run` by the orchestrator). The server plugin then requires it in addition to the co-location proof. It limits the damage of a weakness in the proof channel at the cost of orchestration work and a single-use cache in the server. Not part of v1.
+**Optional later phase: `bootstrap_token` as a second factor.** The orchestrator mints a stateless, HMAC-signed, short-lived token bound to `server_id`, project, name and `volatile.uuid`, delivered through a channel that does not use instance config (for example a file pushed into `/run` by the orchestrator). The server plugin then requires it in addition to the co-location proof. It limits the damage of a weakness in the proof channel at the cost of orchestration work and a single-use cache in the server. Not part of v1. A variant signs the token with the orchestrator's private key instead of an HMAC, so that the server plugin holds only the public key and no shared secret (*Keys delivered through cloud-init*).
 
 ##### `x509pop` or other pre-provisioned credentials
 
 A certificate delivered to the instance (image build, cloud-init, secrets) with SPIRE's `x509pop`. Strong cryptographic proof of possession, but a long-lived secret in the instance and no LXD claims. May complement, not replace, this plugin.
+
+##### Keys delivered through cloud-init
+
+Considered on Oct 12, 2026: a key pair whose private half stays on a server (an orchestrator, or SPIRE's side) while the instance receives the public half, or a statement signed with it, through cloud-init.
+
+- **Public key in the instance.** It holds nothing secret: anyone who can read the key can do what the instance can do with it. It lets the instance authenticate the server, which the SPIRE trust bundle already does, and proves nothing about the instance.
+- **Signed statement in the instance** (for example "`volatile.uuid` X, project P", signed by the server). The signature proves the statement's origin and integrity, not who presents it: a bearer credential, replayable by whoever reads it. Cloud providers' identity documents avoid this because the instance fetches them from the hypervisor at the moment of use; a document stored in cloud-init does not.
+- **Per-instance private key in the instance** (as `x509pop`). It proves possession, so its strength is the key's secrecy, and cloud-init is a weak channel in LXD: `cloud-init.*` config is readable by every `can_view` user of the LXD API; cloud-init's LXD datasource reads it through devLXD, so which guest users can read it is gate L4's question; and it travels with copies, exports, backups and snapshots (gate L6, T6).
+
+In every variant the proof changes from **presence** (*Proof of co-location*: the party on the stream can read or write inside the running instance now, as LXD confirms) to **possession** (the party holds a key that was once put there, from anywhere). It does not remove the LXD lookup either: without it there are no LXD-derived claims, as with `join_token`. Two uses remain:
+
+- **The signed `bootstrap_token`** above, as a second factor next to the co-location proof, delivered outside instance config and single-use.
+- **A possession mode** as a separate, explicitly weaker option: the server plugin verifies a per-instance key whose public half it reads from LXD, and needs only `can_view` instead of `can_access_files` or `can_edit` (*Privilege cost of each mode*). Not part of v1; if it is ever offered, its selectors and SPIFFE IDs must state the weaker claim.
+
+The lab can measure the deciding facts once the guest verbs exist: whether an unprivileged process in each kind of instance reads `cloud-init.*` through devLXD (L4), whether `security.devlxd` or newer LXD settings close it, and what copy, restore and import do to such a key (L6).
 
 ##### vTPM
 
