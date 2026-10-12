@@ -288,6 +288,8 @@ func write(ctx context.Context, s *session, stderr io.Writer, call, method, name
 		return nil, err
 	}
 	s.observe(call+".duration_ms", time.Since(start).Milliseconds())
+	// when the server answered the write, for the delays of gate L2
+	s.observe(call+".completed_at", time.Now().UTC().Format(time.RFC3339Nano))
 	env, err := resp.Envelope()
 	if err != nil || lxd.StatusKind(resp.Status) != lxd.KindNone {
 		if err == nil {

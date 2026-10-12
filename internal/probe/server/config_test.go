@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 	"github.com/dihedron/lxd-spiffe/internal/probe"
@@ -142,6 +143,10 @@ func TestConfigSetPatch(t *testing.T) {
 	// PATCH is synchronous: no operation to wait for
 	for _, key := range []string{"write.http_status", "write.duration_ms", "instance.restarted"} {
 		observation(t, rec, key)
+	}
+	done, _ := observation(t, rec, "write.completed_at").(string)
+	if at, err := time.Parse(time.RFC3339Nano, done); err != nil || at.Location() != time.UTC {
+		t.Errorf("write.completed_at %q: %v", done, err)
 	}
 	if observation(t, rec, "instance.restarted") != false {
 		t.Errorf("restart: %v", observation(t, rec, "instance.restarted"))
