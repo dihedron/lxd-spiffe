@@ -3,7 +3,7 @@
 # identity, trusted by every LXD server of the lab. Keys never leave the
 # state directory.
 
-readonly LAB_IDENTITIES=(read files edit full)
+readonly LAB_IDENTITIES=(read files edit full outsider)
 
 pki_dir() { echo "$LAB_STATE_DIR/pki"; }
 identity_cert() { echo "$(pki_dir)/$1.crt"; }

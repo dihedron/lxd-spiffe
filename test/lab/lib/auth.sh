@@ -1,6 +1,7 @@
 # shellcheck shell=bash
 # Authorization on the LXD servers: one group per probe identity (lab-read,
-# lab-files, lab-edit, lab-full), the identities' TLS certificates in them,
+# lab-files, lab-edit, lab-full, lab-outsider), the identities' TLS
+# certificates in them,
 # per-instance grants (LXD has no project-wide file access entitlement), and a
 # bearer identity in lab-files where the server offers bearer identities for
 # its remote API. Configured as root over each VM's unix socket.
@@ -25,11 +26,18 @@ bearer_token_file() { echo "$LAB_STATE_DIR/tokens/$1-bearer.token"; }
 # group (full is server admin instead).
 identity_entitlements() {
 	case "$1" in
-	read) echo can_view ;;
+	read | outsider) echo can_view ;;
 	files) echo can_view can_access_files ;;
 	edit) echo can_view can_edit ;;
 	full) ;;
 	esac
+}
+
+# identity_has_project IDENTITY PROJECT: whether the identity gets grants in
+# PROJECT. outsider sees only default: in any other project LXD answers it
+# as if nothing existed.
+identity_has_project() {
+	[[ "$1" != outsider || "$2" == default ]]
 }
 
 # auth_setup SERVER: the groups, the TLS identities and the bearer identity.
@@ -98,6 +106,7 @@ lab_grant() {
 	shift 2
 	for id in "${LAB_IDENTITIES[@]}"; do
 		[[ -n "$(identity_entitlements "$id")" ]] || continue
+		identity_has_project "$id" "$project" || continue
 		have="$(vm_lxc "$server" query "/1.0/auth/groups/lab-$id" | jq -r '
 			(.permissions // [])[]
 			| if .entity_type == "project" then
