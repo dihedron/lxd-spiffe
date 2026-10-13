@@ -86,7 +86,7 @@ func SanitizeTree(src, out string, check bool) (*TreeReport, error) {
 			return nil
 		}
 		report.Files++
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //nolint:gosec // G304: a file of the evidence tree being sanitized
 		if err != nil {
 			return err
 		}

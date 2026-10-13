@@ -176,7 +176,7 @@ func LoadFixtures(dir string) ([]Fixture, error) {
 }
 
 func readFixtureFile(path string, v any) error {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: a fixture under the directory the caller loads
 	if err != nil {
 		return err
 	}
