@@ -10,7 +10,7 @@ import (
 type Commands struct {
 	Diff     Diff     `command:"diff" description:"Compare two evidence records, ignoring volatile fields (PRU-01)."`
 	Idmap    Idmap    `command:"idmap" description:"Run and cross-check the attestor's uid translation."`
-	Overlap  Overlap  `command:"overlap" description:"Run the device-overlap check on a recorded instance (PRU-04)."`
+	Overlap  Overlap  `command:"overlap" description:"Run the attestor's isolation check on recorded instances (PRU-04)."`
 	Sanitize Sanitize `command:"sanitize" description:"Sanitize an evidence directory, or check that it is sanitized (PRU-05)."`
 	Fixtures Fixtures `command:"fixtures" description:"Work with recorded fixtures."`
 	Note     Note     `command:"note" description:"Append an operator note or decision to the run (PRU-07)."`
@@ -26,20 +26,6 @@ type Idmap struct {
 // Fixtures groups the fixtures verbs.
 type Fixtures struct {
 	Verify FixturesVerify `command:"verify" description:"Decode every recorded response with the client's typed structs (PRU-06)."`
-}
-
-// Overlap is util overlap RECORD.
-type Overlap struct {
-	probe.GlobalOptions
-	ProofDir string `long:"proof-dir" description:"Proof directory to check." default:"/run/spire/lxd"`
-	Args     struct {
-		Record string `positional-arg-name:"RECORD" description:"Record of server instance show."`
-	} `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *Overlap) Execute(args []string) error {
-	return probe.NotImplemented("util overlap")
 }
 
 // FixturesVerify is util fixtures verify DIR.

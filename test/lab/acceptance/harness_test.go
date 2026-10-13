@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"os/exec"
@@ -273,6 +274,18 @@ func (l *lab) labsh(t *testing.T, args ...string) string {
 		t.Fatalf("lab.sh %s: %v\n%s", strings.Join(args, " "), err, stderr.String())
 	}
 	return stdout.String()
+}
+
+// trySSH runs a shell command on a lab VM and returns its standard output,
+// or an error with its standard error, for steps that may fail.
+func (l *lab) trySSH(vm, command string) (string, error) {
+	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), "ssh", vm, command)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		return stdout.String(), fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	return stdout.String(), nil
 }
 
 // ssh runs a shell command on a lab VM and returns its standard output.

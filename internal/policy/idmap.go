@@ -1,6 +1,6 @@
 // Package policy holds the attestor's decision rules that lxd-probe also
 // runs, so that both use the same code (attestor spec Proof of co-location
-// → UID translation; probe spec PRU-02).
+// → UID translation and the isolation check; probe spec PRU-02, PRU-04).
 package policy
 
 import (
