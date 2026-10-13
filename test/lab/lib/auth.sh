@@ -7,6 +7,7 @@
 # its remote API. Configured as root over each VM's unix socket.
 
 readonly LAB_BEARER=lab-bearer
+readonly LAB_BEARER_SHORT=lab-bearer-short
 
 # vm_lxc SERVER ARGS...: runs lxc as root on SERVER's VM.
 vm_lxc() {
@@ -21,6 +22,7 @@ lxd_has_extension() {
 }
 
 bearer_token_file() { echo "$LAB_STATE_DIR/tokens/$1-bearer.token"; }
+short_token_file() { echo "$LAB_STATE_DIR/tokens/$1-bearer-short.token"; }
 
 # identity_entitlements IDENTITY: the instance entitlements of the identity's
 # group (full is server admin instead).
@@ -95,6 +97,46 @@ auth_bearer() {
 		printf '%s\n' "$token" >"$file"
 	)
 	env_set ".servers[\"$server\"].auth.bearer_token" "$file"
+}
+
+# cmd_token SERVER [--expiry DURATIONS]: issues a short-lived token to
+# lab-bearer-short (created in lab-files on first use), which revokes the
+# one issued before, and writes its environment file, for "probe --as
+# bearer-short" (L13). lab-bearer's long-lived token is never touched.
+cmd_token() {
+	require_state
+	local usage="usage: lab.sh token <server> [--expiry <durations>]"
+	local server="${1:-}" expiry=2M file token
+	[[ -n "$server" ]] || die "$usage"
+	shift
+	require_server "$server"
+	while (($#)); do
+		case "$1" in
+		--expiry)
+			[[ $# -ge 2 ]] || die "$usage"
+			expiry="$2"
+			shift 2
+			;;
+		*) die "$usage" ;;
+		esac
+	done
+	[[ "$(env_get ".servers[\"$server\"].auth.bearer // \"no\"")" == yes ]] ||
+		die "$server has no bearer identities (LXD $(env_get ".servers[\"$server\"].version"))"
+	if ! vm_lxc "$server" auth identity list -f csv | grep -q "^bearer,[^,]*,$LAB_BEARER_SHORT,"; then
+		info "$server: creating bearer identity $LAB_BEARER_SHORT"
+		vm_lxc "$server" auth identity create "bearer/$LAB_BEARER_SHORT" --group lab-files >/dev/null
+	fi
+	token="$(vm_lxc "$server" auth identity token issue "bearer/$LAB_BEARER_SHORT" --expiry "$expiry" | tail -n1)"
+	[[ -n "$token" ]] || die "$server: no token issued for bearer/$LAB_BEARER_SHORT"
+	file="$(short_token_file "$server")"
+	mkdir -p "${file%/*}"
+	chmod 0700 "${file%/*}"
+	(
+		umask 077
+		printf '%s\n' "$token" >"$file"
+	)
+	probe_env_bearer "$server" bearer-short "$file"
+	info "$server: issued a token to $LAB_BEARER_SHORT for $expiry: lab.sh probe $server --as bearer-short -- <args>"
 }
 
 # lab_grant SERVER PROJECT INSTANCE...: gives the probe identities' groups

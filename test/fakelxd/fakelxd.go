@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 
@@ -57,6 +58,9 @@ type Server struct {
 	exts      []string             // api_extensions of GET /1.0
 	nextOp    int
 	replay    map[string][]evidence.Fixture
+	// bearerExpiry, when set, refuses bearer tokens from then on, as LXD
+	// refuses an expired token (lab, LXD 6.9).
+	bearerExpiry time.Time
 }
 
 // File is a file inside a fake instance, as the files API reports it.
@@ -169,6 +173,15 @@ func (s *Server) HideProject(project string) {
 	s.hidden = append(s.hidden, project)
 }
 
+// ExpireBearerAt refuses every request with a bearer token from at on,
+// with the 403 LXD 6.9 answers an expired or revoked token with, on every
+// path (GET /1.0 included).
+func (s *Server) ExpireBearerAt(at time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.bearerExpiry = at
+}
+
 // SetExtensions replaces the api_extensions the fake reports; the
 // extensions do not change what the fake serves.
 func (s *Server) SetExtensions(extensions ...string) {
@@ -271,6 +284,10 @@ func (s *Server) replayed(w http.ResponseWriter, r *http.Request) {
 func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if !s.bearerExpiry.IsZero() && strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") && !time.Now().Before(s.bearerExpiry) {
+		writeError(w, http.StatusForbidden, "Failed verifying bearer token: Failed authenticating bearer token: Token is not valid: token has invalid claims: token is expired")
+		return
+	}
 	for _, prefix := range s.deny {
 		if strings.HasPrefix(r.URL.Path, prefix) {
 			writeError(w, http.StatusForbidden, "not authorized")

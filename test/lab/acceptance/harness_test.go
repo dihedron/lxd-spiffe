@@ -234,6 +234,47 @@ func (l *lab) pull(t *testing.T, server, project, instance, runID string) {
 	}
 }
 
+// util runs "lxd-probe util ARGS --json" on this host in the session's
+// run, as the util environment, and fails the test like probe does.
+func (l *lab) util(t *testing.T, s session, args ...string) *run {
+	t.Helper()
+	full := append([]string{"util"}, args...)
+	full = append(full, "--evidence-dir", s.evidenceDir, "--run-id", s.runID, "--json")
+	cmd := exec.Command(filepath.Join(l.state, "bin", "lxd-probe"), full...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	r := &run{stdout: stdout.String(), stderr: stderr.String()}
+	var ee *exec.ExitError
+	switch {
+	case err == nil:
+	case errors.As(err, &ee):
+		r.code = ee.ExitCode()
+	default:
+		t.Fatalf("lxd-probe %s: %v", strings.Join(full, " "), err)
+	}
+	var rec evidence.Record
+	if json.Unmarshal(stdout.Bytes(), &rec) == nil && rec.ID != "" {
+		r.rec, r.recs = &rec, []*evidence.Record{&rec}
+	}
+	if probeFailure(r.code) || r.rec == nil {
+		t.Fatalf("lxd-probe %s: the probe failed: %s", strings.Join(full, " "), r)
+	}
+	return r
+}
+
+// labsh runs another lab.sh command and returns its standard output.
+func (l *lab) labsh(t *testing.T, args ...string) string {
+	t.Helper()
+	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), args...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("lab.sh %s: %v\n%s", strings.Join(args, " "), err, stderr.String())
+	}
+	return stdout.String()
+}
+
 // ssh runs a shell command on a lab VM and returns its standard output.
 func (l *lab) ssh(t *testing.T, vm, command string) string {
 	t.Helper()

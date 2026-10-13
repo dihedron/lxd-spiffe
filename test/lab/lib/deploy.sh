@@ -52,17 +52,40 @@ probe_push() {
 	vm_ssh "$server" "set -e; $script" >/dev/null || die "$server: cannot install lxd-probe in the instances"
 }
 
+# probe_env_common SERVER: the variables every environment file of SERVER
+# has.
+probe_env_common() {
+	printf '%s=%q\n' \
+		LXD_PROBE_ENDPOINT "$(env_get ".servers[\"$1\"].endpoint")" \
+		LXD_PROBE_PIN "$(env_get ".servers[\"$1\"].fingerprint")" \
+		LXD_PROBE_PROJECT default \
+		LXD_PROBE_EVIDENCE_DIR "$LAB_EVIDENCE_DIR"
+}
+
+# probe_env_bearer SERVER IDENTITY TOKEN_FILE: the environment file of a
+# bearer identity.
+probe_env_bearer() {
+	local file
+	file="$(probe_env_file "$1" "$2")"
+	mkdir -p "$(probe_env_dir)"
+	chmod 0700 "$(probe_env_dir)"
+	(
+		umask 077
+		{
+			probe_env_common "$1"
+			printf '%s=%q\n' LXD_PROBE_AUTH bearer LXD_PROBE_TOKEN_FILE "$3"
+		} >"$file"
+	)
+	chmod 0600 "$file"
+}
+
 # probe_env SERVER: the environment files of SERVER, one per identity (and
 # one for its bearer identity), for "lab.sh probe" (probe spec PRN-32).
 probe_env() {
 	local server="$1" id file common
 	mkdir -p "$(probe_env_dir)"
 	chmod 0700 "$(probe_env_dir)"
-	common="$(printf '%s=%q\n' \
-		LXD_PROBE_ENDPOINT "$(env_get ".servers[\"$server\"].endpoint")" \
-		LXD_PROBE_PIN "$(env_get ".servers[\"$server\"].fingerprint")" \
-		LXD_PROBE_PROJECT default \
-		LXD_PROBE_EVIDENCE_DIR "$LAB_EVIDENCE_DIR")"
+	common="$(probe_env_common "$server")"
 	for id in "${LAB_IDENTITIES[@]}"; do
 		file="$(probe_env_file "$server" "$id")"
 		(
@@ -76,18 +99,10 @@ probe_env() {
 		)
 		chmod 0600 "$file"
 	done
-	file="$(probe_env_file "$server" bearer)"
 	if [[ "$(env_get ".servers[\"$server\"].auth.bearer // \"no\"")" == yes ]]; then
-		(
-			umask 077
-			{
-				printf '%s\n' "$common"
-				printf '%s=%q\n' LXD_PROBE_AUTH bearer LXD_PROBE_TOKEN_FILE "$(bearer_token_file "$server")"
-			} >"$file"
-		)
-		chmod 0600 "$file"
+		probe_env_bearer "$server" bearer "$(bearer_token_file "$server")"
 	else
-		rm -f "$file"
+		rm -f "$(probe_env_file "$server" bearer)"
 	fi
 }
 

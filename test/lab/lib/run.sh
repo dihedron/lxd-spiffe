@@ -43,7 +43,7 @@ cmd_probe() {
 		esac
 	done
 	file="$(probe_env_file "$server" "$identity")"
-	[[ -f "$file" ]] || die "$server has no identity \"$identity\" (identities: ${LAB_IDENTITIES[*]}, and bearer where the server has bearer identities); or run lab.sh deploy"
+	[[ -f "$file" ]] || die "$server has no identity \"$identity\" (identities: ${LAB_IDENTITIES[*]}, and bearer where the server has bearer identities, bearer-short after lab.sh token); or run lab.sh deploy"
 	(
 		set -a
 		# shellcheck disable=SC1090 # written by probe_env

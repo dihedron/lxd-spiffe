@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/canonical/lxd/shared/api"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
@@ -107,17 +108,26 @@ func newSession(ctx context.Context, opts *probe.ServerCommand, stdout io.Writer
 
 // bearerToken returns the token of --auth bearer, from --token-file or
 // LXD_PROBE_TOKEN (never from an argument, PRN-12); empty for --auth tls.
+// LXD's bearer tokens are JWTs, and the SDK refuses anything else when
+// connecting: checked here, so that it is a usage error.
 func bearerToken(opts *probe.ServerCommand) (string, error) {
 	if opts.Auth != "bearer" {
 		return "", nil
 	}
+	token := strings.TrimSpace(os.Getenv("LXD_PROBE_TOKEN"))
 	if opts.TokenFile != "" {
-		return lxd.ReadSecretFile(opts.TokenFile)
+		var err error
+		if token, err = lxd.ReadSecretFile(opts.TokenFile); err != nil {
+			return "", err
+		}
 	}
-	if token := strings.TrimSpace(os.Getenv("LXD_PROBE_TOKEN")); token != "" {
-		return token, nil
+	if token == "" {
+		return "", errors.New("--auth bearer needs --token-file or LXD_PROBE_TOKEN")
 	}
-	return "", errors.New("--auth bearer needs --token-file or LXD_PROBE_TOKEN")
+	if _, _, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{}); err != nil {
+		return "", fmt.Errorf("the bearer token is not a JWT: %w", err)
+	}
+	return token, nil
 }
 
 // record keeps an exchange for --record.

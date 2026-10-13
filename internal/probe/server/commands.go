@@ -3,8 +3,6 @@
 package server
 
 import (
-	"time"
-
 	"github.com/dihedron/lxd-spiffe/internal/probe"
 )
 
@@ -69,18 +67,6 @@ type keyArgs struct {
 type pathArgs struct {
 	Name string `positional-arg-name:"NAME" description:"Instance name."`
 	Path string `positional-arg-name:"PATH" description:"Path inside the instance."`
-}
-
-// BearerCheck is server bearer check.
-type BearerCheck struct {
-	probe.ServerCommand
-	WaitExpiry bool          `long:"wait-expiry" description:"Keep calling until the token expires and record the first failure."`
-	MaxWait    time.Duration `long:"max-wait" description:"Upper bound for --wait-expiry." default:"1h"`
-}
-
-// Execute runs the command.
-func (cmd *BearerCheck) Execute(args []string) error {
-	return probe.NotImplemented("server bearer check")
 }
 
 // RehearseFilePull is server rehearse file-pull NAME.

@@ -53,6 +53,10 @@ commands:
   guest <server> <instance> [--project <project>] [--user <uid>] -- <args>
                             run lxd-probe inside an instance (as root
                             unless --user is given)
+  token <server> [--expiry <durations>]
+                            issue a short-lived token (default 2M) to the
+                            bearer identity lab-bearer-short, for
+                            probe --as bearer-short (L13)
   pull <server> <instance> [--project <project>] [--user <uid>] <run_id>
                             copy a guest run into the evidence directory
   refresh                   move the LXD servers to their channels' newest
@@ -363,6 +367,7 @@ main() {
 	probe) cmd_probe "${args[@]}" ;;
 	guest) cmd_guest "${args[@]}" ;;
 	pull) cmd_pull "${args[@]}" ;;
+	token) cmd_token "${args[@]}" ;;
 	refresh) cmd_refresh ;;
 	test) cmd_test "${args[@]}" ;;
 	help | -h | --help) usage ;;
