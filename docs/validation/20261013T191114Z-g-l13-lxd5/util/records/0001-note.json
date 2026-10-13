@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0001",
+  "time": "2026-10-13T19:11:14.861564015Z",
+  "tool_version": "c085bf9",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L13",
+  "cell": "lxd5-none",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "LXD 5.21.8 on lxd5 offers no bearer identities (no auth_bearer extension): L13 cannot be tested here"
+    }
+  ],
+  "raw": null
+}

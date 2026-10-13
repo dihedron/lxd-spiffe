@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "id": "server/0005",
+  "time": "2026-10-13T19:13:17.262253367Z",
+  "tool_version": "c085bf9",
+  "env": "server",
+  "verb": "bearer check",
+  "args": [],
+  "gate": "L13",
+  "cell": "lxd6-bearer-short",
+  "outcome": "ok",
+  "duration_ms": 20,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "server",
+    "identity-current"
+  ],
+  "observations": [
+    {
+      "key": "token.format",
+      "value": "jwt"
+    },
+    {
+      "key": "token.header",
+      "value": {
+        "alg": "HS512",
+        "typ": "JWT"
+      }
+    },
+    {
+      "key": "token.claims",
+      "value": {
+        "aud": [
+          "lxd:01a12c24-43bb-781a-ad3a-36b2490f435c"
+        ],
+        "exp": "2026-10-13T19:23:17Z",
+        "iat": "2026-10-13T19:13:17Z",
+        "iss": "lxd:01a12c24-43bb-781a-ad3a-36b2490f435c",
+        "lifetime_s": 600,
+        "nbf": "2026-10-13T19:13:17Z",
+        "server_cert_fingerprint_present": true,
+        "sub_present": true
+      }
+    },
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "server.auth",
+      "value": "trusted"
+    },
+    {
+      "key": "identity.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.authentication_method",
+      "value": "bearer"
+    },
+    {
+      "key": "identity.type",
+      "value": "Client token bearer"
+    },
+    {
+      "key": "identity.groups",
+      "value": [
+        "lab-files"
+      ]
+    },
+    {
+      "key": "bearer.calls",
+      "value": {
+        "identity": "allowed",
+        "server": "allowed"
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0005-server.json",
+    "artifacts/0005-identity.json"
+  ]
+}
