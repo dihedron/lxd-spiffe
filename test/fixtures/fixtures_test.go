@@ -1,46 +1,41 @@
 // Package fixtures_test replays the committed fixtures: the sanitized
-// responses of real LXD servers that the lab's S0-1 session records (probe
+// responses of real LXD servers that the lab's sessions record (probe
 // spec PRT-10, gate L15). Each one is requested from a fake LXD that
-// replays them, through the same client lxd-probe uses, and decoded into the
-// LXD type the probe decodes it into; a decode failure calls for a client
-// struct fix. The devLXD fixtures under <version>/devlxd/<instance>/ (S0-2)
-// replay through the probe's devLXD client the same way. It stands in for
-// "util fixtures verify" until stage 2.
+// replays them, through the same client lxd-probe uses (PRE-12), and the
+// fixtures are checked by the code of "util fixtures verify"
+// (internal/probe/fixturecheck, PRU-06): a decode failure calls for a
+// client struct fix, a missing field for a contract fix. The devLXD
+// fixtures under <version>/devlxd/<instance>/ (S0-2) replay through the
+// probe's devLXD client the same way.
 package fixtures_test
 
 import (
+	"bytes"
 	"context"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"testing"
-
-	"github.com/canonical/lxd/shared/api"
 
 	"github.com/dihedron/lxd-spiffe/internal/devlxd"
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
+	"github.com/dihedron/lxd-spiffe/internal/probe/fixturecheck"
 	"github.com/dihedron/lxd-spiffe/test/fakelxd"
 )
 
-var instancePath = regexp.MustCompile(`^/1\.0/instances/[^/]+$`)
-
-// decodeInto returns what the probe decodes a successful response of the
-// request into, or nil for a request it does not decode.
-func decodeInto(path string, query url.Values) any {
-	switch {
-	case path == "/1.0":
-		return &api.Server{}
-	case path == "/1.0/auth/identities/current":
-		return &api.IdentityInfo{}
-	case instancePath.MatchString(path) && query.Get("recursion") == "1":
-		return &api.InstanceFull{}
-	case instancePath.MatchString(path):
-		return &api.Instance{}
+// verify runs util fixtures verify's checks on the version's fixtures.
+func verify(t *testing.T, version string) {
+	t.Helper()
+	results, err := fixturecheck.Verify(version)
+	if err != nil {
+		t.Fatal(err)
 	}
-	return nil
+	sum := fixturecheck.Summarize(results)
+	for _, r := range sum.Failed {
+		t.Errorf("%s (%s): decode %q, missing %v", r.Fixture, r.Call, r.DecodeError, r.Missing)
+	}
+	t.Logf("%d fixtures: %v; fields the SDK's types do not know: %v", sum.Total, sum.Kinds, sum.Unknown)
 }
 
 func TestReplay(t *testing.T) {
@@ -91,35 +86,14 @@ func TestReplay(t *testing.T) {
 					t.Errorf("%s: status %d, fixture %d", f.Name, resp.Status, f.Response.Status)
 					continue
 				}
-				if resp.Status >= http.StatusBadRequest {
-					if env, err := resp.Envelope(); err != nil || env.Type != api.ErrorResponse {
-						t.Errorf("%s: error response without an error envelope: %v", f.Name, err)
-					}
-					continue
-				}
-				if v := decodeInto(f.Request.Path, query); v != nil {
-					if err := lxd.Decode(resp, v); err != nil {
-						t.Errorf("%s: decoding into %T: %v", f.Name, v, err)
-					}
+				if !bytes.Equal(resp.Body, f.Response.ResponseBody()) {
+					t.Errorf("%s: the replayed body differs from the fixture", f.Name)
 				}
 			}
 			replayDevLXD(t, filepath.Join(version, "devlxd"))
+			verify(t, version)
 		})
 	}
-}
-
-// devlxdInto returns what the probe decodes a successful devLXD response
-// into (guest devlxd get, PRE-08), or nil for a text body.
-func devlxdInto(path string) any {
-	switch path {
-	case "/1.0":
-		return &api.DevLXDGet{}
-	case "/1.0/devices":
-		return &map[string]map[string]string{}
-	case "/", "/1.0/config":
-		return &[]string{}
-	}
-	return nil
 }
 
 // replayDevLXD replays the devLXD fixtures of each instance under dir (the
@@ -154,11 +128,6 @@ func replayDevLXD(t *testing.T, dir string) {
 				if resp.Status != f.Response.Status {
 					t.Errorf("%s: status %d, fixture %d", f.Name, resp.Status, f.Response.Status)
 					continue
-				}
-				if v := devlxdInto(f.Request.Path); v != nil && resp.Status < http.StatusBadRequest {
-					if err := resp.Decode(v); err != nil {
-						t.Errorf("%s: decoding into %T: %v", f.Name, v, err)
-					}
 				}
 			}
 		})

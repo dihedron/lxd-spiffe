@@ -25,20 +25,7 @@ type Idmap struct {
 
 // Fixtures groups the fixtures verbs.
 type Fixtures struct {
-	Verify FixturesVerify `command:"verify" description:"Decode every recorded response with the client's typed structs (PRU-06)."`
-}
-
-// FixturesVerify is util fixtures verify DIR.
-type FixturesVerify struct {
-	probe.GlobalOptions
-	Args struct {
-		Dir string `positional-arg-name:"DIR" description:"Fixtures directory."`
-	} `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *FixturesVerify) Execute(args []string) error {
-	return probe.NotImplemented("util fixtures verify")
+	Verify FixturesVerify `command:"verify" description:"Check recorded fixtures: decoding, contract fields, error envelopes (PRU-06)."`
 }
 
 // Report is util report RUN_DIR...

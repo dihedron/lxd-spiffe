@@ -20,7 +20,10 @@ import (
 // as text.
 type Fixture struct {
 	// Name is the file name stem, set by LoadFixtures.
-	Name     string          `json:"-"`
+	Name string `json:"-"`
+	// Path is the stem's path relative to the directory LoadFixtures was
+	// given, which tells apart fixtures of different subdirectories.
+	Path     string          `json:"-"`
 	Request  FixtureRequest  `json:"-"`
 	Response FixtureResponse `json:"-"`
 }
@@ -159,6 +162,9 @@ func LoadFixtures(dir string) ([]Fixture, error) {
 			return nil
 		}
 		f := Fixture{Name: filepath.Base(stem)}
+		if rel, err := filepath.Rel(dir, stem); err == nil {
+			f.Path = filepath.ToSlash(rel)
+		}
 		if err := readFixtureFile(path, &f.Request); err != nil {
 			return err
 		}
