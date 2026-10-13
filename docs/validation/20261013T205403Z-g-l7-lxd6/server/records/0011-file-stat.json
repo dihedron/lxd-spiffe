@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "id": "server/0011",
+  "time": "2026-10-13T21:00:17.060664198Z",
+  "tool_version": "19235a6",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "v-alpine",
+    "/etc/hostname",
+    "--wait",
+    "5m0s"
+  ],
+  "gate": "L7",
+  "cell": "lxd6-v-alpine",
+  "outcome": "ok",
+  "duration_ms": 19943,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "wait.attempts",
+      "value": 77
+    },
+    {
+      "key": "wait.ready_after_ms",
+      "value": 19908
+    },
+    {
+      "key": "wait.failures",
+      "value": [
+        {
+          "count": 76,
+          "error": "LXD VM agent is not currently running",
+          "first_seen_ms": 6,
+          "status": 500
+        }
+      ]
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0644"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-12 10:11:14 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "file.size",
+      "value": 9
+    },
+    {
+      "key": "file.sha256",
+      "value": "eac244c7e6e1ad508a68e110c3c13394dbb5b2a5bbbfcd8f0ed94d3cd56f6a52"
+    }
+  ],
+  "raw": [
+    "artifacts/0011-server.json",
+    "artifacts/0011-file.json"
+  ]
+}
