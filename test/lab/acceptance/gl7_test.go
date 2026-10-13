@@ -16,8 +16,9 @@ const ruleL7 = "L7 decision: the agent-start-order documentation for operators; 
 
 // TestGL7Agent is G-L7, gate L7's session, one run per server: for each
 // baseline VM, server file stat /etc/hostname once while it is stopped
-// (Q2), then three times a restart and server file stat --wait 5m as
-// files, which times the files API from the restart, and guest preflight.
+// (Q2), then a start and two forced restarts (cold boots), each followed by
+// server file stat --wait 5m as files, which times the files API from the
+// start, and guest preflight.
 // The VMs are running again at the end.
 func TestGL7Agent(t *testing.T) {
 	l := newLab(t)
@@ -30,7 +31,9 @@ func TestGL7Agent(t *testing.T) {
 			s := session{evidenceDir: l.evidence, runID: runID}
 			for _, vm := range []string{"v-ubuntu", "v-debian", "v-alpine"} {
 				tags := []string{"--gate", "L7", "--cell", server + "-" + vm}
-				l.ssh(t, server, "sudo lxc stop "+vm)
+				// a VM still booting ignores the shutdown request, and a clean
+				// stop or restart then waits without limit
+				l.ssh(t, server, "sudo lxc stop --timeout 120 "+vm+" || sudo lxc stop --force "+vm)
 				stopped := l.probe(t, s, server, "files", append([]string{"server", "file", "stat", vm, path}, tags...)...)
 				status, _ := stopped.observation("file.http_status")
 				msg, _ := stopped.observation("file.error")
@@ -38,7 +41,7 @@ func TestGL7Agent(t *testing.T) {
 				l.ssh(t, server, "sudo lxc start "+vm)
 				for i := 1; i <= 3; i++ {
 					if i > 1 {
-						l.ssh(t, server, "sudo lxc restart "+vm)
+						l.ssh(t, server, "sudo lxc restart --force "+vm) // a cold boot each time
 					}
 					r := l.probe(t, s, server, "files", append([]string{"server", "file", "stat", vm, path, "--wait", "5m"}, tags...)...)
 					ready, _ := r.observation("wait.ready_after_ms")
