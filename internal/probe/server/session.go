@@ -46,6 +46,9 @@ type session struct {
 
 	mu        sync.Mutex
 	exchanges []lxd.Exchange
+	// quiet keeps exchanges out of --record while set: polls that would
+	// drown the fixtures (file stat --wait).
+	quiet bool
 }
 
 // newSession validates the options, opens the run, connects and reserves
@@ -134,7 +137,16 @@ func bearerToken(opts *probe.ServerCommand) (string, error) {
 func (s *session) record(x lxd.Exchange) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.exchanges = append(s.exchanges, x)
+	if !s.quiet {
+		s.exchanges = append(s.exchanges, x)
+	}
+}
+
+// setQuiet sets quiet (see the field).
+func (s *session) setQuiet(quiet bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.quiet = quiet
 }
 
 // observe adds an observation to the record.

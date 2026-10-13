@@ -61,6 +61,15 @@ type Server struct {
 	// bearerExpiry, when set, refuses bearer tokens from then on, as LXD
 	// refuses an expired token (lab, LXD 6.9).
 	bearerExpiry time.Time
+	// fileFailures answers the files API of an instance with an error a
+	// number of times first, as a VM whose lxd-agent is not up yet.
+	fileFailures map[string]*fileFailure // key: project/name
+}
+
+type fileFailure struct {
+	left   int
+	status int
+	msg    string
 }
 
 // File is a file inside a fake instance, as the files API reports it.
@@ -171,6 +180,17 @@ func (s *Server) HideProject(project string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.hidden = append(s.hidden, project)
+}
+
+// FailFiles answers the next n files API requests on the instance with
+// status and msg, as LXD answers while a VM's lxd-agent is not running.
+func (s *Server) FailFiles(project, name string, n, status int, msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.fileFailures == nil {
+		s.fileFailures = map[string]*fileFailure{}
+	}
+	s.fileFailures[project+"/"+name] = &fileFailure{left: n, status: status, msg: msg}
 }
 
 // ExpireBearerAt refuses every request with a bearer token from at on,
@@ -430,6 +450,11 @@ func (s *Server) identity(w http.ResponseWriter, r *http.Request) {
 func (s *Server) file(w http.ResponseWriter, r *http.Request, project, name string) {
 	if _, ok := s.instances[project+"/"+name]; !ok {
 		writeError(w, http.StatusNotFound, "Instance not found")
+		return
+	}
+	if f := s.fileFailures[project+"/"+name]; f != nil && f.left > 0 {
+		f.left--
+		writeError(w, f.status, f.msg)
 		return
 	}
 	f, ok := s.files[project+"/"+name+"/"+r.URL.Query().Get("path")]

@@ -3,10 +3,12 @@ package server
 import (
 	"bytes"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 	"github.com/dihedron/lxd-spiffe/internal/probe"
@@ -183,5 +185,59 @@ func TestFileErrors(t *testing.T) {
 	}
 	if rec := record(t, opts, 2); rec.Outcome != evidence.OutcomeOK {
 		t.Errorf("--expect-denied: %s %v", rec.Outcome, rec.Observations)
+	}
+}
+
+// TestFileStatWait checks --wait: retries while the files API fails, one
+// artifact and fixture for the final exchange only (PRS-30, L7).
+func TestFileStatWait(t *testing.T) {
+	fake := fileFake(t)
+	fake.FailFiles("default", "c1", 3, http.StatusBadRequest, "VM agent isn't currently running")
+	opts := fileOpts(t, fake)
+	cmd := &FileStat{ServerCommand: opts, Wait: 10 * time.Second, stdout: &bytes.Buffer{}}
+	cmd.Args.Name, cmd.Args.Path = "c1", "/etc/secret"
+	if err := cmd.Execute(nil); err != nil {
+		t.Fatal(err)
+	}
+	rec := record(t, opts, 1)
+	if rec.Outcome != evidence.OutcomeOK {
+		t.Errorf("outcome %s: %v", rec.Outcome, rec.Observations)
+	}
+	if got := observation(t, rec, "wait.attempts"); got != float64(4) {
+		t.Errorf("wait.attempts = %v; want 4 (3 failures, then the success)", got)
+	}
+	if ms, _ := observation(t, rec, "wait.ready_after_ms").(float64); ms < 3*250 {
+		t.Errorf("wait.ready_after_ms = %v; want at least three 250 ms intervals", ms)
+	}
+	failures, _ := observation(t, rec, "wait.failures").([]any)
+	if len(failures) != 1 {
+		t.Fatalf("wait.failures = %v; want one distinct failure", failures)
+	}
+	f, _ := failures[0].(map[string]any)
+	if f["status"] != float64(400) || f["count"] != float64(3) || f["error"] != "VM agent isn't currently running" {
+		t.Errorf("failure = %v", f)
+	}
+	if observation(t, rec, "file.http_status") != float64(200) {
+		t.Error("the final exchange is not the success")
+	}
+	// GET /1.0 and the final stat: the polls leave no fixtures
+	if fixtures, _ := filepath.Glob(filepath.Join(opts.Record, "*", "*.response.json")); len(fixtures) != 2 {
+		t.Errorf("fixtures %v; want 2", fixtures)
+	}
+
+	// never ready: the last failure is the result, and a finding
+	fake.FailFiles("default", "c1", 1000, http.StatusBadRequest, "VM agent isn't currently running")
+	opts = fileOpts(t, fake)
+	cmd = &FileStat{ServerCommand: opts, Wait: 600 * time.Millisecond, stdout: &bytes.Buffer{}}
+	cmd.Args.Name, cmd.Args.Path = "c1", "/etc/secret"
+	if err := cmd.Execute(nil); err != nil {
+		t.Fatal(err)
+	}
+	rec = record(t, opts, 1)
+	if rec.Outcome != evidence.OutcomeUnexpected {
+		t.Errorf("never ready: outcome %s", rec.Outcome)
+	}
+	if observation(t, rec, "wait.not_ready") == nil {
+		t.Error("no wait.not_ready")
 	}
 }
