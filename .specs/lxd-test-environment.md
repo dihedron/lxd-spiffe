@@ -48,7 +48,7 @@ The LXD VMs are the same in both scenarios, and so are their baseline instances 
 
 Each VM runs with the host's CPU model (`host-passthrough`) and nested KVM, since LXD runs virtual machines inside it. Each LXD server uses a ZFS pool on a loop file (`LAB_LXD_STORAGE`, `zfs` or `dir`), its own `lxdbr0` bridge with NAT for its instances, and listens on `:8443` on the lab network. The lab does not need to reach the instances directly: everything goes through the LXD API or through `lxc` on the LXD VM.
 
-**Snap refreshes are held** (`snap refresh --hold lxd`) on every LXD VM, so that the LXD version cannot change during a session. `lab.sh refresh` updates the channels deliberately and records the new revisions.
+**Snap refreshes are held** on every LXD VM (`snap refresh --hold lxd`, and `snap refresh --hold` for the automatic refreshes of every other snap), so that the LXD version cannot change during a session, and LXD's base snap is not refreshed under it: an automatic refresh of `core26` during `up` once made `lxc` fail with "cannot locate base snap". `lab.sh refresh` updates the channels deliberately and records the new revisions.
 
 **Baseline instances** (the probe spec's lab matrix, *Operational guidance → Lab matrix*), created by `up` on `lxd5` and `lxd6` in the `default` project:
 
