@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "id": "util/0008",
+  "time": "2026-10-13T20:25:45.093550972Z",
+  "tool_version": "a8fb10e",
+  "env": "util",
+  "verb": "overlap",
+  "args": [
+    "--proof-dir",
+    "/run/lxd-probe",
+    "0020-instance-show.json",
+    "0021-instance-show.json"
+  ],
+  "gate": "L12",
+  "cell": "lxd6-vm-volume",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "overlap.proof_dir",
+      "value": "/run/lxd-probe"
+    },
+    {
+      "key": "overlap.results",
+      "value": [
+        {
+          "causes": [
+            {
+              "device": "l12-vmvol",
+              "path": "/run/lxd-probe",
+              "relation": "equal",
+              "source": "volume:default/l12-vmvol",
+              "type": "disk"
+            }
+          ],
+          "info": [],
+          "instance": "l12-v",
+          "record": "server/0020",
+          "verdict": "reject"
+        },
+        {
+          "causes": [
+            {
+              "device": "l12-vmvol",
+              "path": "/run/lxd-probe",
+              "relation": "equal",
+              "source": "volume:default/l12-vmvol",
+              "type": "disk"
+            }
+          ],
+          "info": [],
+          "instance": "l12-b",
+          "record": "server/0021",
+          "verdict": "reject"
+        }
+      ]
+    },
+    {
+      "key": "overlap.shared_sources",
+      "value": {
+        "volume:default/l12-vmvol": [
+          "server/0020",
+          "server/0021"
+        ]
+      }
+    }
+  ],
+  "raw": null
+}

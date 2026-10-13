@@ -1,0 +1,203 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Tue, 13 Oct 2026 20:24:26 GMT"
+    ],
+    "Etag": [
+      "\"8d5c9c17cc1ad6658e6ea3a11c9823e996b3655037517f4896d5a7455c205968\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "backups": null,
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "43783f74-acd7-4f61-a92f-47c8367be041",
+        "volatile.eth0.host_name": "veth9936713d",
+        "volatile.eth0.hwaddr": "mac-2",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.last_state.ready": "false",
+        "volatile.uuid": "224192c6-10fd-4ce4-9ff2-0240fb3c3e88",
+        "volatile.uuid.generation": "224192c6-10fd-4ce4-9ff2-0240fb3c3e88"
+      },
+      "created_at": "2026-10-13T20:23:09.407895023Z",
+      "description": "",
+      "devices": {
+        "l12-vmvol": {
+          "path": "/run/lxd-probe",
+          "pool": "default",
+          "source": "l12-vmvol",
+          "type": "disk"
+        }
+      },
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "43783f74-acd7-4f61-a92f-47c8367be041",
+        "volatile.eth0.host_name": "veth9936713d",
+        "volatile.eth0.hwaddr": "mac-2",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.last_state.ready": "false",
+        "volatile.uuid": "224192c6-10fd-4ce4-9ff2-0240fb3c3e88",
+        "volatile.uuid.generation": "224192c6-10fd-4ce4-9ff2-0240fb3c3e88"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "l12-vmvol": {
+          "path": "/run/lxd-probe",
+          "pool": "default",
+          "source": "l12-vmvol",
+          "type": "disk"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-13T20:23:52.88800124Z",
+      "location": "none",
+      "name": "l12-b",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "snapshots": null,
+      "state": {
+        "cpu": {
+          "usage": 3648351000
+        },
+        "disk": {
+          "l12-vmvol": {
+            "total": 0,
+            "usage": 24576
+          },
+          "root": {
+            "total": 0,
+            "usage": 2985984
+          }
+        },
+        "memory": {
+          "swap_usage": 0,
+          "swap_usage_peak": 0,
+          "total": 8326950912,
+          "usage": 113344512,
+          "usage_peak": 0
+        },
+        "network": {
+          "eth0": {
+            "addresses": [
+              {
+                "address": "10.170.74.115",
+                "family": "inet",
+                "netmask": "24",
+                "scope": "global"
+              },
+              {
+                "address": "fe80::216:3eff:fed0:6928",
+                "family": "inet6",
+                "netmask": "64",
+                "scope": "link"
+              }
+            ],
+            "counters": {
+              "bytes_received": 13731,
+              "bytes_sent": 4754,
+              "errors_received": 0,
+              "errors_sent": 0,
+              "packets_dropped_inbound": 0,
+              "packets_dropped_outbound": 0,
+              "packets_received": 52,
+              "packets_sent": 41
+            },
+            "host_name": "veth9936713d",
+            "hwaddr": "mac-2",
+            "mtu": 1500,
+            "state": "up",
+            "type": "broadcast"
+          },
+          "lo": {
+            "addresses": [
+              {
+                "address": "127.0.0.1",
+                "family": "inet",
+                "netmask": "8",
+                "scope": "local"
+              },
+              {
+                "address": "::1",
+                "family": "inet6",
+                "netmask": "128",
+                "scope": "local"
+              }
+            ],
+            "counters": {
+              "bytes_received": 1280,
+              "bytes_sent": 1280,
+              "errors_received": 0,
+              "errors_sent": 0,
+              "packets_dropped_inbound": 0,
+              "packets_dropped_outbound": 0,
+              "packets_received": 12,
+              "packets_sent": 12
+            },
+            "host_name": "",
+            "hwaddr": "",
+            "mtu": 65536,
+            "state": "up",
+            "type": "loopback"
+          }
+        },
+        "pid": 112300,
+        "processes": 24,
+        "status": "Running",
+        "status_code": 103
+      },
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "container"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

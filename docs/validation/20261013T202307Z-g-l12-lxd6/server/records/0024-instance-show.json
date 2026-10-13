@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "id": "server/0024",
+  "time": "2026-10-13T20:25:47.08321795Z",
+  "tool_version": "a8fb10e",
+  "env": "server",
+  "verb": "instance show",
+  "args": [
+    "l12-p"
+  ],
+  "gate": "L12",
+  "cell": "lxd6-vm-volume",
+  "outcome": "ok",
+  "duration_ms": 43,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "instance",
+    "instance-full"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance-full.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.etag",
+      "value": "\"ed16a3a562c0aa5e1d05b3c9998fd01c6c668722a03925563bda0d411a7da206\""
+    },
+    {
+      "key": "instance-full.etag",
+      "value": "\"ed16a3a562c0aa5e1d05b3c9998fd01c6c668722a03925563bda0d411a7da206\""
+    },
+    {
+      "key": "etag.equal",
+      "value": true
+    },
+    {
+      "key": "instance.type",
+      "value": "container"
+    },
+    {
+      "key": "instance.status",
+      "value": "Running"
+    },
+    {
+      "key": "instance.location",
+      "value": "none"
+    },
+    {
+      "key": "instance.architecture",
+      "value": "x86_64"
+    },
+    {
+      "key": "instance.config",
+      "value": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS (release)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "security.nesting": "true",
+        "security.privileged": "true",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "7f5704c6-fd2b-4490-a8b2-e623f7add1d9",
+        "volatile.eth0.host_name": "veth4d8ec030",
+        "volatile.eth0.hwaddr": "mac-4",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[]",
+        "volatile.idmap.next": "[]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "899a6682-d03d-4b2d-a6d8-a3da615d7e9a",
+        "volatile.uuid.generation": "899a6682-d03d-4b2d-a6d8-a3da615d7e9a"
+      }
+    },
+    {
+      "key": "instance.devices",
+      "value": {
+        "l12-vmvol": {
+          "path": "/run/lxd-probe",
+          "pool": "default",
+          "source": "l12-vmvol",
+          "type": "disk"
+        }
+      }
+    },
+    {
+      "key": "instance.expanded_devices",
+      "value": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "l12-vmvol": {
+          "path": "/run/lxd-probe",
+          "pool": "default",
+          "source": "l12-vmvol",
+          "type": "disk"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0024-server.json",
+    "artifacts/0024-instance.json",
+    "artifacts/0024-instance-full.json"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "server/0019",
+  "time": "2026-10-13T20:24:26.202214922Z",
+  "tool_version": "a8fb10e",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "l12-v",
+    "/run/lxd-probe/proof"
+  ],
+  "gate": "L12",
+  "cell": "lxd5-vm-volume",
+  "outcome": "ok",
+  "duration_ms": 45,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0600"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-13 20:24:26 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "file.size",
+      "value": 37
+    },
+    {
+      "key": "file.sha256",
+      "value": "4e9b1710e26f9f3212891ca8aa729869baa1fe599f57fb88314c70cf1cf13c4c"
+    }
+  ],
+  "raw": [
+    "artifacts/0019-server.json",
+    "artifacts/0019-file.json"
+  ]
+}

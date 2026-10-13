@@ -1,0 +1,111 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Tue, 13 Oct 2026 20:25:11 GMT"
+    ],
+    "Etag": [
+      "\"71007154f8ec45316c371cbae53383b64074a2f2e705521006167e3f11573b91\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS (release)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "c2defb4b-fa5e-4b7c-8c41-267a653e4af9",
+        "volatile.eth0.host_name": "vethb8baf472",
+        "volatile.eth0.hwaddr": "mac-2",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.last_state.ready": "false",
+        "volatile.uuid": "8806f52a-5c39-4f59-b193-8383971e23f0",
+        "volatile.uuid.generation": "8806f52a-5c39-4f59-b193-8383971e23f0"
+      },
+      "created_at": "2026-10-13T20:24:41.562348726Z",
+      "description": "",
+      "devices": {
+        "l12": {
+          "path": "/run",
+          "shift": "true",
+          "source": "/srv/l12-run",
+          "type": "disk"
+        }
+      },
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS (release)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "c2defb4b-fa5e-4b7c-8c41-267a653e4af9",
+        "volatile.eth0.host_name": "vethb8baf472",
+        "volatile.eth0.hwaddr": "mac-2",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.last_state.ready": "false",
+        "volatile.uuid": "8806f52a-5c39-4f59-b193-8383971e23f0",
+        "volatile.uuid.generation": "8806f52a-5c39-4f59-b193-8383971e23f0"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "l12": {
+          "path": "/run",
+          "shift": "true",
+          "source": "/srv/l12-run",
+          "type": "disk"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-13T20:25:09.391708232Z",
+      "location": "none",
+      "name": "l12-b",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "container"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

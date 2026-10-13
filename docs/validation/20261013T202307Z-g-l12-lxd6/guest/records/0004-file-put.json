@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "id": "guest/0004",
+  "time": "2026-10-13T20:25:00.837665858Z",
+  "tool_version": "a8fb10e",
+  "env": "guest",
+  "verb": "file put",
+  "args": [
+    "/run/lxd-probe/proof",
+    "--mode",
+    "0600"
+  ],
+  "gate": "L12",
+  "cell": "lxd6-profile",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "file.stat",
+      "value": {
+        "gid": 0,
+        "inode": 1080629,
+        "mode": "0600",
+        "mtime": "2026-10-13T20:25:00.837517371Z",
+        "nlink": 1,
+        "size": 37,
+        "type": "file",
+        "uid": 0
+      }
+    },
+    {
+      "key": "file.sha256",
+      "value": "13d00299c232d3c2800d96cc3b88e46e5242380288143051baea74e60c6bd45d"
+    }
+  ],
+  "raw": null
+}
