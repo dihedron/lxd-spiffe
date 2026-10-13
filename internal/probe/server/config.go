@@ -429,7 +429,7 @@ func (cmd *ConfigRace) run(ctx context.Context, s *session) error {
 				if status != http.StatusPreconditionFailed {
 					return
 				}
-				time.Sleep(time.Duration(10+rand.IntN(91)) * time.Millisecond)
+				time.Sleep(time.Duration(10+rand.IntN(91)) * time.Millisecond) //nolint:gosec // G404: retry jitter, not a secret
 			}
 		}()
 	}

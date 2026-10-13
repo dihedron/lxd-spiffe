@@ -187,7 +187,7 @@ func (cmd *Preflight) virt(s *session) {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		var out bytes.Buffer
-		c := exec.CommandContext(ctx, path)
+		c := exec.CommandContext(ctx, path) //nolint:gosec // G204: systemd-detect-virt from PATH, no arguments
 		c.Stdout = &out
 		err := c.Run()
 		code := 0

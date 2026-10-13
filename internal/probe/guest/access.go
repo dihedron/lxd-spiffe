@@ -129,7 +129,7 @@ func primaryGID(uid uint32) uint32 {
 // execChild runs this binary again as uid and gid, without supplementary
 // groups, and returns its stdout.
 func execChild(ctx context.Context, uid, gid uint32, args []string) ([]byte, error) {
-	c := exec.CommandContext(ctx, "/proc/self/exe", args...)
+	c := exec.CommandContext(ctx, "/proc/self/exe", args...) //nolint:gosec // G204: this binary, with arguments it builds itself
 	c.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: uid, Gid: gid, Groups: []uint32{}}}
 	c.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin"}
 	c.Dir = "/"

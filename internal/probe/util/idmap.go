@@ -40,7 +40,7 @@ type IdmapCheck struct {
 // fileOrValue returns the content of the file named v, or v itself when no
 // such file exists.
 func fileOrValue(v string) (string, error) {
-	data, err := os.ReadFile(v)
+	data, err := os.ReadFile(v) //nolint:gosec // G304: a file the operator names
 	switch {
 	case err == nil:
 		return string(data), nil
@@ -167,7 +167,7 @@ func check(s *probe.Session, inst, pre *evidence.Record) error {
 }
 
 func readRecord(path string) (*evidence.Record, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: an evidence record the operator names
 	if err != nil {
 		return nil, err
 	}

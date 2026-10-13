@@ -134,7 +134,8 @@ func TranslateUID(entries []IDMapEntry, uid uint32) (uint32, error) {
 	if len(match) != 1 {
 		return 0, refuse(NoEntry, "%d entries map uid %d", len(match), uid)
 	}
-	return uint32(match[0].Hostid + int64(uid) - match[0].Nsid), nil
+	// below Hostid + Maprange, which uidEntries keeps within 32 bits
+	return uint32(match[0].Hostid + int64(uid) - match[0].Nsid), nil //nolint:gosec // G115: bounded above
 }
 
 // CompareUIDMaps reports whether an LXD idmap's uid entries are the ranges

@@ -167,7 +167,7 @@ func (cmd *FilePut) Execute(args []string) error {
 func readContent(name string) ([]byte, error) {
 	var r io.Reader = os.Stdin
 	if name != "-" {
-		f, err := os.Open(name)
+		f, err := os.Open(name) //nolint:gosec // G304: the operator's --content-file
 		if err != nil {
 			return nil, err
 		}
