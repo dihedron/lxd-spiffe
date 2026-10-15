@@ -104,6 +104,37 @@ ensure_network() {
 		vsh net-autostart "$LAB_NETWORK" >/dev/null
 	fi
 	[[ "$(vsh net-info "$LAB_NETWORK" | awk '/^Active:/ { print $2 }')" == yes ]] || vsh net-start "$LAB_NETWORK" >/dev/null
+	ensure_network_hosts
+}
+
+# ensure_network_hosts: brings the network's DHCP and DNS host entries to the
+# lab's VMs (LAB_ALL_VMS), on the running network and in its definition: a
+# network defined by an older lab knows other VMs (node1-node3 before the
+# clusters). Entries are replaced by address.
+ensure_network_hosts() {
+	local xml vm ip name want=() entry
+	xml="$(vsh net-dumpxml "$LAB_NETWORK")"
+	for vm in "${LAB_ALL_VMS[@]}"; do
+		want+=("$(vm_ip "$vm") $vm")
+	done
+	# entries whose address or name the lab no longer has
+	while read -r ip name; do
+		[[ " ${want[*]} " == *" $ip $name "* ]] && continue
+		info "network $LAB_NETWORK: removing the entries of $name ($ip)"
+		vsh net-update "$LAB_NETWORK" delete ip-dhcp-host "<host ip='$ip'/>" --live --config >/dev/null 2>&1 || true
+		vsh net-update "$LAB_NETWORK" delete dns-host "<host ip='$ip'/>" --live --config >/dev/null 2>&1 || true
+	done < <(sed -n "s/.*<host mac='[^']*' name='\([^']*\)' ip='\([^']*\)'.*/\2 \1/p" <<<"$xml")
+	xml="$(vsh net-dumpxml "$LAB_NETWORK")"
+	for entry in "${want[@]}"; do
+		read -r ip vm <<<"$entry"
+		if ! grep -q "<host mac='$(vm_mac "$vm")' name='$vm' ip='$ip'/>" <<<"$xml"; then
+			info "network $LAB_NETWORK: adding $vm ($ip)"
+			vsh net-update "$LAB_NETWORK" add ip-dhcp-host "<host mac='$(vm_mac "$vm")' name='$vm' ip='$ip'/>" --live --config >/dev/null
+		fi
+		if ! grep -q "<hostname>$vm.lab</hostname>" <<<"$xml"; then
+			vsh net-update "$LAB_NETWORK" add dns-host "<host ip='$ip'><hostname>$vm.lab</hostname></host>" --live --config >/dev/null
+		fi
+	done
 }
 
 # --- VMs ----------------------------------------------------------------------

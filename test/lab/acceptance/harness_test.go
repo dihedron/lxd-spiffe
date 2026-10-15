@@ -48,7 +48,15 @@ type labEnv struct {
 		APIExtensionsHash string `json:"api_extensions_hash"`
 		Fingerprint       string `json:"fingerprint"`
 		Endpoint          string `json:"endpoint"`
-		Auth              struct {
+		Cluster           string `json:"cluster"`
+		Members           map[string]struct {
+			Endpoint string `json:"endpoint"`
+		} `json:"members"`
+		Instances map[string]struct {
+			Type     string `json:"type"`
+			Location string `json:"location"`
+		} `json:"instances"`
+		Auth struct {
 			Bearer     string            `json:"bearer"`
 			Identities map[string]string `json:"identities"`
 		} `json:"auth"`
@@ -59,11 +67,48 @@ type labEnv struct {
 	} `json:"probe"`
 }
 
-// servers returns the lab's servers in name order.
+// servers returns the lab's standalone servers in name order; the gate
+// sessions run on them. Clusters are separate (clusters).
 func (l *lab) servers() []string {
 	var out []string
-	for name := range l.env.Servers {
-		out = append(out, name)
+	for name, s := range l.env.Servers {
+		if s.Cluster != "yes" {
+			out = append(out, name)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// clusterSiblings maps each cluster to the standalone server whose LXD
+// revision it runs, and to the LAB_CLUSTER values that run it.
+var clusterSiblings = map[string]struct {
+	sibling  string
+	chosenBy []string
+}{
+	"c5": {"lxd5", []string{"5.21", "both"}},
+	"c6": {"lxd6", []string{"6.9", "both"}},
+}
+
+// clusters returns the clusters LAB_CLUSTER runs, among those env.json
+// records, in name order.
+func (l *lab) clusters() []string {
+	chosen := setting("LAB_CLUSTER", "no")
+	var out []string
+	for name, s := range l.env.Servers {
+		if s.Cluster == "yes" && slices.Contains(clusterSiblings[name].chosenBy, chosen) {
+			out = append(out, name)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// members returns a cluster's members in name order.
+func (l *lab) members(cluster string) []string {
+	var out []string
+	for m := range l.env.Servers[cluster].Members {
+		out = append(out, m)
 	}
 	slices.Sort(out)
 	return out
@@ -177,7 +222,18 @@ type session struct {
 // the test when the probe itself fails or writes no record.
 func (l *lab) probe(t *testing.T, s session, server, identity string, args ...string) *run {
 	t.Helper()
-	full := append([]string{"probe", server, "--as", identity, "--"}, args...)
+	return l.probeMember(t, s, server, "", identity, args...)
+}
+
+// probeMember is probe through a cluster member (none: the first).
+func (l *lab) probeMember(t *testing.T, s session, server, member, identity string, args ...string) *run {
+	t.Helper()
+	full := []string{"probe", server}
+	if member != "" {
+		full = append(full, "--member", member)
+	}
+	full = append(full, "--as", identity, "--")
+	full = append(full, args...)
 	full = append(full, "--json", "--evidence-dir", s.evidenceDir)
 	return l.lxdProbe(t, s, full)
 }

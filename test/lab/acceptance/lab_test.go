@@ -122,6 +122,7 @@ type labInstance struct {
 	Project         string                       `json:"project"`
 	Type            string                       `json:"type"`
 	Status          string                       `json:"status"`
+	Location        string                       `json:"location"`
 	Config          map[string]string            `json:"config"`
 	ExpandedDevices map[string]map[string]string `json:"expanded_devices"`
 }
@@ -178,6 +179,97 @@ func TestLAB3Baseline(t *testing.T) {
 				sum := l.ssh(t, server, fmt.Sprintf("sudo lxc exec %s --project %s -- sha256sum /usr/local/bin/lxd-probe", want.name, want.project))
 				if f := strings.Fields(sum); len(f) == 0 || f[0] != l.env.Probe.SHA256 {
 					t.Errorf("%s: lxd-probe %q; want %s (lab.sh deploy)", where, strings.TrimSpace(sum), l.env.Probe.SHA256)
+				}
+			}
+		})
+	}
+}
+
+// TestLAB1Clusters: each running cluster runs its sibling's LXD version, and
+// answers server info through every member with the cluster's pin (the
+// connection checks it), version and extension hash.
+func TestLAB1Clusters(t *testing.T) {
+	l := newLab(t)
+	s := check(t)
+	for _, cluster := range l.clusters() {
+		t.Run(cluster, func(t *testing.T) {
+			want := l.env.Servers[cluster]
+			if sibling := l.env.Servers[clusterSiblings[cluster].sibling]; want.Version != sibling.Version {
+				t.Errorf("LXD %s; its sibling %s runs %s", want.Version, clusterSiblings[cluster].sibling, sibling.Version)
+			}
+			if len(l.members(cluster)) != 3 {
+				t.Fatalf("members %v; want 3", l.members(cluster))
+			}
+			for _, member := range l.members(cluster) {
+				r := l.probeMember(t, s, cluster, member, "full", "server", "info")
+				if r.code != 0 || r.rec.Server == nil {
+					t.Fatalf("server info through %s: %s", member, r)
+				}
+				if r.rec.Server.Version != want.Version || r.rec.Server.APIExtensionsHash != want.APIExtensionsHash {
+					t.Errorf("through %s: %s %s; env.json records %s %s", member,
+						r.rec.Server.Version, r.rec.Server.APIExtensionsHash, want.Version, want.APIExtensionsHash)
+				}
+			}
+		})
+	}
+}
+
+// TestLAB2ClusterIdentities: on each running cluster, each identity sees
+// exactly its own group, read sees c-unpriv, an untrusted certificate gets
+// 403 (the clusters have no restricted project).
+func TestLAB2ClusterIdentities(t *testing.T) {
+	l := newLab(t)
+	s := check(t)
+	cert, key := untrustedCert(t)
+	for _, cluster := range l.clusters() {
+		t.Run(cluster, func(t *testing.T) {
+			for _, id := range l.identities(cluster) {
+				group := "lab-" + id
+				if id == "bearer" {
+					group = "lab-files"
+				}
+				r := l.probe(t, s, cluster, id, "server", "whoami")
+				groups, _ := r.observation("identity.groups")
+				if r.code != 0 || fmt.Sprint(groups) != fmt.Sprint([]any{group}) {
+					t.Errorf("whoami as %s: groups %v, want [%s]: %s", id, groups, group, r)
+				}
+			}
+			if r := l.probe(t, s, cluster, "read", "server", "instance", "show", "c-unpriv"); r.code != 0 || r.rec.Outcome != evidence.OutcomeOK {
+				t.Errorf("read: instance show c-unpriv: %s", r)
+			}
+			if r := l.probe(t, s, cluster, "full", "server", "instance", "show", "c-unpriv", "--client-cert", cert, "--client-key", key, "--expect-denied"); r.code != 0 || r.rec.Outcome != evidence.OutcomeOK {
+				t.Errorf("untrusted certificate: instance show c-unpriv, --expect-denied: %s", r)
+			}
+		})
+	}
+}
+
+// TestLAB3ClusterBaseline: on each running cluster, c-unpriv runs on the
+// first member and v-ubuntu on the second, with the lxd-probe deploy built.
+func TestLAB3ClusterBaseline(t *testing.T) {
+	l := newLab(t)
+	for _, cluster := range l.clusters() {
+		t.Run(cluster, func(t *testing.T) {
+			var instances []labInstance
+			out := l.ssh(t, cluster+"n1", "sudo lxc query '/1.0/instances?recursion=1'")
+			if err := json.Unmarshal([]byte(out), &instances); err != nil {
+				t.Fatalf("instances: %v", err)
+			}
+			for _, want := range []struct{ name, kind, member string }{
+				{"c-unpriv", "container", cluster + "n1"},
+				{"v-ubuntu", "virtual-machine", cluster + "n2"},
+			} {
+				i := slices.IndexFunc(instances, func(i labInstance) bool { return i.Name == want.name })
+				if i < 0 {
+					t.Errorf("%s: missing", want.name)
+					continue
+				}
+				if got := instances[i]; got.Status != "Running" || got.Type != want.kind || got.Location != want.member {
+					t.Errorf("%s: %s %s on %q; want a running %s on %s", want.name, got.Status, got.Type, got.Location, want.kind, want.member)
+				}
+				sum := l.ssh(t, cluster+"n1", "sudo lxc exec "+want.name+" -- sha256sum /usr/local/bin/lxd-probe")
+				if f := strings.Fields(sum); len(f) == 0 || f[0] != l.env.Probe.SHA256 {
+					t.Errorf("%s: lxd-probe %q; want %s (lab.sh deploy)", want.name, strings.TrimSpace(sum), l.env.Probe.SHA256)
 				}
 			}
 		})

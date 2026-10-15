@@ -47,7 +47,7 @@ probe_push() {
 	while read -r project name _; do
 		script+="sudo lxc file push lxd-probe $name$LAB_GUEST_PROBE --project $project --uid 0 --gid 0 --mode 0755"$'\n'
 		script+="sudo lxc exec $name --project $project -- sh -c 'mkdir -p $(guest_evidence_dir 0) $(guest_evidence_dir 1000) && chmod 0700 $(guest_evidence_dir 0) $(guest_evidence_dir 1000) && chown 1000:1000 $(guest_evidence_dir 1000)'"$'\n'
-	done < <(baseline_instances)
+	done < <(baseline_instances "$server")
 	info "$server: installing lxd-probe in the baseline instances"
 	vm_ssh "$server" "set -e; $script" >/dev/null || die "$server: cannot install lxd-probe in the instances"
 }

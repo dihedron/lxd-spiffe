@@ -18,13 +18,14 @@ require_deployed() {
 	[[ -x "$(probe_bin)" ]] || die "lxd-probe is not deployed: run lab.sh deploy"
 }
 
-# cmd_probe SERVER [--as IDENTITY] -- ARGS...: runs lxd-probe ARGS on this
-# host with SERVER's and IDENTITY's environment file.
+# cmd_probe SERVER [--member VM] [--as IDENTITY] -- ARGS...: runs lxd-probe
+# ARGS on this host with SERVER's and IDENTITY's environment file; for a
+# cluster, through its first member unless --member names another.
 cmd_probe() {
 	require_state
 	require_deployed
-	local usage="usage: lab.sh probe <server> [--as <identity>] -- <args>"
-	local server="${1:-}" identity=full file
+	local usage="usage: lab.sh probe <server> [--member <vm>] [--as <identity>] -- <args>"
+	local server="${1:-}" identity=full file member="" endpoint=""
 	[[ -n "$server" ]] || die "$usage"
 	shift
 	require_server "$server"
@@ -35,6 +36,11 @@ cmd_probe() {
 			identity="$2"
 			shift 2
 			;;
+		--member)
+			[[ $# -ge 2 ]] || die "$usage"
+			member="$2"
+			shift 2
+			;;
 		--)
 			shift
 			break
@@ -42,6 +48,10 @@ cmd_probe() {
 		*) die "$usage" ;;
 		esac
 	done
+	if [[ -n "$member" ]]; then
+		endpoint="$(env_get ".servers[\"$server\"].members[\"$member\"].endpoint // empty")"
+		[[ -n "$endpoint" ]] || die "$server has no member \"$member\"; members: $(env_get ".servers[\"$server\"].members // {} | keys | join(\" \")")"
+	fi
 	file="$(probe_env_file "$server" "$identity")"
 	[[ -f "$file" ]] || die "$server has no identity \"$identity\" (identities: ${LAB_IDENTITIES[*]}, and bearer where the server has bearer identities, bearer-short after lab.sh token); or run lab.sh deploy"
 	(
@@ -49,6 +59,7 @@ cmd_probe() {
 		# shellcheck disable=SC1090 # written by probe_env
 		source "$file"
 		set +a
+		[[ -z "$endpoint" ]] || export LXD_PROBE_ENDPOINT="$endpoint"
 		exec "$(probe_bin)" "$@"
 	)
 }
