@@ -397,3 +397,86 @@ func TestGL6SameServerImport(t *testing.T) {
 		l.collectRun(t, runID, staging)
 	}
 }
+
+// TestGL6Filter learns, for the attestor's uniqueness check (gate L6),
+// whether LXD finds instances by volatile.uuid through a filter
+// (api_filtering) and which identities see what, one run per server:
+// server instance list --filter "config.volatile.uuid eq U" as full for
+// c-unpriv's uuid (one) and a random one (none); for a twin made by an
+// import on the same server (two) as full, then as read, whose grants
+// name the baseline instances only (the twin is invisible to it), then as
+// read with the project entitlement can_view_instances, granted to
+// lab-read for the session. Fixtures go to
+// test/fixtures/<version>/list/filter/ with LAB_COLLECT=yes. It deletes
+// what it creates and revokes the entitlement; it fails only when the probe
+// fails or the evidence is not sanitized.
+func TestGL6Filter(t *testing.T) {
+	l := newLab(t)
+	stamp := time.Now().UTC().Format("20060102T150405Z")
+	collect := os.Getenv("LAB_COLLECT") == "yes"
+	for _, server := range l.servers() {
+		t.Run(server, func(t *testing.T) {
+			t.Parallel()
+			runID := stamp + "-g-l6-filter-" + server
+			s := session{evidenceDir: l.evidence, runID: runID}
+			const name, tarball = "l6-f", "/root/l6-f.tar"
+			grant := "sudo lxc auth group permission %s lab-read project default can_view_instances"
+			teardown := "sudo lxc delete -f " + name + " 2>/dev/null; sudo lxc delete -f " + name + "-twin 2>/dev/null; sudo rm -f " + tarball + "; " +
+				fmt.Sprintf(grant, "remove") + " 2>/dev/null; true"
+			l.ssh(t, server, teardown)
+			t.Cleanup(func() { l.trySSH(server, teardown) }) //nolint:errcheck // best effort
+			tags := []string{"--gate", "L6", "--cell", server + "-c-unpriv",
+				"--record", filepath.Join(l.evidence, runID, "fixtures")}
+			list := func(identity, uuid string) string {
+				r := l.probe(t, s, server, identity, append([]string{"server", "instance", "list", "--filter", "config.volatile.uuid eq " + uuid}, tags...)...)
+				n, _ := r.observation("instances.count")
+				var names []string
+				if v, ok := r.observation("instances"); ok {
+					for _, e := range v.([]any) {
+						names = append(names, fmt.Sprint(e.(map[string]any)["name"]))
+					}
+				}
+				return fmt.Sprintf("exit %d, %v found %v", r.code, n, names)
+			}
+			note := func(text string) { l.util(t, s, "note", text, "--gate", "L6", "--cell", server+"-c-unpriv") }
+
+			uuid := strings.TrimSpace(l.ssh(t, server, "sudo lxc config get c-unpriv volatile.uuid"))
+			results := []string{
+				"c-unpriv's uuid as full: " + list("full", uuid),
+				"a random uuid as full: " + list("full", "00000000-0000-4000-8000-000000000000"),
+			}
+			for _, c := range []string{"copy c-unpriv " + name, "export " + name + " " + tarball + " --compression none --instance-only",
+				"import " + tarball + " " + name + "-twin"} {
+				if _, err := l.trySSH(server, "sudo timeout 10m lxc "+c); err != nil {
+					t.Fatalf("lxc %s: %v", c, err)
+				}
+			}
+			twin := strings.TrimSpace(l.ssh(t, server, "sudo lxc config get "+name+"-twin volatile.uuid"))
+			if orig := strings.TrimSpace(l.ssh(t, server, "sudo lxc config get "+name+" volatile.uuid")); orig != twin {
+				t.Logf("  the import got a uuid of its own (%s, %s)", orig, twin)
+			}
+			results = append(results,
+				"the twins' uuid as full: "+list("full", twin),
+				"the twins' uuid as read (instance grants on the baseline only): "+list("read", twin),
+				"c-unpriv's uuid as read: "+list("read", uuid))
+			l.ssh(t, server, fmt.Sprintf(grant, "add"))
+			results = append(results, "the twins' uuid as read with project can_view_instances: "+list("read", twin))
+			l.ssh(t, server, fmt.Sprintf(grant, "remove"))
+			for _, r := range results {
+				note("uuid filter: " + r)
+				t.Logf("  %s", r)
+			}
+
+			runDir := filepath.Join(l.evidence, runID)
+			staging := filepath.Join(t.TempDir(), runID)
+			l.sanitize(t, runDir, staging)
+			l.sanitizeCheck(t, staging)
+			t.Logf("run %s, in %s", runID, runDir)
+			t.Log(ruleL6)
+			if collect && !t.Failed() {
+				l.collectRun(t, runID, staging)
+				l.collectFixtures(t, server, "list", "filter", staging)
+			}
+		})
+	}
+}
