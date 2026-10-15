@@ -138,4 +138,5 @@ var APIUsage = []Call{
 	{"Read proof", "GET", "/1.0/instances/{name}/files"},
 	{"Write/remove challenge", "PATCH", "/1.0/instances/{name}"},
 	{"Own identity (optional)", "GET", "/1.0/auth/identities/current"},
+	{"Uniqueness check", "GET", "/1.0/instances"},
 }
