@@ -189,9 +189,9 @@ func TestRunbookExamples(t *testing.T) {
 		}
 	})
 	t.Run("util report", func(t *testing.T) {
-		cmd := mustParse(t, "util", "report", "evidence/r1", "evidence/r2").(*util.Report)
-		if !reflect.DeepEqual(cmd.Args.RunDirs, []string{"evidence/r1", "evidence/r2"}) {
-			t.Errorf("run dirs = %v", cmd.Args.RunDirs)
+		cmd := mustParse(t, "util", "report", "evidence/r1", "evidence/r2", "--out", "report").(*util.Report)
+		if !reflect.DeepEqual(cmd.Args.RunDirs, []string{"evidence/r1", "evidence/r2"}) || cmd.Out != "report" {
+			t.Errorf("run dirs = %v, out = %q", cmd.Args.RunDirs, cmd.Out)
 		}
 	})
 	t.Run("util overlap default", func(t *testing.T) {

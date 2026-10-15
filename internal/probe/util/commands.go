@@ -2,10 +2,6 @@
 // helpers on evidence files (spec: Util environment).
 package util
 
-import (
-	"github.com/dihedron/lxd-spiffe/internal/probe"
-)
-
 // Commands is the command tree of the util environment.
 type Commands struct {
 	Diff     Diff     `command:"diff" description:"Compare two evidence records, ignoring volatile fields (PRU-01)."`
@@ -26,17 +22,4 @@ type Idmap struct {
 // Fixtures groups the fixtures verbs.
 type Fixtures struct {
 	Verify FixturesVerify `command:"verify" description:"Check recorded fixtures: decoding, contract fields, error envelopes (PRU-06)."`
-}
-
-// Report is util report RUN_DIR...
-type Report struct {
-	probe.GlobalOptions
-	Args struct {
-		RunDirs []string `positional-arg-name:"RUN_DIR" description:"Run directories to merge." required:"1"`
-	} `positional-args:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *Report) Execute(args []string) error {
-	return probe.NotImplemented("util report")
 }
