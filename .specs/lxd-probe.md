@@ -391,7 +391,7 @@ Each verb also accepts the global flags and the flags of its environment. Positi
 | Axis | Values |
 |---|---|
 | LXD server | 5.21 LTS standalone; latest 6.x standalone; a 3-node cluster; a second standalone (backup import, L6) |
-| Instance | unprivileged container; privileged container; container with `security.idmap.isolated=true`; container with `raw.idmap`; Alpine VM; Ubuntu VM; Debian VM |
+| Instance | unprivileged container; privileged container; container with `security.idmap.isolated=true`; container with `raw.idmap`; Alpine VM; Ubuntu VM; Debian VM; Rocky Linux 9 VM (SELinux enforcing); AlmaLinux 9 VM (SELinux as shipped) |
 | Probe identity | read-only; files; edit; full; outsider (trusted, but without access to the restricted project, where LXD answers 404); (bearer, when available) |
 | Project | `default`; a restricted project |
 
