@@ -102,3 +102,68 @@ func l14View(r *run) string {
 	}
 	return strings.Join(parts, ", ")
 }
+
+// ruleL14Idle is gate L14's idle-ETag question (Q5), in short.
+const ruleL14Idle = "L14 idle ETag (Q5): the ETag changes counted while nothing writes are the rate of spurious 412 " +
+	"the retry budget must absorb."
+
+// TestGL14Idle is G-L14 idle, gate L14's question Q5: as read, instance
+// watch for LAB_L14_IDLE_FOR (default 5m) on the idle c-unpriv and
+// v-ubuntu of both servers at once. One run per server and instance. It
+// prints the changes seen and the ETag changes per minute, fails only when
+// the probe fails or the evidence is not sanitized, and with
+// LAB_COLLECT=yes copies each run to docs/validation/.
+func TestGL14Idle(t *testing.T) {
+	l := newLab(t)
+	stamp := time.Now().UTC().Format("20060102T150405Z")
+	collect := os.Getenv("LAB_COLLECT") == "yes"
+	watchFor, err := time.ParseDuration(setting("LAB_L14_IDLE_FOR", "5m"))
+	if err != nil {
+		t.Fatalf("LAB_L14_IDLE_FOR: %v", err)
+	}
+	t.Run("watch", func(t *testing.T) {
+		for _, server := range l.servers() {
+			for _, name := range []string{"c-unpriv", "v-ubuntu"} {
+				t.Run(server+"/"+name, func(t *testing.T) {
+					t.Parallel()
+					runID := stamp + "-g-l14-idle-" + server + "-" + name
+					s := session{evidenceDir: l.evidence, runID: runID}
+					r := l.probe(t, s, server, "read", "server", "instance", "watch", name,
+						"--for", watchFor.String(), "--gate", "L14", "--cell", server+"-"+name)
+
+					runDir := filepath.Join(l.evidence, runID)
+					staging := filepath.Join(t.TempDir(), runID)
+					l.sanitize(t, runDir, staging)
+					l.sanitizeCheck(t, staging)
+					t.Logf("run %s, in %s: %s", runID, runDir, l14IdleView(r, watchFor))
+					if collect && !t.Failed() {
+						l.collectRun(t, runID, staging)
+					}
+				})
+			}
+		}
+	})
+	t.Log(ruleL14Idle)
+}
+
+// l14IdleView renders what an idle watch saw: polls, changes per field,
+// and the ETag changes per minute.
+func l14IdleView(r *run, watchFor time.Duration) string {
+	polls, _ := r.observation("watch.polls")
+	failures, ok := r.observation("watch.poll_failures")
+	if !ok {
+		failures = 0
+	}
+	changes, _ := r.observation("watch.changes")
+	perField := map[string]int{}
+	list, _ := changes.([]any)
+	for _, c := range list {
+		if m, ok := c.(map[string]any); ok {
+			f, _ := m["field"].(string)
+			perField[f]++
+		}
+	}
+	fields, _ := json.Marshal(perField)
+	return fmt.Sprintf("exit %d, %s, polls %v, poll failures %v, changes %s, ETag changes/min %.2f",
+		r.code, r.rec.Outcome, polls, failures, fields, float64(perField["etag"])/watchFor.Minutes())
+}
