@@ -73,7 +73,7 @@ func (w *FixtureWriter) Write(version string, record, seq int, method, path, que
 	req.Body, req.BodyText = sanitizeBody(w.Sanitizer, reqBody)
 	body := RedactConfigBody(path, status, respBody)
 	if filePath, ok := FilesAPIPath(path, query); ok {
-		body = FileBody(filePath, respHeader, body, true)
+		body = FileBody(filePath, status, respHeader, body, true)
 	}
 	resp := sanitizeResponse(w.Sanitizer, status, respHeader, body)
 
@@ -109,10 +109,15 @@ func FilesAPIPath(apiPath, query string) (string, bool) {
 
 // FileBody returns a files-API response body as evidence may hold it
 // (probe spec PRS-35): a file's content is replaced by its size and
-// SHA-256, but for a directory listing or a symlink (metadata, by their
-// X-LXD-type header) and, when keepLab is set (fixtures), a file under the
-// lab directory, given as a clean path. An unknown type counts as content.
-func FileBody(filePath string, header http.Header, body []byte, keepLab bool) []byte {
+// SHA-256, but for an error response (status outside 2xx: an LXD error
+// envelope, not content), a directory listing or a symlink (metadata, by
+// their X-LXD-type header) and, when keepLab is set (fixtures), a file
+// under the lab directory, given as a clean path. An unknown type counts
+// as content.
+func FileBody(filePath string, status int, header http.Header, body []byte, keepLab bool) []byte {
+	if status < 200 || status > 299 {
+		return body
+	}
 	switch header.Get("X-LXD-type") {
 	case "directory", "symlink":
 		return body

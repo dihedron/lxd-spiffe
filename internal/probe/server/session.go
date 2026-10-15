@@ -172,7 +172,7 @@ func (s *session) call(ctx context.Context, name string, req lxd.RawRequest, exp
 	body := resp.Body
 	if filePath, ok := evidence.FilesAPIPath(req.Path, req.Query.Encode()); ok {
 		// a file's content never reaches evidence (PRS-35)
-		body = evidence.FileBody(filePath, resp.Header, body, false)
+		body = evidence.FileBody(filePath, resp.Status, resp.Header, body, false)
 	}
 	if _, err := s.entry.ArtifactResponse(name, resp.Status, resp.Header, body); err != nil {
 		return nil, err

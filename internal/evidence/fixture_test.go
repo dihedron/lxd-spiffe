@@ -32,8 +32,9 @@ func TestLoadFixturesSkipsDevLXD(t *testing.T) {
 }
 
 // TestFileBody checks that a file's content is replaced by its size and
-// hash (probe spec PRS-35), but for directories, symlinks and, in
-// fixtures, clean paths under the lab directory.
+// hash (probe spec PRS-35), but for directories, symlinks, error responses
+// (an LXD error envelope is not content) and, in fixtures, clean paths
+// under the lab directory.
 func TestFileBody(t *testing.T) {
 	content := []byte("s3cret")
 	header := func(typ string) http.Header { return http.Header{"X-Lxd-Type": {typ}} }
@@ -43,17 +44,21 @@ func TestFileBody(t *testing.T) {
 		header  http.Header
 		keepLab bool
 		kept    bool
+		status  int
 	}{
-		"file":                      {"/etc/shadow", header("file"), true, false},
-		"unknown type":              {"/etc/shadow", http.Header{}, true, false},
-		"directory":                 {"/etc", header("directory"), false, true},
-		"symlink":                   {"/etc/localtime", header("symlink"), false, true},
-		"lab file, fixture":         {"/run/lxd-probe/proof", header("file"), true, true},
-		"lab file, artifact":        {"/run/lxd-probe/proof", header("file"), false, false},
-		"lab path escaping, dotdot": {"/run/lxd-probe/../../etc/shadow", header("file"), true, false},
-		"lab directory itself":      {"/run/lxd-probe", header("file"), true, false},
+		"file":                      {"/etc/shadow", header("file"), true, false, 200},
+		"unknown type":              {"/etc/shadow", http.Header{}, true, false, 200},
+		"directory":                 {"/etc", header("directory"), false, true, 200},
+		"symlink":                   {"/etc/localtime", header("symlink"), false, true, 200},
+		"lab file, fixture":         {"/run/lxd-probe/proof", header("file"), true, true, 200},
+		"lab file, artifact":        {"/run/lxd-probe/proof", header("file"), false, false, 200},
+		"lab path escaping, dotdot": {"/run/lxd-probe/../../etc/shadow", header("file"), true, false, 200},
+		"lab directory itself":      {"/run/lxd-probe", header("file"), true, false, 200},
+		"403, fixture":              {"/etc/shadow", http.Header{}, true, true, 403},
+		"500, artifact":             {"/etc/hostname", http.Header{}, false, true, 500},
+		"404, artifact":             {"/etc/shadow", http.Header{}, false, true, 404},
 	} {
-		got := string(FileBody(tt.path, tt.header, content, tt.keepLab))
+		got := string(FileBody(tt.path, tt.status, tt.header, content, tt.keepLab))
 		if tt.kept && got != "s3cret" || !tt.kept && !strings.HasPrefix(got, placeholder) {
 			t.Errorf("%s: %q", name, got)
 		}
