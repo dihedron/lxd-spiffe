@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0004",
+  "time": "2026-10-15T19:16:16.176339132Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L13",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 15, 2026): on LXD 6.x servers that offer auth_bearer (tested on 6.9), a bearer identity works as the plugin client credential for the remote API, with the same groups and effective permissions as a TLS identity; LXD 5.21 has no bearer identities. Client certificates stay the default; a bearer token is optional, read from a file that the plugin re-reads when it changes and once after a 403 on GET /1.0, failing closed otherwise. Tokens are valid for 10 years unless issued with an expiry, so the documentation requires an explicit short expiry; LXD refuses an expired token at once with 403 on every path, GET /1.0 included, and issuing a new token revokes the previous one immediately, so rotation is a cut-over: the issuing job writes the token file atomically right after issuing. Short-lived tokens move the long-lived privilege to whoever issues them (identity management rights), which the documentation states. Evidence: runs 20261013T191114Z-g-l13-*."
+    }
+  ],
+  "raw": null
+}

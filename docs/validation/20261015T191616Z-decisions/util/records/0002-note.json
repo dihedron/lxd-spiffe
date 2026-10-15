@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0002",
+  "time": "2026-10-15T19:16:16.168272474Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L7",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 15, 2026): Ubuntu, Debian, Alpine, Rocky Linux 9 and AlmaLinux 9 VMs are supported; Windows guests stay untested and unsupported. In a VM the files API and devLXD need lxd-agent, which answered after a cold boot in about 16-27 s (Debian, Alpine, Ubuntu) and 30-72 s (Rocky, Alma) on 5.21 and 6.9; until then a read gets 500 \"LXD VM agent is not currently running\", and for a few seconds after it may get 404 (stopped VM: 500 \"Instance is not running\"). Operator documentation orders the SPIRE agent after lxd-agent (systemd Wants=/After=lxd-agent.service; OpenRC after lxd-agent); where that is not possible it gives 90 s as an indicative proof_timeout for VMs, noting that start-up times vary by OS and that Debian and Ubuntu came up in under 30 s. The server plugin treats that 500, and a 404 on the proof path, as not ready and retries within proof_timeout, reporting vm_agent_unavailable (500) or proof_timeout (404) at the deadline; the default timeouts stay. The LXD images of the RHEL rebuilds ship without an SELinux policy; with the targeted policy enforcing, lxd-agent cannot start (it runs from /run/lxd_agent as var_run_t in init_t, which may not create vsock sockets), so neither proof mode works. Such guests are supported with a documented systemd drop-in that relabels the agent as bin_t on every start (ExecStartPre=/usr/bin/chcon -t bin_t /run/lxd_agent/lxd-agent), which runs it in unconfined_service_t; tested enforcing on 5.21 and 6.9, including a root-owned 0600 proof under /run/spire/lxd read through the files API; reported upstream (docs/upstream/lxd-agent-selinux-enforcing.md). security.devlxd=false on VMs was not tested. Evidence: runs 20261013T205403Z-g-l7-*, 20261015T121227Z-g-l7-families-*, 20261015T174032Z-g-l7-selinux-*."
+    }
+  ],
+  "raw": null
+}

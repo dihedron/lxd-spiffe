@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0003",
+  "time": "2026-10-15T19:16:16.172332558Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L12",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 15, 2026): the isolation check is effective and stays normative. In every lab cell where a disk shared with another instance covered the proof directory (a host directory hot-plugged at it, a custom volume, the same through a profile, a disk at /run, a volume shared by a VM and unprivileged and privileged containers), the other instance wrote a file that the files API reported as uid 0 and mode 0600 in A, i.e. a forged proof; the check, run on expanded_devices, rejected every such cell on 5.21 and 6.9, and it MUST use expanded_devices (a profile device shows only there). A host directory present at boot was hidden by the guest tmpfs on /run, which is not to be relied on; the check rejects it too. The check is tightened to reject any non-root disk device whose path overlaps the proof directory, at, above or below it. No other device type needs to be forbidden; nested LXD stays out of scope. Evidence: runs 20261013T202307Z-g-l12-*."
+    }
+  ],
+  "raw": null
+}
