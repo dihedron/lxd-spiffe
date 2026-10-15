@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0002",
+  "time": "2026-10-15T20:18:30.432100027Z",
+  "tool_version": "4f4d2e1",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L15",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 15, 2026): fixtures recorded on LXD 5.21.8 and 6.9 cover every call of the attestor API usage, for unprivileged, privileged, isolated and raw-idmap containers and Ubuntu, Debian and Alpine VMs: success responses, 403 and 404 on instance reads, 403 and 412 on PATCH, 412 on PUT and the operation wait, the filtered list of FR-S18 (one, none and two matches), and the files API 403, 404, 500 \"Instance is not running\" and 500 \"LXD VM agent is not currently running\"; all 894 decode into the SDK types with the contract fields present and error bodies as LXD error envelopes (util fixtures verify). The fake LXD API replays them. The 404 of a missing file says \"Not Found\" on 5.21 and \"Failed accessing ... file does not exist\" on 6.9, so the plugin keys on status codes, not messages, except for the 500 of a VM whose lxd-agent is not running, whose message is identical on both. The brief 404 right after lxd-agent starts was not caught in a recording; a missing file 404 has the same shape. Cluster fixtures remain with L11; a 404 for an absent identities/current cannot be recorded on these servers. Evidence: test/fixtures/{5.21.8,6.9}, runs 20261015T201415Z-g-l15-files-errors-*, 20261015T194948Z-g-l6-filter-*."
+    }
+  ],
+  "raw": null
+}
