@@ -9,7 +9,7 @@ import (
 // Relation is how a device's path relates to the proof directory.
 type Relation string
 
-// Relations of a device to the proof directory. Equal, Ancestor and
+// Relations of a device to the proof directory. Equal, Ancestor, Below and
 // NotAbsolute reject; the others are information.
 const (
 	Equal       Relation = "equal"        // a disk mounted at the proof directory
@@ -38,10 +38,12 @@ type Isolation struct {
 
 // CheckIsolation is the isolation check of the attestor spec (Proof of
 // co-location, step 5) on an instance's expanded_devices: it rejects when
-// a disk device other than the root disk has a path equal to proofDir or
-// an ancestor of it, since a shared mount there could let another instance
-// forge the proof. A disk path that is not absolute fails closed. Disks
-// below proofDir, disks without a path and other devices with a path are
+// a disk device other than the root disk has a path that overlaps proofDir:
+// equal to it, an ancestor of it or below it, since a shared mount there
+// could let another instance forge the proof (a mount below it can hold a
+// proof file itself; gate L12 rejects it too, a rule simpler to audit than
+// the reasons why it would be harmless). A disk path that is not absolute
+// fails closed. Disks without a path and other devices with a path are
 // returned as information. It is a best effort, documented as such.
 func CheckIsolation(devices map[string]map[string]string, proofDir string) Isolation {
 	proofDir = path.Clean(proofDir)
@@ -84,7 +86,7 @@ func CheckIsolation(devices map[string]map[string]string, proofDir string) Isola
 			out.Causes = append(out.Causes, f)
 		case strings.HasPrefix(clean, proofDir+"/"):
 			f.Relation = Below
-			out.Info = append(out.Info, f)
+			out.Causes = append(out.Causes, f)
 		}
 	}
 	out.Reject = len(out.Causes) > 0
