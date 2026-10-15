@@ -39,6 +39,7 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 12, 2026 (chunk 9) | `devlxd watch` polls every 100 ms and listens to events, with UTC timestamps (PRF-12); `util diff` lists what it ignores (PRU-01); `util idmap translate` works for any uid and lives in `internal/policy` (PRU-02); `util idmap check` reports "not applicable" for privileged containers and VMs (PRU-03); L1's offline step joins each cell's run; L2 writes five times per cell and records the clock offset. |
 | Oct 12, 2026 (chunk 10) | `instance watch` also follows `volatile.cloud-init.instance-id` and the instance's disappearance, with UTC times and `--interval` (PRS-11); `permissions` adds the instance state and `identities/current` (PRS-40); `util note` writes a util record, `--decision` needs `--gate` (PRU-07); L8 uses S0-1's records. |
 | Oct 13, 2026 (chunk 11) | `file stat --wait` retries until the instance answers (PRS-30, L7). `bearer check` decodes the token's JWT claims without verifying them, never records the token, and with `--wait-expiry` polls every `--interval` until the first refusal (PRS-41); the lab showed that LXD 6.9 refuses an expired token with 403 on every path, `GET /1.0` included. `util overlap` applies the attestor's isolation rule to `expanded_devices` and also lists devices below the proof directory (PRU-04). `util fixtures verify` reports decode errors as `unexpected` outcomes and checks the fields of the attestor's minimal API contract (PRU-06). `util report` writes one Markdown file per gate, from gate texts kept in sync with this spec by a test, with each gate's relevant axis values, and cuts long observation values (PRU-08). Runbooks: L6 on copies with a stand-in key and an import on the same server, L7 with restart timing and two RHEL 9 rebuilds, as shipped and with SELinux enforcing, L12 with its cells, L13 with revocation, L14 with the idle-ETag rate. |
+| Oct 15, 2026 | `server instance list` records each instance's `volatile.uuid` and takes `--filter` (PRS-12), to learn whether LXD filters instances by `volatile.uuid` for the attestor's uniqueness check (gate L6). |
 
 ## Overview
 
@@ -213,7 +214,7 @@ Negative privilege tests (for example, "a client with only `can_view` receives 4
 |---|---|
 | PRS-10 | `server instance show NAME` calls `GET /1.0/instances/NAME?project=P` (recursion 1 and 0, both stored) and records the **raw ETag header**, `config` (volatile keys included), `devices`, `expanded_devices`, `location`, `status`, `type`, `architecture`. Supports L1, L3, L6, L9. |
 | PRS-11 | `server instance watch NAME [--for DUR] [--interval DUR]` polls the instance (every second by default) and prints/records a change log of `volatile.uuid`, `volatile.uuid.generation`, `volatile.cloud-init.instance-id`, `volatile.idmap.*`, `location`, `status`, and ETag, each change with its UTC time; an instance that disappears or reappears is a change too. Used during copy/move/restore experiments (L6, L11). |
-| PRS-12 | `server instance list` records name, type, status, location for the project (used to confirm the uniqueness checks of FR-S3 and SEC-05). |
+| PRS-12 | `server instance list` records name, type, status, location and `volatile.uuid` of each instance of the project, and their count (used to confirm the uniqueness checks of FR-S3 and SEC-05). With `--filter EXPR` it passes `EXPR` to LXD as the `filter` parameter (API extension `api_filtering`), for example `config.volatile.uuid eq <uuid>`, and records it; what LXD makes of a filter is evidence, not something the probe checks (gate L6). |
 
 ### Config writes (gate L2, L14)
 
@@ -341,6 +342,7 @@ Each verb also accepts the global flags and the flags of its environment. Positi
 | `guest devlxd access` | `--path` | devLXD path, repeatable; default `/1.0` | paths to try as each uid (PRF-13) |
 | `guest file put PATH` | `--content-file` | path, required | content to write; `-` reads stdin |
 | | `--mode` | octal, 0600 | file mode |
+| `server instance list` | `--filter` | string | LXD filter expression, sent as `filter` (PRS-12) |
 | `server instance watch NAME` | `--for` | duration, 10m | how long to watch (PRS-11) |
 | | `--interval` | duration, 1s | poll interval (PRS-11) |
 | | `--interval` | duration, 1s | poll interval |

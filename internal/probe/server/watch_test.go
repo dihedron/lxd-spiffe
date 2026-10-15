@@ -27,10 +27,43 @@ func TestInstanceList(t *testing.T) {
 		t.Fatalf("list: %s %v", rec.Outcome, rec.Observations)
 	}
 	first, _ := list[0].(map[string]any)
-	for _, k := range []string{"name", "type", "status", "location"} {
+	for _, k := range []string{"name", "type", "status", "location", "uuid"} {
 		if _, ok := first[k]; !ok {
 			t.Errorf("entry without %s: %v", k, first)
 		}
+	}
+	if n := observation(t, rec, "instances.count"); n != float64(2) {
+		t.Errorf("instances.count %v", n)
+	}
+}
+
+// --filter goes to LXD as the filter parameter (api_filtering) and is
+// recorded; what LXD does with it is for the lab to show, not the fake.
+func TestInstanceListFilter(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	fake.AddInstance("default", "c1", map[string]string{"volatile.uuid": "0b6f3f0e-6c3c-4b8e-9a51-1f7c1c0f2a11"})
+	opts := options(t, fake)
+	const filter = "config.volatile.uuid eq 0b6f3f0e-6c3c-4b8e-9a51-1f7c1c0f2a11"
+	cmd := &InstanceList{ServerCommand: opts, Filter: filter, stdout: &bytes.Buffer{}}
+	if err := cmd.Execute(nil); err != nil {
+		t.Fatal(err)
+	}
+	var sent string
+	for _, r := range fake.Requests() {
+		if r.Path == "/1.0/instances" {
+			sent = r.Query.Get("filter")
+		}
+	}
+	if sent != filter {
+		t.Errorf("filter sent %q; want %q", sent, filter)
+	}
+	rec := record(t, opts, 1)
+	if observation(t, rec, "list.filter") != filter || !strings.Contains(strings.Join(rec.Args, " "), "--filter") {
+		t.Errorf("record args %v, observations %v", rec.Args, rec.Observations)
+	}
+	list, _ := observation(t, rec, "instances").([]any)
+	if first, _ := list[0].(map[string]any); first["uuid"] != "0b6f3f0e-6c3c-4b8e-9a51-1f7c1c0f2a11" {
+		t.Errorf("entry %v", list[0])
 	}
 }
 

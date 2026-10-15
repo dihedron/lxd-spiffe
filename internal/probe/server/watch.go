@@ -17,6 +17,7 @@ import (
 // InstanceList is server instance list (PRS-12).
 type InstanceList struct {
 	probe.ServerCommand
+	Filter string `long:"filter" description:"LXD filter expression (api_filtering), e.g. \"config.volatile.uuid eq UUID\"."`
 
 	stdout io.Writer
 }
@@ -35,7 +36,13 @@ type InstanceWatch struct {
 func (cmd *InstanceList) Execute(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 	defer cancel()
-	s, err := newSession(ctx, &cmd.ServerCommand, cmd.stdout, "instance list", nil)
+	var recorded []string
+	query := url.Values{"recursion": {"1"}}
+	if cmd.Filter != "" {
+		recorded = []string{"--filter", cmd.Filter}
+		query.Set("filter", cmd.Filter)
+	}
+	s, err := newSession(ctx, &cmd.ServerCommand, cmd.stdout, "instance list", recorded)
 	if err != nil {
 		return err
 	}
@@ -43,7 +50,10 @@ func (cmd *InstanceList) Execute(args []string) error {
 		if _, err := s.readServer(ctx, nil); err != nil {
 			return err
 		}
-		resp, err := s.call(ctx, "list", lxd.RawRequest{Method: http.MethodGet, Path: "/1.0/instances", Query: url.Values{"recursion": {"1"}}}, &expect.InstanceList)
+		if cmd.Filter != "" {
+			s.observe("list.filter", cmd.Filter)
+		}
+		resp, err := s.call(ctx, "list", lxd.RawRequest{Method: http.MethodGet, Path: "/1.0/instances", Query: query}, &expect.InstanceList)
 		if err != nil {
 			return err
 		}
@@ -53,9 +63,10 @@ func (cmd *InstanceList) Execute(args []string) error {
 		}
 		entries := []map[string]string{}
 		for _, i := range list {
-			entries = append(entries, map[string]string{"name": i.Name, "type": i.Type, "status": i.Status, "location": i.Location})
+			entries = append(entries, map[string]string{"name": i.Name, "type": i.Type, "status": i.Status, "location": i.Location, "uuid": i.Config["volatile.uuid"]})
 		}
 		s.observe("instances", entries)
+		s.observe("instances.count", len(entries))
 		return nil
 	}())
 }
