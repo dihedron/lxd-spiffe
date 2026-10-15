@@ -17,6 +17,14 @@ description = "identity identifiers in lab evidence and fixtures: certificate fi
 condition = "AND"
 paths = ['''(^|/)(docs/validation|test/fixtures)/''']
 regexes = ['''^[0-9a-f]{64}$''', '''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''']
+# Gate L6's runbook gives each copy a stand-in key: a random, non-secret
+# marker of 16 hex digits in user.lxd-probe.l6-key.
+[[rules.allowlists]]
+description = "the L6 runbook's stand-in key in lab evidence"
+condition = "AND"
+paths = ['''(^|/)docs/validation/''']
+regexTarget = "match"
+regexes = ['''user\.lxd-probe\.l6-key\\?"\s*:\s*\\?"[0-9a-f]{16}\\?"''']
 [[rules.allowlists]]
 description = "made-up JWTs in tests (see the jwt rule below)"
 condition = "AND"
