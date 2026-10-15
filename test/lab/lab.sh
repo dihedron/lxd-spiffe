@@ -5,6 +5,8 @@
 set -euo pipefail
 
 LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# set when up changes the baseline (instances added, VMs resized): up then takes a new snapshot
+LAB_BASELINE_CHANGED=0
 REPO_DIR="$(cd "$LAB_DIR/../.." && pwd)"
 
 # shellcheck source=lib/common.sh
@@ -162,10 +164,13 @@ cmd_up() {
 	for server in $(lab_servers); do
 		start_instances "$server"
 		wait_instances "$server"
+		ensure_selinux "$server"
 		baseline_grants "$server"
 	done
 
-	if ! all_snapshots_exist; then
+	# a snapshot on the first success, and a new one when this up added
+	# baseline instances or resized VMs: reset would otherwise undo them
+	if ! all_snapshots_exist || ((LAB_BASELINE_CHANGED)); then
 		section "Snapshot"
 		LAB_ASSUME_YES=1 lab_snapshot
 	fi

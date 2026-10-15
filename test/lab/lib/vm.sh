@@ -161,12 +161,8 @@ ensure_vm() {
 	local vm="$1" domain
 	domain="$(vm_domain "$vm")"
 	if vsh dominfo "$domain" >/dev/null 2>&1; then
+		resize_vm "$vm"
 		[[ "$(vm_state "$vm")" == running ]] || vsh start "$domain" >/dev/null
-		local kib
-		kib="$(vsh dominfo "$domain" | awk '/^Max memory:/ { print $3 }')"
-		if ((kib != $(vm_size "$vm" ram) * 1024 * 1024)); then
-			info "warning: $vm has $((kib / 1024 / 1024)) GiB of memory, the settings say $(vm_size "$vm" ram) GiB: sizes apply to new VMs only (lab.sh down && lab.sh up)"
-		fi
 		return
 	fi
 	info "creating VM $vm ($(vm_ip "$vm"))"
@@ -184,6 +180,39 @@ ensure_vm() {
 		--disk "vol=$LAB_POOL/$seed,device=cdrom" \
 		--network "network=$LAB_NETWORK,mac=$(vm_mac "$vm"),model=virtio" \
 		--import --graphics none --console pty,target_type=serial --noautoconsole >/dev/null
+}
+
+# resize_vm VM: brings an existing VM to the configured vCPUs and RAM. The
+# sizes go into libvirt's configuration and apply from the next boot, so a
+# running VM is shut down (destroyed if it does not stop in 5 minutes) and
+# started again. A snapshot keeps the domain definition it was taken with,
+# so a resize marks the baseline as changed and up takes a new snapshot.
+resize_vm() {
+	local vm="$1" domain kib vcpus want_kib want_vcpus deadline
+	domain="$(vm_domain "$vm")"
+	want_kib=$(($(vm_size "$vm" ram) * 1024 * 1024))
+	want_vcpus="$(vm_size "$vm" vcpus)"
+	kib="$(vsh dominfo "$domain" | awk '/^Max memory:/ { print $3 }')"
+	vcpus="$(vsh vcpucount "$domain" --maximum --config)"
+	((kib == want_kib && vcpus == want_vcpus)) && return
+	info "resizing VM $vm to $want_vcpus vCPUs and $(vm_size "$vm" ram) GiB (it restarts)"
+	vsh setmaxmem "$domain" "${want_kib}k" --config >/dev/null
+	vsh setmem "$domain" "${want_kib}k" --config >/dev/null
+	vsh setvcpus "$domain" "$want_vcpus" --maximum --config >/dev/null
+	vsh setvcpus "$domain" "$want_vcpus" --config >/dev/null
+	if [[ "$(vm_state "$vm")" == running ]]; then
+		vsh shutdown "$domain" >/dev/null
+		deadline=$((SECONDS + 300))
+		until [[ "$(vm_state "$vm")" == "shut off" ]]; do
+			if ((SECONDS >= deadline)); then
+				vsh destroy "$domain" >/dev/null 2>&1 || true
+				break
+			fi
+			sleep 3
+		done
+	fi
+	vsh start "$domain" >/dev/null
+	LAB_BASELINE_CHANGED=1
 }
 
 # wait_for_vm VM: waits until VM answers over SSH and cloud-init is done.
