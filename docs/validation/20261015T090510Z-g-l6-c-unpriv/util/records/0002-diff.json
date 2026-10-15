@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "id": "util/0002",
+  "time": "2026-10-15T09:07:32.919531977Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "diff",
+  "args": [
+    "0002-instance-show.json",
+    "0003-instance-show.json"
+  ],
+  "gate": "L6",
+  "cell": "lxd5-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "diff.records",
+      "value": {
+        "a": "server/0002",
+        "b": "server/0003"
+      }
+    },
+    {
+      "key": "diff.count",
+      "value": 7
+    },
+    {
+      "key": "diff.differences",
+      "value": [
+        {
+          "a": "l6-c",
+          "b": "l6-c-copy",
+          "path": "args[0]"
+        },
+        {
+          "a": "\"92d2255562b2457e9965d2036d256f9b233c3006e2387d7140ec0ab1f50ef74c\"",
+          "b": "\"f8c7f488df2c29f62bac4f56ce1838da330eaf0a2974d1661e60160555494417\"",
+          "path": "observations.instance-full.etag"
+        },
+        {
+          "a": "da6d5c2b-f614-496f-acea-04c473c9c209",
+          "b": "91f82451-f0b5-45df-8011-1dec877d39a4",
+          "path": "observations.instance.config.volatile.cloud-init.instance-id"
+        },
+        {
+          "a": "mac-1",
+          "b": "mac-2",
+          "path": "observations.instance.config.volatile.eth0.hwaddr"
+        },
+        {
+          "a": "934ddabd-9420-4fed-b35a-5a64a6b759cd",
+          "b": "789c3bce-19f2-403f-9a73-95165d23f719",
+          "path": "observations.instance.config.volatile.uuid"
+        },
+        {
+          "a": "934ddabd-9420-4fed-b35a-5a64a6b759cd",
+          "b": "789c3bce-19f2-403f-9a73-95165d23f719",
+          "path": "observations.instance.config.volatile.uuid.generation"
+        },
+        {
+          "a": "\"92d2255562b2457e9965d2036d256f9b233c3006e2387d7140ec0ab1f50ef74c\"",
+          "b": "\"f8c7f488df2c29f62bac4f56ce1838da330eaf0a2974d1661e60160555494417\"",
+          "path": "observations.instance.etag"
+        }
+      ]
+    }
+  ],
+  "raw": null
+}

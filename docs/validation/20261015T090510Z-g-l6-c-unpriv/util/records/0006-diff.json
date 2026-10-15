@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "util/0006",
+  "time": "2026-10-15T09:07:37.909323884Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "diff",
+  "args": [
+    "0008-instance-show.json",
+    "0009-instance-show.json"
+  ],
+  "gate": "L6",
+  "cell": "lxd5-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "diff.records",
+      "value": {
+        "a": "server/0008",
+        "b": "server/0009"
+      }
+    },
+    {
+      "key": "diff.count",
+      "value": 4
+    },
+    {
+      "key": "diff.differences",
+      "value": [
+        {
+          "a": "l6-c",
+          "b": "l6-c-renamed",
+          "path": "args[0]"
+        },
+        {
+          "a": "\"c447d44def1b4ee2a71a7356056244437d583a276cdc15a43603871c64d6bb3a\"",
+          "b": "\"83ec77a2d312a4c24195897532538e3d9ba39515a25d8138e0c3bd9404949723\"",
+          "path": "observations.instance-full.etag"
+        },
+        {
+          "a": "da6d5c2b-f614-496f-acea-04c473c9c209",
+          "b": "9ba769f8-82d0-44b9-b0de-afbb9e6c65ba",
+          "path": "observations.instance.config.volatile.cloud-init.instance-id"
+        },
+        {
+          "a": "\"c447d44def1b4ee2a71a7356056244437d583a276cdc15a43603871c64d6bb3a\"",
+          "b": "\"83ec77a2d312a4c24195897532538e3d9ba39515a25d8138e0c3bd9404949723\"",
+          "path": "observations.instance.etag"
+        }
+      ]
+    }
+  ],
+  "raw": null
+}

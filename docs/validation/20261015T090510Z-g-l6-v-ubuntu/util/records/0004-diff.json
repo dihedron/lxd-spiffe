@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "id": "util/0004",
+  "time": "2026-10-15T09:12:39.668064017Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "diff",
+  "args": [
+    "0005-instance-show.json",
+    "0006-instance-show.json"
+  ],
+  "gate": "L6",
+  "cell": "lxd5-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "diff.records",
+      "value": {
+        "a": "server/0005",
+        "b": "server/0006"
+      }
+    },
+    {
+      "key": "diff.count",
+      "value": 3
+    },
+    {
+      "key": "diff.differences",
+      "value": [
+        {
+          "a": "\"a04d60af412f5bf9f5637acd750d6b83aa9d1975d6804e783fa1b987e3f9459b\"",
+          "b": "\"ca37308f7009ae197a2b685c10e2312f4410d40574fcfc0ec825dff5935606b4\"",
+          "path": "observations.instance-full.etag"
+        },
+        {
+          "a": "2d8d04af-9089-49e1-89d4-1b9dff413cc6",
+          "b": "18538954-4bb6-4ad6-94dd-d1d93e17de22",
+          "path": "observations.instance.config.volatile.uuid.generation"
+        },
+        {
+          "a": "\"a04d60af412f5bf9f5637acd750d6b83aa9d1975d6804e783fa1b987e3f9459b\"",
+          "b": "\"ca37308f7009ae197a2b685c10e2312f4410d40574fcfc0ec825dff5935606b4\"",
+          "path": "observations.instance.etag"
+        }
+      ]
+    }
+  ],
+  "raw": null
+}

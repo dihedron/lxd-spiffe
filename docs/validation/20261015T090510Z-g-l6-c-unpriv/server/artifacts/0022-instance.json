@@ -1,0 +1,94 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Thu, 15 Oct 2026 09:08:12 GMT"
+    ],
+    "Etag": [
+      "\"b4ea098521b098bb60e88e1b154dfeabf9b5bb1c2e2895bd618c832db4424fcf\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "user.lxd-probe.l6-key": "56b1f4e3697e2c03",
+        "volatile.apply_template": "copy",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "9ba769f8-82d0-44b9-b0de-afbb9e6c65ba",
+        "volatile.eth0.hwaddr": "mac-1",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.uuid": "934ddabd-9420-4fed-b35a-5a64a6b759cd",
+        "volatile.uuid.generation": "934ddabd-9420-4fed-b35a-5a64a6b759cd"
+      },
+      "created_at": "2026-10-15T09:07:30.061519645Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "user.lxd-probe.l6-key": "56b1f4e3697e2c03",
+        "volatile.apply_template": "copy",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "9ba769f8-82d0-44b9-b0de-afbb9e6c65ba",
+        "volatile.eth0.hwaddr": "mac-1",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.uuid": "934ddabd-9420-4fed-b35a-5a64a6b759cd",
+        "volatile.uuid.generation": "934ddabd-9420-4fed-b35a-5a64a6b759cd"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "1970-01-01T00:00:00Z",
+      "location": "none",
+      "name": "l6-c-imported",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "stateful": false,
+      "status": "Stopped",
+      "status_code": 102,
+      "type": "container"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

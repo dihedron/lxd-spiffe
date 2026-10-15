@@ -1,0 +1,184 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Thu, 15 Oct 2026 09:12:47 GMT"
+    ],
+    "Etag": [
+      "\"a547f6c0627728774de6442679fd2880c672581d6809d7fc6dba94f06b67fc06\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "backups": null,
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "disk1.img",
+        "image.version": "24.04",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "user.lxd-probe.l6-key": "c0f196da1d2ee0e6",
+        "volatile.apply_template": "copy",
+        "volatile.base_image": "d4ff18198fb2ed8c88d408421e610c143cf1f5c1c0178e57178fb586880c3e56",
+        "volatile.cloud-init.instance-id": "cfe53596-8c83-4b61-8b0e-4b82a2e97159",
+        "volatile.eth0.hwaddr": "mac-3",
+        "volatile.uuid": "b71033b3-6057-4dcb-981e-91a182dff343",
+        "volatile.uuid.generation": "b71033b3-6057-4dcb-981e-91a182dff343"
+      },
+      "created_at": "2026-10-15T09:12:43.510799104Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "disk1.img",
+        "image.version": "24.04",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "user.lxd-probe.l6-key": "c0f196da1d2ee0e6",
+        "volatile.apply_template": "copy",
+        "volatile.base_image": "d4ff18198fb2ed8c88d408421e610c143cf1f5c1c0178e57178fb586880c3e56",
+        "volatile.cloud-init.instance-id": "cfe53596-8c83-4b61-8b0e-4b82a2e97159",
+        "volatile.eth0.hwaddr": "mac-3",
+        "volatile.uuid": "b71033b3-6057-4dcb-981e-91a182dff343",
+        "volatile.uuid.generation": "b71033b3-6057-4dcb-981e-91a182dff343"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "1970-01-01T00:00:00Z",
+      "location": "none",
+      "name": "l6-v-renamed",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "snapshots": [
+        {
+          "architecture": "x86_64",
+          "config": {
+            "cloud-init.user-data": "[redacted]",
+            "image.architecture": "amd64",
+            "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+            "image.label": "release",
+            "image.os": "ubuntu",
+            "image.release": "noble",
+            "image.serial": "20260926",
+            "image.type": "disk1.img",
+            "image.version": "24.04",
+            "limits.cpu": "1",
+            "limits.memory": "1GiB",
+            "user.lxd-probe.l6-key": "c0f196da1d2ee0e6",
+            "volatile.apply_template": "copy",
+            "volatile.base_image": "d4ff18198fb2ed8c88d408421e610c143cf1f5c1c0178e57178fb586880c3e56",
+            "volatile.cloud-init.instance-id": "468c2b4c-3fd0-40b4-9bea-ced8d29f2d3e",
+            "volatile.eth0.hwaddr": "mac-1",
+            "volatile.uuid": "2d8d04af-9089-49e1-89d4-1b9dff413cc6",
+            "volatile.uuid.generation": "2d8d04af-9089-49e1-89d4-1b9dff413cc6"
+          },
+          "created_at": "2026-10-15T09:12:38Z",
+          "devices": {},
+          "ephemeral": false,
+          "expanded_config": {
+            "cloud-init.user-data": "[redacted]",
+            "image.architecture": "amd64",
+            "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+            "image.label": "release",
+            "image.os": "ubuntu",
+            "image.release": "noble",
+            "image.serial": "20260926",
+            "image.type": "disk1.img",
+            "image.version": "24.04",
+            "limits.cpu": "1",
+            "limits.memory": "1GiB",
+            "user.lxd-probe.l6-key": "c0f196da1d2ee0e6",
+            "volatile.apply_template": "copy",
+            "volatile.base_image": "d4ff18198fb2ed8c88d408421e610c143cf1f5c1c0178e57178fb586880c3e56",
+            "volatile.cloud-init.instance-id": "468c2b4c-3fd0-40b4-9bea-ced8d29f2d3e",
+            "volatile.eth0.hwaddr": "mac-1",
+            "volatile.uuid": "2d8d04af-9089-49e1-89d4-1b9dff413cc6",
+            "volatile.uuid.generation": "2d8d04af-9089-49e1-89d4-1b9dff413cc6"
+          },
+          "expanded_devices": {
+            "eth0": {
+              "name": "eth0",
+              "network": "lxdbr0",
+              "type": "nic"
+            },
+            "root": {
+              "path": "/",
+              "pool": "default",
+              "type": "disk"
+            }
+          },
+          "expires_at": "0001-01-01T00:00:00Z",
+          "last_used_at": "0001-01-01T00:00:00Z",
+          "name": "l6-snap",
+          "profiles": [
+            "default"
+          ],
+          "size": -1,
+          "stateful": false
+        }
+      ],
+      "state": {
+        "cpu": {
+          "usage": 0
+        },
+        "disk": {
+          "root": {
+            "total": 0,
+            "usage": 906123776
+          }
+        },
+        "memory": {
+          "swap_usage": 0,
+          "swap_usage_peak": 0,
+          "total": 0,
+          "usage": 0,
+          "usage_peak": 0
+        },
+        "network": null,
+        "pid": 0,
+        "processes": 0,
+        "status": "Stopped",
+        "status_code": 102
+      },
+      "stateful": false,
+      "status": "Stopped",
+      "status_code": 102,
+      "type": "virtual-machine"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0003",
+  "time": "2026-10-15T09:07:33.671310801Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L6",
+  "cell": "lxd5-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "local copy: lxd5: lxc copy l6-c l6-c-copy; done; result lxd5/l6-c-copy; stand-in key kept: yes; cloud-init marker kept: yes"
+    }
+  ],
+  "raw": null
+}

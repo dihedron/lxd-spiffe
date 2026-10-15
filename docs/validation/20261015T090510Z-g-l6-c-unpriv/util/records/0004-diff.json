@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "id": "util/0004",
+  "time": "2026-10-15T09:07:35.687409929Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "diff",
+  "args": [
+    "0005-instance-show.json",
+    "0006-instance-show.json"
+  ],
+  "gate": "L6",
+  "cell": "lxd5-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "diff.records",
+      "value": {
+        "a": "server/0005",
+        "b": "server/0006"
+      }
+    },
+    {
+      "key": "diff.count",
+      "value": 3
+    },
+    {
+      "key": "diff.differences",
+      "value": [
+        {
+          "a": "\"92d2255562b2457e9965d2036d256f9b233c3006e2387d7140ec0ab1f50ef74c\"",
+          "b": "\"c447d44def1b4ee2a71a7356056244437d583a276cdc15a43603871c64d6bb3a\"",
+          "path": "observations.instance-full.etag"
+        },
+        {
+          "a": "934ddabd-9420-4fed-b35a-5a64a6b759cd",
+          "b": "d1e17fe7-4593-4774-89d8-dc3263015f54",
+          "path": "observations.instance.config.volatile.uuid.generation"
+        },
+        {
+          "a": "\"92d2255562b2457e9965d2036d256f9b233c3006e2387d7140ec0ab1f50ef74c\"",
+          "b": "\"c447d44def1b4ee2a71a7356056244437d583a276cdc15a43603871c64d6bb3a\"",
+          "path": "observations.instance.etag"
+        }
+      ]
+    }
+  ],
+  "raw": null
+}
