@@ -1,0 +1,26 @@
+{
+  "status": 403,
+  "header": {
+    "Content-Length": [
+      "240"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Tue, 13 Oct 2026 19:13:17 GMT"
+    ],
+    "X-Content-Type-Options": [
+      "nosniff"
+    ]
+  },
+  "body": {
+    "error": "Failed verifying bearer token: Failed authenticating bearer token: Token is not valid: token signature is invalid: signature is invalid",
+    "error_code": 403,
+    "metadata": null,
+    "operation": "",
+    "status": "",
+    "status_code": 0,
+    "type": "error"
+  }
+}

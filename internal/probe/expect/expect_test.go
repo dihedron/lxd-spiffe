@@ -106,3 +106,59 @@ func TestTable(t *testing.T) {
 		t.Errorf("only instance-full expects the state")
 	}
 }
+
+// TestDevLXD checks the devLXD expectations: either format of PRF-10, the
+// fields at the top level of a plain body or in an envelope's metadata.
+func TestDevLXD(t *testing.T) {
+	const plain = `{"api_version":"1.0","instance_type":"container","location":"lxd6","state":"Started","auth":"untrusted"}`
+	const envelope = `{"type":"sync","status":"Success","status_code":200,"metadata":` + plain + `}`
+	for name, tt := range map[string]struct {
+		exp    Expectation
+		status int
+		body   string
+		want   []string
+	}{
+		"plain":               {DevLXDServer, 200, plain, []string{}},
+		"envelope":            {DevLXDServer, 200, envelope, []string{}},
+		"missing field":       {DevLXDServer, 200, `{"api_version":"1.0","instance_type":"vm","state":"Started"}`, []string{"expectation.body.location"}},
+		"missing in envelope": {DevLXDServer, 200, `{"type":"sync","status_code":200,"metadata":{"api_version":"1.0"}}`, []string{"expectation.body.instance_type", "expectation.body.location", "expectation.body.state"}},
+		"error envelope":      {DevLXDServer, 200, `{"type":"error","error":"x","error_code":500,"metadata":null}`, []string{"expectation.body.type", "expectation.body.api_version", "expectation.body.instance_type", "expectation.body.location", "expectation.body.state"}},
+		"text where JSON":     {DevLXDConfig, 200, `forbidden`, []string{"expectation.body"}},
+		"JSON list":           {DevLXDConfig, 200, `["/1.0/config/user.a"]`, []string{}},
+		"text value":          {DevLXDConfigKey, 200, `some value`, []string{}},
+		"text meta-data":      {DevLXDMetadata, 200, "#cloud-config\ninstance-id: x\n", []string{}},
+		"status":              {DevLXDConfigKey, 403, `Forbidden`, []string{"expectation.status"}},
+	} {
+		if got := keys(tt.exp.Check(tt.status, http.Header{}, []byte(tt.body))); !slices.Equal(got, tt.want) {
+			t.Errorf("%s: deviations %v; want %v", name, got, tt.want)
+		}
+	}
+	for _, e := range []Expectation{DevLXDRoot, DevLXDServer, DevLXDConfig, DevLXDConfigKey, DevLXDMetadata, DevLXDDevices} {
+		inTable := slices.ContainsFunc(Table, func(x Expectation) bool { return x.Name == e.Name })
+		if e.Envelope != DevLXD || !inTable {
+			t.Errorf("%s: envelope %q, in Table %v", e.Name, e.Envelope, inTable)
+		}
+	}
+}
+
+// TestFileExpectations checks the files-API expectations: a raw body, not
+// checked, and at least one X-LXD-* header.
+func TestFileExpectations(t *testing.T) {
+	lxdHeaders := http.Header{"X-Lxd-Uid": {"0"}, "X-Lxd-Type": {"file"}}
+	if got := keys(FileRead.Check(200, lxdHeaders, []byte("any content"))); len(got) != 0 {
+		t.Errorf("file read: %v", got)
+	}
+	if got := keys(FileRead.Check(200, http.Header{"Content-Type": {"application/octet-stream"}}, []byte("x"))); !slices.Equal(got, []string{"expectation.header.X-LXD-*"}) {
+		t.Errorf("file read without X-LXD headers: %v", got)
+	}
+	if got := keys(FileHead.Check(200, lxdHeaders, nil)); len(got) != 0 {
+		t.Errorf("file head: %v", got)
+	}
+	dir := []byte(`{"type":"sync","status":"Success","status_code":200,"metadata":["a","b"]}`)
+	if got := keys(FileDir.Check(200, http.Header{"X-Lxd-Type": {"directory"}}, dir)); len(got) != 0 {
+		t.Errorf("file dir: %v", got)
+	}
+	if got := keys(FileDir.Check(200, lxdHeaders, []byte("content"))); !slices.Equal(got, []string{"expectation.body"}) {
+		t.Errorf("file dir on a file: %v", got)
+	}
+}

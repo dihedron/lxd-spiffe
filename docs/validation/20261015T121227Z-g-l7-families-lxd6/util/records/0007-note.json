@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0007",
+  "time": "2026-10-15T12:36:47.26092481Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L7",
+  "cell": "lxd6-v-alma",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "session-only VM l7-alma from images:almalinux/9/cloud (AlmaLinux 9.8 (Olive Jaguar))"
+    }
+  ],
+  "raw": null
+}

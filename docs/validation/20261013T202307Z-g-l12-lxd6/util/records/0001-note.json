@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0001",
+  "time": "2026-10-13T20:24:43.880354736Z",
+  "tool_version": "a8fb10e",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L12",
+  "cell": "lxd6-nested",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "nested LXD inside a container is out of scope (L12 runbook): not tested"
+    }
+  ],
+  "raw": null
+}

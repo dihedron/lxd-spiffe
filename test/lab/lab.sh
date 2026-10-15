@@ -5,6 +5,8 @@
 set -euo pipefail
 
 LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# set when up changes the baseline (instances added, VMs resized): up then takes a new snapshot
+LAB_BASELINE_CHANGED=0
 REPO_DIR="$(cd "$LAB_DIR/../.." && pwd)"
 
 # shellcheck source=lib/common.sh
@@ -53,6 +55,12 @@ commands:
   guest <server> <instance> [--project <project>] [--user <uid>] -- <args>
                             run lxd-probe inside an instance (as root
                             unless --user is given)
+  token <server> [--expiry <durations>]
+                            issue a short-lived token (default 2M) to the
+                            bearer identity lab-bearer-short, for
+                            probe --as bearer-short (L13)
+  pull <server> <instance> [--project <project>] [--user <uid>] <run_id>
+                            copy a guest run into the evidence directory
   refresh                   move the LXD servers to their channels' newest
                             revision, then offer a new snapshot
   test [-run REGEX] [--collect] [--record-host]
@@ -156,10 +164,13 @@ cmd_up() {
 	for server in $(lab_servers); do
 		start_instances "$server"
 		wait_instances "$server"
+		ensure_selinux "$server"
 		baseline_grants "$server"
 	done
 
-	if ! all_snapshots_exist; then
+	# a snapshot on the first success, and a new one when this up added
+	# baseline instances or resized VMs: reset would otherwise undo them
+	if ! all_snapshots_exist || ((LAB_BASELINE_CHANGED)); then
 		section "Snapshot"
 		LAB_ASSUME_YES=1 lab_snapshot
 	fi
@@ -360,6 +371,8 @@ main() {
 	deploy) cmd_deploy ;;
 	probe) cmd_probe "${args[@]}" ;;
 	guest) cmd_guest "${args[@]}" ;;
+	pull) cmd_pull "${args[@]}" ;;
+	token) cmd_token "${args[@]}" ;;
 	refresh) cmd_refresh ;;
 	test) cmd_test "${args[@]}" ;;
 	help | -h | --help) usage ;;

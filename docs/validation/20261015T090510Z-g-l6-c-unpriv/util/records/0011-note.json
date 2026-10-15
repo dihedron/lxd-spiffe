@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0011",
+  "time": "2026-10-15T09:07:47.528131088Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L6",
+  "cell": "lxd6-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "move to the other server: lxd5: lxc move l6-c-copy lxd6:l6-c-moved; done; result lxd6/l6-c-moved; stand-in key kept: yes; cloud-init marker kept: yes"
+    }
+  ],
+  "raw": null
+}

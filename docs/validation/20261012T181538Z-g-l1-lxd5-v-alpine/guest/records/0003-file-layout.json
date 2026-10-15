@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "id": "guest/0003",
+  "time": "2026-10-12T18:15:59.778384843Z",
+  "tool_version": "0c2d75c",
+  "env": "guest",
+  "verb": "file layout",
+  "args": [],
+  "gate": "L1",
+  "cell": "lxd5-v-alpine",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "layout.regular",
+      "value": {
+        "gid": 0,
+        "inode": 428,
+        "mode": "0600",
+        "mtime": "2026-10-12T18:15:59.778830658Z",
+        "nlink": 1,
+        "size": 8,
+        "type": "file",
+        "uid": 0
+      }
+    },
+    {
+      "key": "layout.symlink",
+      "value": {
+        "gid": 0,
+        "inode": 429,
+        "mode": "0777",
+        "mtime": "2026-10-12T18:15:59.778830658Z",
+        "nlink": 1,
+        "size": 13,
+        "target": "/etc/hostname",
+        "type": "symlink",
+        "uid": 0
+      }
+    },
+    {
+      "key": "layout.directory",
+      "value": {
+        "gid": 0,
+        "inode": 430,
+        "mode": "0700",
+        "mtime": "2026-10-12T18:15:59.778830658Z",
+        "nlink": 2,
+        "size": 40,
+        "type": "dir",
+        "uid": 0
+      }
+    },
+    {
+      "key": "layout.world-writable",
+      "value": {
+        "gid": 0,
+        "inode": 431,
+        "mode": "0666",
+        "mtime": "2026-10-12T18:15:59.779041222Z",
+        "nlink": 1,
+        "size": 15,
+        "type": "file",
+        "uid": 0
+      }
+    },
+    {
+      "key": "layout.other-owner",
+      "value": {
+        "gid": 1000,
+        "inode": 432,
+        "mode": "0600",
+        "mtime": "2026-10-12T18:15:59.779279839Z",
+        "nlink": 1,
+        "size": 12,
+        "type": "file",
+        "uid": 1000
+      }
+    }
+  ],
+  "raw": null
+}

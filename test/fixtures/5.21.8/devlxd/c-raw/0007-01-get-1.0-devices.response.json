@@ -1,0 +1,27 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "137"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 14:33:02 GMT"
+    ]
+  },
+  "body": {
+    "eth0": {
+      "hwaddr": "mac-1",
+      "name": "eth0",
+      "network": "lxdbr0",
+      "type": "nic"
+    },
+    "root": {
+      "path": "/",
+      "pool": "default",
+      "type": "disk"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "run_id": "20261012T193904Z-g-l2-lxd6-c-unpriv",
+  "env": "guest",
+  "created": "2026-10-12T19:39:58.570656405Z",
+  "tool_version": "0ed0eb1",
+  "git_commit": "0ed0eb13b7243d928d2fbe634904f91f34aba8b5",
+  "host": "redacted",
+  "endpoint": "unix:///dev/lxd/sock"
+}

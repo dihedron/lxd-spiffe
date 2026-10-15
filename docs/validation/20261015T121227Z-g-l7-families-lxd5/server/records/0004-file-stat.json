@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "id": "server/0004",
+  "time": "2026-10-15T12:18:31.852430548Z",
+  "tool_version": "751e4ec",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "l7-rocky",
+    "/etc/hostname",
+    "--wait",
+    "5m0s"
+  ],
+  "gate": "L7",
+  "cell": "lxd5-v-rocky",
+  "outcome": "ok",
+  "duration_ms": 48800,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "wait.attempts",
+      "value": 158
+    },
+    {
+      "key": "wait.ready_after_ms",
+      "value": 48744
+    },
+    {
+      "key": "wait.failures",
+      "value": [
+        {
+          "count": 157,
+          "error": "LXD VM agent is not currently running",
+          "first_seen_ms": 4,
+          "status": 500
+        }
+      ]
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0644"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-15 12:17:52 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "file.size",
+      "value": 0
+    },
+    {
+      "key": "file.sha256",
+      "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "raw": [
+    "artifacts/0004-server.json",
+    "artifacts/0004-file.json"
+  ]
+}

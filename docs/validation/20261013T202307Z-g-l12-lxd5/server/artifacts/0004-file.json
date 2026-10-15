@@ -1,0 +1,18 @@
+{
+  "status": 404,
+  "header": {
+    "Content-Length": [
+      "114"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Tue, 13 Oct 2026 20:23:20 GMT"
+    ],
+    "X-Content-Type-Options": [
+      "nosniff"
+    ]
+  },
+  "body_text": "[content omitted: 114 bytes, sha256 bf0e96c72aa75475e6081095ac9a3c50c7dec6f9fc54382178f0e04027a55f1c]"
+}

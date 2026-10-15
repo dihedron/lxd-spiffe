@@ -276,7 +276,7 @@ func ReadSecretFile(path string) (string, error) {
 	if info.Mode().Perm()&0o077 != 0 {
 		return "", fmt.Errorf("secret file %s is readable by group or others (mode %o)", path, info.Mode().Perm())
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the operator's credential file, its mode checked above
 	if err != nil {
 		return "", fmt.Errorf("secret file: %w", err)
 	}

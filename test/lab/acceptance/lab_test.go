@@ -105,9 +105,16 @@ func baseline() []baselineInstance {
 		{"default", "v-ubuntu", "virtual-machine", "ubuntu", vm()},
 		{"default", "v-debian", "virtual-machine", "debian", vm()},
 		{"default", "v-alpine", "virtual-machine", "alpine", vm()},
+		{"default", "v-rocky", "virtual-machine", "rockylinux", vm()},
+		{"default", "v-alma", "virtual-machine", "almalinux", vm()},
 		{"restricted", "c-unpriv", "container", "ubuntu", nil},
 	}
 }
+
+// selinuxModes are the SELinux modes of the RHEL rebuilds of the baseline:
+// v-rocky runs the targeted policy enforcing (with the lxd-agent drop-in),
+// v-alma as its image ships, without a policy.
+var selinuxModes = map[string]string{"v-rocky": "Enforcing", "v-alma": "Disabled"}
 
 // labInstance is the part of an LXD instance LAB-3 checks.
 type labInstance struct {
@@ -160,6 +167,13 @@ func TestLAB3Baseline(t *testing.T) {
 				}
 				if n := got.ExpandedDevices["eth0"]["network"]; n != bridge {
 					t.Errorf("%s: eth0 on %q; want %s", where, n, bridge)
+				}
+				if mode, ok := selinuxModes[want.name]; ok {
+					got := strings.TrimSpace(l.ssh(t, server, "sudo timeout 60 lxc exec "+want.name+" -- sh -c "+
+						shellQuote("echo $(getenforce) $(ps -eo label,comm | awk '$2 == \"lxd-agent\" { print $1 }')")))
+					if !strings.HasPrefix(got, mode) || (mode == "Enforcing" && !strings.Contains(got, ":unconfined_service_t:")) {
+						t.Errorf("%s: SELinux and lxd-agent %q; want %s (with lxd-agent in unconfined_service_t when enforcing)", where, got, mode)
+					}
 				}
 				sum := l.ssh(t, server, fmt.Sprintf("sudo lxc exec %s --project %s -- sha256sum /usr/local/bin/lxd-probe", want.name, want.project))
 				if f := strings.Fields(sum); len(f) == 0 || f[0] != l.env.Probe.SHA256 {

@@ -1,6 +1,8 @@
 package probe
 
 import (
+	"errors"
+
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
 	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
 )
@@ -11,6 +13,10 @@ import (
 func LXDError(err error) error {
 	if err == nil {
 		return nil
+	}
+	var e *exit.Error
+	if errors.As(err, &e) {
+		return err // already has its code, as a refusal does
 	}
 	switch lxd.KindOf(err) {
 	case lxd.KindConnection:

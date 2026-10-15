@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "id": "server/0001",
+  "time": "2026-10-15T08:47:57.323266977Z",
+  "tool_version": "751e4ec",
+  "env": "server",
+  "verb": "instance watch",
+  "args": [
+    "v-ubuntu",
+    "--for",
+    "5m0s",
+    "--interval",
+    "1s"
+  ],
+  "gate": "L14",
+  "cell": "lxd6-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 300427,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "watch.started",
+      "value": "2026-10-15T08:47:57.338475248Z"
+    },
+    {
+      "key": "watch.initial",
+      "value": {
+        "cloud-init.instance-id": "[redacted]",
+        "etag": "\"4cd70a448f9976d248621b55d752b35f8fbe25e889844009d1787f1db1d4c8a3\"",
+        "location": "none",
+        "present": true,
+        "status": "Running",
+        "uuid": "943cd79f-a307-4b23-b3ca-8b86ba212d7c",
+        "uuid.generation": "943cd79f-a307-4b23-b3ca-8b86ba212d7c"
+      }
+    },
+    {
+      "key": "watch.polls",
+      "value": 297
+    },
+    {
+      "key": "watch.changes",
+      "value": []
+    },
+    {
+      "key": "watch.final",
+      "value": {
+        "cloud-init.instance-id": "[redacted]",
+        "etag": "\"4cd70a448f9976d248621b55d752b35f8fbe25e889844009d1787f1db1d4c8a3\"",
+        "location": "none",
+        "present": true,
+        "status": "Running",
+        "uuid": "943cd79f-a307-4b23-b3ca-8b86ba212d7c",
+        "uuid.generation": "943cd79f-a307-4b23-b3ca-8b86ba212d7c"
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0001-server.json"
+  ]
+}

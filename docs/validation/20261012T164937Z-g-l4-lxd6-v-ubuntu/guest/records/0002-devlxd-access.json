@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "id": "guest/0002",
+  "time": "2026-10-12T16:49:45.251538005Z",
+  "tool_version": "6ec4c4c",
+  "env": "guest",
+  "verb": "devlxd access",
+  "args": [
+    "--as-uid",
+    "0,1000,65534",
+    "--path",
+    "/1.0",
+    "--path",
+    "/1.0/config/cloud-init.user-data"
+  ],
+  "gate": "L4",
+  "cell": "lxd6-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 40,
+  "observations": [
+    {
+      "key": "access.uid.0",
+      "value": {
+        "gid": 0,
+        "results": [
+          {
+            "allowed": true,
+            "format": "plain",
+            "path": "/1.0",
+            "status": 200
+          },
+          {
+            "allowed": true,
+            "format": "plain",
+            "path": "/1.0/config/cloud-init.user-data",
+            "status": 200
+          }
+        ]
+      }
+    },
+    {
+      "key": "access.uid.1000",
+      "value": {
+        "gid": 1000,
+        "results": [
+          {
+            "allowed": false,
+            "error": "lxd: connection: Get \"http://lxd/1.0\": dial unix /dev/lxd/sock: connect: permission denied",
+            "path": "/1.0"
+          },
+          {
+            "allowed": false,
+            "error": "lxd: connection: Get \"http://lxd/1.0/config/cloud-init.user-data\": dial unix /dev/lxd/sock: connect: permission denied",
+            "path": "/1.0/config/cloud-init.user-data"
+          }
+        ]
+      }
+    },
+    {
+      "key": "access.uid.65534",
+      "value": {
+        "gid": 65534,
+        "results": [
+          {
+            "allowed": false,
+            "error": "lxd: connection: Get \"http://lxd/1.0\": dial unix /dev/lxd/sock: connect: permission denied",
+            "path": "/1.0"
+          },
+          {
+            "allowed": false,
+            "error": "lxd: connection: Get \"http://lxd/1.0/config/cloud-init.user-data\": dial unix /dev/lxd/sock: connect: permission denied",
+            "path": "/1.0/config/cloud-init.user-data"
+          }
+        ]
+      }
+    }
+  ],
+  "raw": null
+}

@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # The baseline instances of the probe's lab matrix, on every LXD server: four
-# containers and three VMs in the default project, and one container in the
+# containers and five VMs in the default project, and one container in the
 # restricted project. Each has a user "probe" with uid 1000.
 
 readonly LAB_RESTRICTED_PROJECT=restricted
@@ -8,7 +8,8 @@ readonly LAB_RESTRICTED_BRIDGE=lxdbr1
 
 # baseline_instances: "PROJECT NAME KIND IMAGE-SETTING CONFIG..." per line.
 # In CONFIG, "_" stands for a space and @nosecureboot for the server's way to
-# boot a VM without secure boot (Alpine's images are not signed). c-priv needs
+# boot a VM without secure boot (Alpine's images are not signed), and
+# @selinux-enforcing a VM that ensure_selinux makes run SELinux enforcing. c-priv needs
 # nesting: under LXD's AppArmor profile, a privileged Ubuntu 24.04 container
 # cannot set up the mount namespaces of systemd's services (no network).
 # Loops read it on fd 3: the ssh inside them reads stdin.
@@ -21,6 +22,8 @@ default c-raw container LAB_IMAGE_UBUNTU raw.idmap=both_1000_1000
 default v-ubuntu vm LAB_IMAGE_UBUNTU
 default v-debian vm LAB_IMAGE_DEBIAN
 default v-alpine vm LAB_IMAGE_ALPINE @nosecureboot
+default v-rocky vm LAB_IMAGE_ROCKY @selinux-enforcing
+default v-alma vm LAB_IMAGE_ALMA
 $LAB_RESTRICTED_PROJECT c-unpriv container LAB_IMAGE_UBUNTU
 INSTANCES
 }
@@ -96,10 +99,12 @@ ensure_instances() {
 			args+=(--vm -c "limits.cpu=$LAB_GUEST_VM_VCPUS" -c "limits.memory=${LAB_GUEST_VM_RAM_GIB}GiB")
 		fi
 		for config in $config; do
+			[[ "$config" == @selinux-enforcing ]] && continue # ensure_selinux
 			[[ "$config" == @nosecureboot ]] && config="$(nosecureboot_config "$server")"
 			args+=(-c "${config//_/ }")
 		done
 		info "$server: launching $project/$name ($kind, $image)"
+		LAB_BASELINE_CHANGED=1
 		if ! vm_lxc "$server" "${args[@]}" >/dev/null; then
 			# a launch that fails to start leaves the instance created: the
 			# next up would take it as done
@@ -130,6 +135,61 @@ wait_instances() {
 		env_set ".servers[\"$server\"].instances[\"$project/$name\"].fingerprint" "$(jq -r '.config["volatile.base_image"]' <<<"$json")"
 	done 3< <(baseline_instances)
 	info "$server: the baseline instances are ready"
+}
+
+# selinux_setup_script: the guest side of @selinux-enforcing (probe spec
+# gate L7): the targeted policy and audit (dnf retried: mirrors fail now and
+# then), the drop-in that lets lxd-agent start under enforcing (it runs from
+# /run/lxd_agent as var_run_t, in init_t, which may not create vsock
+# sockets; as bin_t it runs in unconfined_service_t), and a relabel.
+selinux_setup_script() {
+	cat <<'SETUP'
+set -e
+for t in 1 2 3 4 5; do dnf -y -q install selinux-policy-targeted audit >/dev/null 2>&1 && break; sleep 15; done
+rpm -q selinux-policy-targeted audit >/dev/null
+grep -q '^SELINUX=enforcing' /etc/selinux/config
+mkdir -p /etc/systemd/system/lxd-agent.service.d
+cat >/etc/systemd/system/lxd-agent.service.d/selinux.conf <<'DROPIN'
+[Service]
+ExecStartPre=/usr/bin/chcon -t bin_t /run/lxd_agent/lxd-agent
+DROPIN
+systemctl enable auditd >/dev/null 2>&1
+touch /.autorelabel
+sync
+SETUP
+}
+
+# guest_exec SERVER PROJECT NAME COMMAND: runs COMMAND (a shell string) in
+# an instance, bounded: lxc exec into a VM that is still booting can hang.
+guest_exec() {
+	vm_ssh "$1" "sudo timeout 60 lxc exec $(printf '%q' "$3") --project $(printf '%q' "$2") -- sh -c $(printf '%q' "$4")"
+}
+
+# ensure_selinux SERVER: makes the baseline VMs marked @selinux-enforcing
+# run SELinux enforcing with lxd-agent in unconfined_service_t; one that
+# already does is left alone. The relabel boot ends with the VM powered
+# off, so it is started again.
+ensure_selinux() {
+	local server="$1" project name config deadline status label
+	while read -r -u 3 project name _ _ config; do
+		[[ " $config " == *" @selinux-enforcing "* ]] || continue
+		[[ "$(guest_exec "$server" "$project" "$name" getenforce 2>/dev/null)" == Enforcing ]] && continue
+		info "$server: making $project/$name run SELinux enforcing (policy, lxd-agent drop-in, relabel)"
+		guest_exec "$server" "$project" "$name" "$(selinux_setup_script)" >/dev/null ||
+			die "$server: cannot set up SELinux in $project/$name (the package mirrors may be unreachable: run lab.sh up again)"
+		vm_lxc "$server" restart --force "$name" --project "$project" >/dev/null
+		LAB_BASELINE_CHANGED=1
+		deadline=$((SECONDS + 1200))
+		until [[ "$(guest_exec "$server" "$project" "$name" getenforce 2>/dev/null)" == Enforcing ]]; do
+			((SECONDS < deadline)) || die "$server: $project/$name does not come up enforcing (lab.sh ssh $server sudo lxc console $name --project $project)"
+			status="$(vm_lxc "$server" query "/1.0/instances/$name?project=$project" 2>/dev/null | jq -r .status)"
+			[[ "$status" == Stopped ]] && vm_lxc "$server" start "$name" --project "$project" >/dev/null 2>&1
+			sleep 10
+		done
+		label="$(guest_exec "$server" "$project" "$name" "ps -eo label,comm | awk '\$2 == \"lxd-agent\" { print \$1 }'")"
+		[[ "$label" == *:unconfined_service_t:* ]] || die "$server: lxd-agent in $project/$name runs as \"$label\", not unconfined_service_t"
+		info "$server: $project/$name runs SELinux enforcing, lxd-agent as $label"
+	done 3< <(baseline_instances)
 }
 
 # baseline_grants SERVER: the identities' grants on the baseline instances.

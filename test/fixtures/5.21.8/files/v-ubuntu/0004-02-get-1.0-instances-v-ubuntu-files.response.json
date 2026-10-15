@@ -1,0 +1,39 @@
+{
+  "status": 200,
+  "header": {
+    "Accept-Ranges": [
+      "bytes"
+    ],
+    "Content-Disposition": [
+      "inline;filename=symlink"
+    ],
+    "Content-Length": [
+      "13"
+    ],
+    "Content-Type": [
+      "application/octet-stream"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 18:15:54 GMT"
+    ],
+    "Last-Modified": [
+      "Mon, 12 Oct 2026 18:15:54 GMT"
+    ],
+    "X-Lxd-Gid": [
+      "0"
+    ],
+    "X-Lxd-Mode": [
+      "0777"
+    ],
+    "X-Lxd-Modified": [
+      "2026-10-12 18:15:53 +0000 UTC"
+    ],
+    "X-Lxd-Type": [
+      "symlink"
+    ],
+    "X-Lxd-Uid": [
+      "0"
+    ]
+  },
+  "body_text": "/etc/hostname"
+}

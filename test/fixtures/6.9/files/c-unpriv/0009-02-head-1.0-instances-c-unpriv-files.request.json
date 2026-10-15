@@ -1,0 +1,10 @@
+{
+  "method": "HEAD",
+  "path": "/1.0/instances/c-unpriv/files",
+  "query": "path=%2Frun%2Flxd-probe%2Fproof\u0026project=default",
+  "header": {
+    "User-Agent": [
+      "lxd-spiffe/0c2d75c"
+    ]
+  }
+}

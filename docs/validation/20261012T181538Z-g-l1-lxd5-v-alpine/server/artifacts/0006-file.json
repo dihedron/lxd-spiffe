@@ -1,0 +1,39 @@
+{
+  "status": 200,
+  "header": {
+    "Accept-Ranges": [
+      "bytes"
+    ],
+    "Content-Disposition": [
+      "inline;filename=world-writable"
+    ],
+    "Content-Length": [
+      "15"
+    ],
+    "Content-Type": [
+      "application/octet-stream"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 18:16:00 GMT"
+    ],
+    "Last-Modified": [
+      "Mon, 12 Oct 2026 18:15:59 GMT"
+    ],
+    "X-Lxd-Gid": [
+      "0"
+    ],
+    "X-Lxd-Mode": [
+      "0666"
+    ],
+    "X-Lxd-Modified": [
+      "2026-10-12 18:15:59 +0000 UTC"
+    ],
+    "X-Lxd-Type": [
+      "file"
+    ],
+    "X-Lxd-Uid": [
+      "0"
+    ]
+  },
+  "body_text": "[content omitted: 15 bytes, sha256 fb214b7b6c8457ca217845a765f011dd4fe0095081bbb7b2ec56090f949c9a53]"
+}

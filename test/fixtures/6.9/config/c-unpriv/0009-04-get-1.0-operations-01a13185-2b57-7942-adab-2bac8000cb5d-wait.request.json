@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "path": "/1.0/operations/01a13185-2b57-7942-adab-2bac8000cb5d/wait",
+  "query": "project=default",
+  "header": {
+    "User-Agent": [
+      "lxd-spiffe/4d3c1d1"
+    ]
+  }
+}

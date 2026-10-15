@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0003",
+  "time": "2026-10-12T20:04:33.933663232Z",
+  "tool_version": "26b6b17",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L3",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 12, 2026): through devLXD the guest learns its instance name (meta-data local-hostname), its cloud-init instance-id and its location, but not its project; the claim's project comes from configuration, otherwise the server looks in every allowed project (FR-A2, FR-S3). Evidence: runs 20261012T143252Z-s0-2-*."
+    }
+  ],
+  "raw": null
+}

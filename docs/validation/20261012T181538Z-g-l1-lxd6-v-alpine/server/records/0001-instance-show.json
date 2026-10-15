@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "id": "server/0001",
+  "time": "2026-10-12T18:16:23.679625478Z",
+  "tool_version": "0c2d75c",
+  "env": "server",
+  "verb": "instance show",
+  "args": [
+    "v-alpine"
+  ],
+  "gate": "L1",
+  "cell": "lxd6-v-alpine",
+  "outcome": "ok",
+  "duration_ms": 58,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "instance",
+    "instance-full"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance-full.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.etag",
+      "value": "\"53e2a905d65ba48181f8138a2ab3d35786d9f44f285a0125df057ee2f5a66edf\""
+    },
+    {
+      "key": "instance-full.etag",
+      "value": "\"53e2a905d65ba48181f8138a2ab3d35786d9f44f285a0125df057ee2f5a66edf\""
+    },
+    {
+      "key": "etag.equal",
+      "value": true
+    },
+    {
+      "key": "instance.type",
+      "value": "virtual-machine"
+    },
+    {
+      "key": "instance.status",
+      "value": "Running"
+    },
+    {
+      "key": "instance.location",
+      "value": "none"
+    },
+    {
+      "key": "instance.architecture",
+      "value": "x86_64"
+    },
+    {
+      "key": "instance.config",
+      "value": {
+        "boot.mode": "uefi-nosecureboot",
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "Alpine 3.24 (cloud)",
+        "image.os": "Alpine",
+        "image.release": "3.24",
+        "image.requirements.secureboot": "false",
+        "image.serial": "20261012_0123",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "adada8b4bedd42d5b7138559fdd21d891cff792b5e00b1fa0f1e8b3a985c2c88",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "01405cc4-dd54-4c91-86ba-9771a1fe64a5",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tapf3577ed0",
+        "volatile.eth0.hwaddr": "mac-1",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "4039c977-d952-4855-8a8e-d5e7d1ac1a4b",
+        "volatile.uuid.generation": "4039c977-d952-4855-8a8e-d5e7d1ac1a4b",
+        "volatile.vsock_id": "4143926110"
+      }
+    },
+    {
+      "key": "instance.devices",
+      "value": {}
+    },
+    {
+      "key": "instance.expanded_devices",
+      "value": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0001-server.json",
+    "artifacts/0001-instance.json",
+    "artifacts/0001-instance-full.json"
+  ]
+}

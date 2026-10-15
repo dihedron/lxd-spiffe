@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "id": "guest/0006",
+  "time": "2026-10-12T14:33:16.308737489Z",
+  "tool_version": "987956e",
+  "env": "guest",
+  "verb": "devlxd dump",
+  "args": [
+    "/1.0/meta-data"
+  ],
+  "gate": "L3",
+  "cell": "lxd5-restricted-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 2,
+  "expectations": [
+    "devlxd-meta-data"
+  ],
+  "observations": [
+    {
+      "key": "devlxd.http_status",
+      "value": 200
+    },
+    {
+      "key": "devlxd.format",
+      "value": "plain"
+    },
+    {
+      "key": "devlxd.latency_ms",
+      "value": 2
+    },
+    {
+      "key": "devlxd.content",
+      "value": "instance-id: 57d16cde-8cf3-4270-a8ce-d01c36484124\nlocal-hostname: c-unpriv\n"
+    }
+  ],
+  "raw": [
+    "artifacts/0006-devlxd.json"
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "server/0004",
+  "time": "2026-10-15T17:47:32.632269096Z",
+  "tool_version": "751e4ec",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "l7-selinux",
+    "/run/spire/lxd/proof-l7"
+  ],
+  "gate": "L7",
+  "cell": "lxd5-v-rocky-selinux",
+  "outcome": "ok",
+  "duration_ms": 33,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0600"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-15 17:47:32 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "file.size",
+      "value": 64
+    },
+    {
+      "key": "file.sha256",
+      "value": "95c58115594bd05cba23c6248b1f1d9b1a91203b162e8a6959cdf65a02cbe226"
+    }
+  ],
+  "raw": [
+    "artifacts/0004-server.json",
+    "artifacts/0004-file.json"
+  ]
+}

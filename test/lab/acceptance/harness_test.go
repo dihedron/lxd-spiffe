@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"os/exec"
@@ -118,12 +119,14 @@ func newLab(t *testing.T) *lab {
 	return l
 }
 
-// run is one lxd-probe invocation through lab.sh.
+// run is one lxd-probe invocation through lab.sh: its first record, and
+// all of them for verbs that write several (guest devlxd dump).
 type run struct {
 	code   int
 	stdout string
 	stderr string
 	rec    *evidence.Record
+	recs   []*evidence.Record
 }
 
 // String describes the invocation's result for failure messages.
@@ -197,14 +200,92 @@ func (l *lab) lxdProbe(t *testing.T, s session, args []string) *run {
 	default:
 		t.Fatalf("lab.sh %s: %v", strings.Join(args, " "), err)
 	}
-	var rec evidence.Record
-	if json.Unmarshal(stdout.Bytes(), &rec) == nil && rec.ID != "" {
-		r.rec = &rec
+	dec := json.NewDecoder(bytes.NewReader(stdout.Bytes()))
+	for dec.More() {
+		var rec evidence.Record
+		if dec.Decode(&rec) != nil || rec.ID == "" {
+			break
+		}
+		r.recs = append(r.recs, &rec)
+	}
+	if len(r.recs) > 0 {
+		r.rec = r.recs[0]
 	}
 	if probeFailure(r.code) || r.rec == nil {
 		t.Fatalf("lab.sh %s: the probe failed: %s", strings.Join(args, " "), r)
 	}
 	return r
+}
+
+// guest runs "lab.sh guest SERVER INSTANCE --project P -- ARGS --json" as
+// root; the guest writes its evidence in the instance (lab.sh pull).
+func (l *lab) guest(t *testing.T, s session, server, project, instance string, args ...string) *run {
+	t.Helper()
+	full := append([]string{"guest", server, instance, "--project", project, "--"}, args...)
+	return l.lxdProbe(t, s, append(full, "--json"))
+}
+
+// pull copies a guest run into the evidence directory (lab.sh pull).
+func (l *lab) pull(t *testing.T, server, project, instance, runID string) {
+	t.Helper()
+	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), "pull", server, instance, "--project", project, runID)
+	cmd.Env = append(os.Environ(), "LAB_EVIDENCE_DIR="+l.evidence)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("lab.sh pull %s %s/%s %s: %v\n%s", server, project, instance, runID, err, out)
+	}
+}
+
+// util runs "lxd-probe util ARGS --json" on this host in the session's
+// run, as the util environment, and fails the test like probe does.
+func (l *lab) util(t *testing.T, s session, args ...string) *run {
+	t.Helper()
+	full := append([]string{"util"}, args...)
+	full = append(full, "--evidence-dir", s.evidenceDir, "--run-id", s.runID, "--json")
+	cmd := exec.Command(filepath.Join(l.state, "bin", "lxd-probe"), full...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	r := &run{stdout: stdout.String(), stderr: stderr.String()}
+	var ee *exec.ExitError
+	switch {
+	case err == nil:
+	case errors.As(err, &ee):
+		r.code = ee.ExitCode()
+	default:
+		t.Fatalf("lxd-probe %s: %v", strings.Join(full, " "), err)
+	}
+	var rec evidence.Record
+	if json.Unmarshal(stdout.Bytes(), &rec) == nil && rec.ID != "" {
+		r.rec, r.recs = &rec, []*evidence.Record{&rec}
+	}
+	if probeFailure(r.code) || r.rec == nil {
+		t.Fatalf("lxd-probe %s: the probe failed: %s", strings.Join(full, " "), r)
+	}
+	return r
+}
+
+// labsh runs another lab.sh command and returns its standard output.
+func (l *lab) labsh(t *testing.T, args ...string) string {
+	t.Helper()
+	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), args...)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("lab.sh %s: %v\n%s", strings.Join(args, " "), err, stderr.String())
+	}
+	return stdout.String()
+}
+
+// trySSH runs a shell command on a lab VM and returns its standard output,
+// or an error with its standard error, for steps that may fail.
+func (l *lab) trySSH(vm, command string) (string, error) {
+	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), "ssh", vm, command)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		return stdout.String(), fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	return stdout.String(), nil
 }
 
 // ssh runs a shell command on a lab VM and returns its standard output.

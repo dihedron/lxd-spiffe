@@ -147,7 +147,7 @@ func TestProjectAndIfMatch(t *testing.T) {
 		Method: http.MethodPatch, Path: "/1.0/instances/c1",
 		Body: []byte(`{"config":{"user.lxd-probe.a":"2"}}`), ETag: get.Header.Get("ETag"),
 	})
-	if err != nil || patch.Status != http.StatusAccepted {
+	if err != nil || patch.Status != http.StatusOK { // PATCH is synchronous (lab, LXD 6.9)
 		t.Fatalf("PATCH: %v, %+v", err, patch)
 	}
 	stale, err := c.Raw(context.Background(), RawRequest{

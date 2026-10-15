@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "id": "server/0019",
+  "time": "2026-10-15T09:14:34.267241101Z",
+  "tool_version": "751e4ec",
+  "env": "server",
+  "verb": "config get",
+  "args": [
+    "l6-v-imported",
+    "user.lxd-probe.l6-key"
+  ],
+  "gate": "L6",
+  "cell": "lxd6-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 27,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "instance"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "config",
+      "value": {
+        "user.lxd-probe.l6-key": "c0f196da1d2ee0e6"
+      }
+    },
+    {
+      "key": "config.present",
+      "value": true
+    }
+  ],
+  "raw": [
+    "artifacts/0019-server.json",
+    "artifacts/0019-instance.json"
+  ]
+}

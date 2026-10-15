@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "run_id": "20261015T084757Z-g-l14-idle-lxd6-c-unpriv",
+  "env": "server",
+  "created": "2026-10-15T08:47:57.323803642Z",
+  "tool_version": "751e4ec",
+  "git_commit": "751e4ec990670e026340a9b497504c29a12b529a",
+  "host": "redacted",
+  "endpoint": "https://10.251.0.11:8443"
+}

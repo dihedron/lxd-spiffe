@@ -1,0 +1,114 @@
+{
+  "schema": 1,
+  "id": "server/0001",
+  "time": "2026-10-12T18:15:57.235922244Z",
+  "tool_version": "0c2d75c",
+  "env": "server",
+  "verb": "instance show",
+  "args": [
+    "v-debian"
+  ],
+  "gate": "L1",
+  "cell": "lxd5-v-debian",
+  "outcome": "ok",
+  "duration_ms": 53,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "instance",
+    "instance-full"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance-full.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.etag",
+      "value": "\"b88d01674f0fdea71178705e9c0db3dae92a4f3fd88668e197936ddf1ee26581\""
+    },
+    {
+      "key": "instance-full.etag",
+      "value": "\"b88d01674f0fdea71178705e9c0db3dae92a4f3fd88668e197936ddf1ee26581\""
+    },
+    {
+      "key": "etag.equal",
+      "value": true
+    },
+    {
+      "key": "instance.type",
+      "value": "virtual-machine"
+    },
+    {
+      "key": "instance.status",
+      "value": "Running"
+    },
+    {
+      "key": "instance.location",
+      "value": "none"
+    },
+    {
+      "key": "instance.architecture",
+      "value": "x86_64"
+    },
+    {
+      "key": "instance.config",
+      "value": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "Debian bookworm amd64 (20261012_0359)",
+        "image.os": "Debian",
+        "image.release": "bookworm",
+        "image.serial": "20261012_0359",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "e0fca4d9aaf34772cdb029ea52812438521a2e09fcde4e1ea6963efd94f8ce0c",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "f87fac3b-2801-481b-84d5-28335c0689c5",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tap8bd6b063",
+        "volatile.eth0.hwaddr": "mac-1",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "462e1b89-a305-4016-bc26-eec206836832",
+        "volatile.uuid.generation": "462e1b89-a305-4016-bc26-eec206836832",
+        "volatile.vsock_id": "156648499"
+      }
+    },
+    {
+      "key": "instance.devices",
+      "value": {}
+    },
+    {
+      "key": "instance.expanded_devices",
+      "value": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0001-server.json",
+    "artifacts/0001-instance.json",
+    "artifacts/0001-instance-full.json"
+  ]
+}

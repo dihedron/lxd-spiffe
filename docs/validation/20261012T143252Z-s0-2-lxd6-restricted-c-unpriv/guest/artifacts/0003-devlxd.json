@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "136"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 14:33:43 GMT"
+    ]
+  },
+  "body": {
+    "api_version": "1.0",
+    "auth": "untrusted",
+    "instance_type": "container",
+    "location": "lxd6",
+    "state": "Started",
+    "supported_storage_drivers": []
+  }
+}

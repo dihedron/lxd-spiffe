@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "run_id": "20261015T201415Z-g-l15-files-errors-lxd5",
+  "env": "server",
+  "created": "2026-10-15T20:14:15.467826767Z",
+  "tool_version": "4f4d2e1",
+  "git_commit": "4f4d2e18ddacfe1d40c6ece846e50055f5624c9e",
+  "host": "redacted",
+  "endpoint": "https://10.251.0.10:8443"
+}

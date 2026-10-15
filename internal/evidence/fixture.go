@@ -1,11 +1,15 @@
 package evidence
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -16,7 +20,10 @@ import (
 // as text.
 type Fixture struct {
 	// Name is the file name stem, set by LoadFixtures.
-	Name     string          `json:"-"`
+	Name string `json:"-"`
+	// Path is the stem's path relative to the directory LoadFixtures was
+	// given, which tells apart fixtures of different subdirectories.
+	Path     string          `json:"-"`
 	Request  FixtureRequest  `json:"-"`
 	Response FixtureResponse `json:"-"`
 }
@@ -64,7 +71,11 @@ func (w *FixtureWriter) Write(version string, record, seq int, method, path, que
 
 	req := FixtureRequest{Method: method, Path: w.Sanitizer.String(path), Query: w.Sanitizer.String(query), Header: w.Sanitizer.Headers(reqHeader)}
 	req.Body, req.BodyText = sanitizeBody(w.Sanitizer, reqBody)
-	resp := sanitizeResponse(w.Sanitizer, status, respHeader, respBody)
+	body := RedactConfigBody(path, status, respBody)
+	if filePath, ok := FilesAPIPath(path, query); ok {
+		body = FileBody(filePath, status, respHeader, body, true)
+	}
+	resp := sanitizeResponse(w.Sanitizer, status, respHeader, body)
 
 	for suffix, v := range map[string]any{".request.json": req, ".response.json": resp} {
 		data, err := json.MarshalIndent(v, "", "  ")
@@ -76,6 +87,46 @@ func (w *FixtureWriter) Write(version string, record, seq int, method, path, que
 		}
 	}
 	return nil
+}
+
+// labDirPrefix is the guest directory whose files the lab makes; their
+// content may stay in fixtures (PRS-35).
+const labDirPrefix = "/run/lxd-probe/"
+
+// FilesAPIPath returns the file path of a files-API request
+// (/1.0/instances/<name>/files?path=...), and whether it is one.
+func FilesAPIPath(apiPath, query string) (string, bool) {
+	rest, ok := strings.CutPrefix(apiPath, "/1.0/instances/")
+	if !ok || !strings.HasSuffix(rest, "/files") || strings.Count(rest, "/") != 1 {
+		return "", false
+	}
+	q, err := url.ParseQuery(query)
+	if err != nil {
+		return "", true // a files-API request all the same: its body is content
+	}
+	return q.Get("path"), true
+}
+
+// FileBody returns a files-API response body as evidence may hold it
+// (probe spec PRS-35): a file's content is replaced by its size and
+// SHA-256, but for an error response (status outside 2xx: an LXD error
+// envelope, not content), a directory listing or a symlink (metadata, by
+// their X-LXD-type header) and, when keepLab is set (fixtures), a file
+// under the lab directory, given as a clean path. An unknown type counts
+// as content.
+func FileBody(filePath string, status int, header http.Header, body []byte, keepLab bool) []byte {
+	if status < 200 || status > 299 {
+		return body
+	}
+	switch header.Get("X-LXD-type") {
+	case "directory", "symlink":
+		return body
+	}
+	if keepLab && path.Clean(filePath) == filePath && strings.HasPrefix(filePath, labDirPrefix) {
+		return body
+	}
+	sum := sha256.Sum256(body)
+	return []byte(fmt.Sprintf("[content omitted: %d bytes, sha256 %s]", len(body), hex.EncodeToString(sum[:])))
 }
 
 // sanitizeResponse returns a response as stored in fixtures and artifacts.
@@ -100,17 +151,25 @@ func sanitizeBody(s *Sanitizer, data []byte) (json.RawMessage, string) {
 }
 
 // LoadFixtures reads every fixture pair under dir, sorted by file name.
+// devLXD fixtures, filed under a devlxd/ directory below dir (the lab's
+// S0-2), are not the server's: they load when that directory is given.
 func LoadFixtures(dir string) ([]Fixture, error) {
 	var fixtures []Fixture
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
+		if d.IsDir() && d.Name() == "devlxd" && path != dir {
+			return filepath.SkipDir
+		}
 		stem, ok := strings.CutSuffix(path, ".request.json")
 		if d.IsDir() || !ok {
 			return nil
 		}
 		f := Fixture{Name: filepath.Base(stem)}
+		if rel, err := filepath.Rel(dir, stem); err == nil {
+			f.Path = filepath.ToSlash(rel)
+		}
 		if err := readFixtureFile(path, &f.Request); err != nil {
 			return err
 		}
@@ -128,7 +187,7 @@ func LoadFixtures(dir string) ([]Fixture, error) {
 }
 
 func readFixtureFile(path string, v any) error {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: a fixture under the directory the caller loads
 	if err != nil {
 		return err
 	}

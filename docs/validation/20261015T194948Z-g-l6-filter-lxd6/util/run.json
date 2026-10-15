@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "run_id": "20261015T194948Z-g-l6-filter-lxd6",
+  "env": "util",
+  "created": "2026-10-15T19:50:10.251596274Z",
+  "tool_version": "444d7c2",
+  "git_commit": "444d7c2b4f2c8f13251e6f05893e9ddb4157ef65",
+  "host": "redacted"
+}

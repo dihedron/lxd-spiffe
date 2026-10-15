@@ -26,6 +26,9 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/gorilla/websocket"
 
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 )
@@ -55,6 +58,18 @@ type Server struct {
 	exts      []string             // api_extensions of GET /1.0
 	nextOp    int
 	replay    map[string][]evidence.Fixture
+	// bearerExpiry, when set, refuses bearer tokens from then on, as LXD
+	// refuses an expired token (lab, LXD 6.9).
+	bearerExpiry time.Time
+	// fileFailures answers the files API of an instance with an error a
+	// number of times first, as a VM whose lxd-agent is not up yet.
+	fileFailures map[string]*fileFailure // key: project/name
+}
+
+type fileFailure struct {
+	left   int
+	status int
+	msg    string
 }
 
 // File is a file inside a fake instance, as the files API reports it.
@@ -64,6 +79,9 @@ type File struct {
 	GID     int
 	Mode    int
 	Type    string
+	// Entries list a directory (Type "directory"), answered as a sync
+	// envelope, as assumed until gate L1.
+	Entries []string
 }
 
 type instance struct {
@@ -164,12 +182,70 @@ func (s *Server) HideProject(project string) {
 	s.hidden = append(s.hidden, project)
 }
 
+// FailFiles answers the next n files API requests on the instance with
+// status and msg, as LXD answers while a VM's lxd-agent is not running.
+func (s *Server) FailFiles(project, name string, n, status int, msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.fileFailures == nil {
+		s.fileFailures = map[string]*fileFailure{}
+	}
+	s.fileFailures[project+"/"+name] = &fileFailure{left: n, status: status, msg: msg}
+}
+
+// ExpireBearerAt refuses every request with a bearer token from at on,
+// with the 403 LXD 6.9 answers an expired or revoked token with, on every
+// path (GET /1.0 included).
+func (s *Server) ExpireBearerAt(at time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.bearerExpiry = at
+}
+
 // SetExtensions replaces the api_extensions the fake reports; the
 // extensions do not change what the fake serves.
 func (s *Server) SetExtensions(extensions ...string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.exts = extensions
+}
+
+// SetInstanceConfig changes one config key of an instance, and its ETag.
+func (s *Server) SetInstanceConfig(project, name, key, value string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i, ok := s.instances[project+"/"+name]; ok {
+		i.Config[key] = value
+		i.etagSeq++
+	}
+}
+
+// SetStatus changes an instance's status, as a stop or start would.
+func (s *Server) SetStatus(project, name, status string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i, ok := s.instances[project+"/"+name]; ok {
+		i.Status = status
+		i.etagSeq++
+	}
+}
+
+// RemoveInstance deletes an instance.
+func (s *Server) RemoveInstance(project, name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.instances, project+"/"+name)
+}
+
+// Config returns a copy of an instance's config.
+func (s *Server) Config(project, name string) (map[string]string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	i, ok := s.instances[project+"/"+name]
+	if !ok {
+		return nil, false
+	}
+	return maps.Clone(i.Config), true
 }
 
 // BumpETag changes an instance's ETag without changing its config, as an
@@ -228,6 +304,10 @@ func (s *Server) replayed(w http.ResponseWriter, r *http.Request) {
 func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if !s.bearerExpiry.IsZero() && strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") && !time.Now().Before(s.bearerExpiry) {
+		writeError(w, http.StatusForbidden, "Failed verifying bearer token: Failed authenticating bearer token: Token is not valid: token has invalid claims: token is expired")
+		return
+	}
 	for _, prefix := range s.deny {
 		if strings.HasPrefix(r.URL.Path, prefix) {
 			writeError(w, http.StatusForbidden, "not authorized")
@@ -256,15 +336,42 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 		}, "")
 	case r.URL.Path == "/1.0/auth/identities/current" && r.Method == http.MethodGet:
 		s.identity(w, r)
+	case r.URL.Path == "/1.0/events" && websocket.IsWebSocketUpgrade(r):
+		// the handshake is all the probe's permissions verb needs
+		if c, err := (&websocket.Upgrader{}).Upgrade(w, r, nil); err == nil {
+			c.Close() //nolint:errcheck
+		}
+	case r.URL.Path == "/1.0/operations" && r.Method == http.MethodGet:
+		writeSync(w, []string{}, "")
+	case len(parts) == 4 && parts[1] == "instances" && parts[3] == "state" && r.Method == http.MethodGet:
+		if i, ok := s.instances[project+"/"+parts[2]]; ok {
+			writeSync(w, map[string]any{"status": i.Status, "status_code": 103, "pid": 4242}, "")
+		} else {
+			writeError(w, http.StatusNotFound, "Instance not found")
+		}
+	case len(parts) == 2 && parts[1] == "instances" && r.Method == http.MethodGet:
+		s.list(w, project)
 	case len(parts) == 3 && parts[1] == "instances":
 		s.instance(w, r, project, parts[2])
-	case len(parts) == 4 && parts[1] == "instances" && parts[3] == "files" && r.Method == http.MethodGet:
+	case len(parts) == 4 && parts[1] == "instances" && parts[3] == "files" && (r.Method == http.MethodGet || r.Method == http.MethodHead):
 		s.file(w, r, project, parts[2])
 	case len(parts) == 4 && parts[1] == "operations" && parts[3] == "wait":
 		writeSync(w, map[string]any{"id": parts[2], "status": "Success", "status_code": 200, "err": ""}, "")
 	default:
 		writeError(w, http.StatusNotFound, "not found")
 	}
+}
+
+// list answers GET /1.0/instances?recursion=1 for the project.
+func (s *Server) list(w http.ResponseWriter, project string) {
+	var out []map[string]any
+	for _, i := range s.instances {
+		if i.Project == project {
+			out = append(out, map[string]any{"name": i.Name, "project": i.Project, "type": "container", "status": i.Status, "location": "none", "config": i.Config})
+		}
+	}
+	slices.SortFunc(out, func(a, b map[string]any) int { return strings.Compare(a["name"].(string), b["name"].(string)) })
+	writeSync(w, out, "")
 }
 
 func (s *Server) instance(w http.ResponseWriter, r *http.Request, project, name string) {
@@ -311,6 +418,11 @@ func (s *Server) instance(w http.ResponseWriter, r *http.Request, project, name 
 			}
 		}
 		i.etagSeq++
+		if r.Method == http.MethodPatch {
+			// synchronous, as LXD 6.9 answered in the lab
+			writeSync(w, map[string]any{}, "")
+			return
+		}
 		s.nextOp++
 		op := fmt.Sprintf("/1.0/operations/op-%d", s.nextOp)
 		w.Header().Set("Location", op)
@@ -340,6 +452,11 @@ func (s *Server) file(w http.ResponseWriter, r *http.Request, project, name stri
 		writeError(w, http.StatusNotFound, "Instance not found")
 		return
 	}
+	if f := s.fileFailures[project+"/"+name]; f != nil && f.left > 0 {
+		f.left--
+		writeError(w, f.status, f.msg)
+		return
+	}
 	f, ok := s.files[project+"/"+name+"/"+r.URL.Query().Get("path")]
 	if !ok {
 		writeError(w, http.StatusNotFound, "Not found")
@@ -349,6 +466,13 @@ func (s *Server) file(w http.ResponseWriter, r *http.Request, project, name stri
 	w.Header().Set("X-LXD-gid", fmt.Sprint(f.GID))
 	w.Header().Set("X-LXD-mode", fmt.Sprintf("%04o", f.Mode))
 	w.Header().Set("X-LXD-type", f.Type)
+	if r.Method == http.MethodHead {
+		return
+	}
+	if f.Type == "directory" {
+		writeSync(w, f.Entries, "")
+		return
+	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	io.WriteString(w, f.Content) //nolint:errcheck // test server
 }

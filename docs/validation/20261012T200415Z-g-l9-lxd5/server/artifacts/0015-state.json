@@ -1,0 +1,114 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "1339"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 20:04:16 GMT"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "cpu": {
+        "usage": 8732152000
+      },
+      "disk": {
+        "root": {
+          "total": 0,
+          "usage": 13555200
+        }
+      },
+      "memory": {
+        "swap_usage": 0,
+        "swap_usage_peak": 0,
+        "total": 8326950912,
+        "usage": 111546368,
+        "usage_peak": 0
+      },
+      "network": {
+        "eth0": {
+          "addresses": [
+            {
+              "address": "10.7.2.155",
+              "family": "inet",
+              "netmask": "24",
+              "scope": "global"
+            },
+            {
+              "address": "fd42:30b2:d401:9710:216:3eff:fe15:2f99",
+              "family": "inet6",
+              "netmask": "64",
+              "scope": "global"
+            },
+            {
+              "address": "fe80::216:3eff:fe15:2f99",
+              "family": "inet6",
+              "netmask": "64",
+              "scope": "link"
+            }
+          ],
+          "counters": {
+            "bytes_received": 36951,
+            "bytes_sent": 26399,
+            "errors_received": 0,
+            "errors_sent": 0,
+            "packets_dropped_inbound": 0,
+            "packets_dropped_outbound": 0,
+            "packets_received": 176,
+            "packets_sent": 244
+          },
+          "host_name": "veth25b8b7f6",
+          "hwaddr": "mac-2",
+          "mtu": 1500,
+          "state": "up",
+          "type": "broadcast"
+        },
+        "lo": {
+          "addresses": [
+            {
+              "address": "127.0.0.1",
+              "family": "inet",
+              "netmask": "8",
+              "scope": "local"
+            },
+            {
+              "address": "::1",
+              "family": "inet6",
+              "netmask": "128",
+              "scope": "local"
+            }
+          ],
+          "counters": {
+            "bytes_received": 1800,
+            "bytes_sent": 1800,
+            "errors_received": 0,
+            "errors_sent": 0,
+            "packets_dropped_inbound": 0,
+            "packets_dropped_outbound": 0,
+            "packets_received": 16,
+            "packets_sent": 16
+          },
+          "host_name": "",
+          "hwaddr": "",
+          "mtu": 65536,
+          "state": "up",
+          "type": "loopback"
+        }
+      },
+      "pid": 5501,
+      "processes": 24,
+      "status": "Running",
+      "status_code": 103
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

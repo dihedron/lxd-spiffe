@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "id": "guest/0007",
+  "time": "2026-10-12T14:33:19.742299883Z",
+  "tool_version": "987956e",
+  "env": "guest",
+  "verb": "devlxd dump",
+  "args": [
+    "/1.0/devices"
+  ],
+  "gate": "L3",
+  "cell": "lxd6-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 3,
+  "expectations": [
+    "devlxd-devices"
+  ],
+  "observations": [
+    {
+      "key": "devlxd.http_status",
+      "value": 200
+    },
+    {
+      "key": "devlxd.format",
+      "value": "plain"
+    },
+    {
+      "key": "devlxd.latency_ms",
+      "value": 2
+    },
+    {
+      "key": "devlxd.content",
+      "value": {
+        "eth0": {
+          "hwaddr": "mac-1",
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0007-devlxd.json"
+  ]
+}

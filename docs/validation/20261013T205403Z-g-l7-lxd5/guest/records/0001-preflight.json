@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "id": "guest/0001",
+  "time": "2026-10-13T20:57:26.322371976Z",
+  "tool_version": "19235a6",
+  "env": "guest",
+  "verb": "preflight",
+  "args": [],
+  "gate": "L7",
+  "cell": "lxd5-v-alpine",
+  "outcome": "ok",
+  "duration_ms": 6,
+  "observations": [
+    {
+      "key": "ids.uid",
+      "value": 0
+    },
+    {
+      "key": "ids.euid",
+      "value": 0
+    },
+    {
+      "key": "ids.gid",
+      "value": 0
+    },
+    {
+      "key": "ids.egid",
+      "value": 0
+    },
+    {
+      "key": "ids.groups",
+      "value": null
+    },
+    {
+      "key": "idmap.uid_map",
+      "value": [
+        {
+          "count": 4294967295,
+          "inside": 0,
+          "outside": 0
+        }
+      ]
+    },
+    {
+      "key": "idmap.gid_map",
+      "value": [
+        {
+          "count": 4294967295,
+          "inside": 0,
+          "outside": 0
+        }
+      ]
+    },
+    {
+      "key": "kernel.release",
+      "value": "6.18.55-0-virt"
+    },
+    {
+      "key": "devlxd.socket",
+      "value": {
+        "exists": true,
+        "gid": 0,
+        "is_socket": true,
+        "mode": "0600",
+        "path": "/dev/lxd/sock",
+        "uid": 0
+      }
+    },
+    {
+      "key": "lxd_agent.found",
+      "value": true
+    },
+    {
+      "key": "lxd_agent.pids",
+      "value": [
+        2527
+      ]
+    },
+    {
+      "key": "run.mount",
+      "value": {
+        "fstype": "tmpfs",
+        "mount_point": "/run",
+        "options": "rw,nosuid,nodev",
+        "source": "tmpfs",
+        "super_options": "rw,size=194996k,nr_inodes=819200,mode=755,inode64"
+      }
+    },
+    {
+      "key": "virt.detect",
+      "value": {
+        "available": false
+      }
+    },
+    {
+      "key": "virt.guess",
+      "value": "vm"
+    },
+    {
+      "key": "virt.guess_from",
+      "value": "/proc/cpuinfo: hypervisor flag"
+    }
+  ],
+  "raw": null
+}

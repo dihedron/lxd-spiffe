@@ -6,16 +6,25 @@ title = "lxd-spiffe"
 [extend]
 useDefault = true
 
-# The lab's evidence and fixtures carry the SHA-256 fingerprints of lab-only
-# client certificates (for example "auth_user_name" in GET /1.0): public
-# values that generic-api-key mistakes for keys.
+# The lab's evidence and fixtures carry the identifiers of lab-only
+# identities (for example "auth_user_name" in GET /1.0): SHA-256 fingerprints
+# of client certificates, and UUIDs of bearer identities (not their tokens),
+# public values that generic-api-key mistakes for keys.
 [[rules]]
 id = "generic-api-key"
 [[rules.allowlists]]
-description = "SHA-256 certificate fingerprints in lab evidence and fixtures"
+description = "identity identifiers in lab evidence and fixtures: certificate fingerprints and bearer identity UUIDs"
 condition = "AND"
 paths = ['''(^|/)(docs/validation|test/fixtures)/''']
-regexes = ['''^[0-9a-f]{64}$''']
+regexes = ['''^[0-9a-f]{64}$''', '''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''']
+# Gate L6's runbook gives each copy a stand-in key: a random, non-secret
+# marker of 16 hex digits in user.lxd-probe.l6-key.
+[[rules.allowlists]]
+description = "the L6 runbook's stand-in key in lab evidence"
+condition = "AND"
+paths = ['''(^|/)docs/validation/''']
+regexTarget = "match"
+regexes = ['''user\.lxd-probe\.l6-key\\?"\s*:\s*\\?"[0-9a-f]{16}\\?"''']
 [[rules.allowlists]]
 description = "made-up JWTs in tests (see the jwt rule below)"
 condition = "AND"

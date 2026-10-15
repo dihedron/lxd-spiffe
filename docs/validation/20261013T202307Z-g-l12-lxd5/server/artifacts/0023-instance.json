@@ -1,0 +1,113 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Tue, 13 Oct 2026 20:24:28 GMT"
+    ],
+    "Etag": [
+      "\"0d0521a3fbbd89ce04027be0adff481b534eabc149bf94ab047d1100bdce98fd\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "disk1.img",
+        "image.version": "24.04",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "d4ff18198fb2ed8c88d408421e610c143cf1f5c1c0178e57178fb586880c3e56",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "d0473148-584f-4890-b02c-760f48d8f1a1",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tapb44bee5f",
+        "volatile.eth0.hwaddr": "mac-3",
+        "volatile.l12-vmvol.bus": "5",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "7aa429eb-cd61-44b0-8c56-a3d873c5ae07",
+        "volatile.uuid.generation": "7aa429eb-cd61-44b0-8c56-a3d873c5ae07",
+        "volatile.vsock_id": "2692257169"
+      },
+      "created_at": "2026-10-13T20:23:10.642466575Z",
+      "description": "",
+      "devices": {
+        "l12-vmvol": {
+          "path": "/run/lxd-probe",
+          "pool": "default",
+          "source": "l12-vmvol",
+          "type": "disk"
+        }
+      },
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "disk1.img",
+        "image.version": "24.04",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "d4ff18198fb2ed8c88d408421e610c143cf1f5c1c0178e57178fb586880c3e56",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "d0473148-584f-4890-b02c-760f48d8f1a1",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tapb44bee5f",
+        "volatile.eth0.hwaddr": "mac-3",
+        "volatile.l12-vmvol.bus": "5",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "7aa429eb-cd61-44b0-8c56-a3d873c5ae07",
+        "volatile.uuid.generation": "7aa429eb-cd61-44b0-8c56-a3d873c5ae07",
+        "volatile.vsock_id": "2692257169"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "l12-vmvol": {
+          "path": "/run/lxd-probe",
+          "pool": "default",
+          "source": "l12-vmvol",
+          "type": "disk"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-13T20:23:56.601722435Z",
+      "location": "none",
+      "name": "l12-v",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "virtual-machine"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

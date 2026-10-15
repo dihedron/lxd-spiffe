@@ -32,6 +32,14 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 12, 2026 (chunk 4.5) | `--expect-hidden` (PRE-06, server flags, PRS-40): the lab showed that LXD 5.21 and 6.9 answer a trusted identity that may not view an entity with 404 Not Found, exactly as for an entity that does not exist, and keep 403 for untrusted clients and for actions on entities the identity can view. |
 | Oct 12, 2026 (chunk 4.5, host) | `run.json` records the host name as `redacted` unless `--record-host` (environment `LXD_PROBE_RECORD_HOST=true`) is given (PRE-03, global flags): the operator's machine name is not lab evidence, and committed evidence should not carry it by default. |
 | Oct 12, 2026 (chunk 4.5, docs) | *Lab setup* points to the lab spec (`test/lab/lab.sh`) instead of indicative `lxc` commands; the lab matrix adds the `outsider` identity; the delivery plan names its lab checkpoints (S0-1, S0-2, G-L1, G-L2, G-L4, G-L14). |
+| Oct 12, 2026 (chunk 5) | devLXD before the guest verbs: two response formats (plain, as devLXD's own, or the LXD envelope) recorded and accepted by the expectations (PRF-10, PRE-06); a config key's bare value redacted by its name (PRF-10); raw access through `DoHTTP` with the agent's limits (PRF-14); `/1.0/events` probed with a short plain `GET` (PRF-11); `--record` in the guest environment (PRE-10); the guest code is Linux-only, as the binary (PRN-22). |
+| Oct 12, 2026 (chunk 6) | `devlxd access` takes `--path` and its child reports statuses only (PRF-13); `rm` may remove anything under the lab directory and, under the SPIRE directory, only what `put` marked (PRF-20, PRF-22); the layout's symlink points outside the lab directory (PRF-23); guest writes go through `os.Root` (PRN-05); L4 also tries `cloud-init.user-data`. |
+| Oct 12, 2026 (chunk 7) | A file's content never reaches records or artifacts, and fixtures keep it only under the lab directory (PRS-35, PRE-10); `file stat` also records size and hash (PRS-30); `file get` records a body over the limit (PRS-31); L1 runs its server steps as `files`, once as `read`, with `--record`. |
+| Oct 12, 2026 (chunk 8) | `config get` only reads, so needs no write flags; `--if-match stale` sends a truly outdated ETag (PRS-21); `unset` records whether the key is gone, empty or unchanged (PRS-22); `race` has a bounded retry budget with jitter (PRS-23). |
+| Oct 12, 2026 (chunk 9) | `devlxd watch` polls every 100 ms and listens to events, with UTC timestamps (PRF-12); `util diff` lists what it ignores (PRU-01); `util idmap translate` works for any uid and lives in `internal/policy` (PRU-02); `util idmap check` reports "not applicable" for privileged containers and VMs (PRU-03); L1's offline step joins each cell's run; L2 writes five times per cell and records the clock offset. |
+| Oct 12, 2026 (chunk 10) | `instance watch` also follows `volatile.cloud-init.instance-id` and the instance's disappearance, with UTC times and `--interval` (PRS-11); `permissions` adds the instance state and `identities/current` (PRS-40); `util note` writes a util record, `--decision` needs `--gate` (PRU-07); L8 uses S0-1's records. |
+| Oct 13, 2026 (chunk 11) | `file stat --wait` retries until the instance answers (PRS-30, L7). `bearer check` decodes the token's JWT claims without verifying them, never records the token, and with `--wait-expiry` polls every `--interval` until the first refusal (PRS-41); the lab showed that LXD 6.9 refuses an expired token with 403 on every path, `GET /1.0` included. `util overlap` applies the attestor's isolation rule to `expanded_devices` and also lists devices below the proof directory (PRU-04). `util fixtures verify` reports decode errors as `unexpected` outcomes and checks the fields of the attestor's minimal API contract (PRU-06). `util report` writes one Markdown file per gate, from gate texts kept in sync with this spec by a test, with each gate's relevant axis values, and cuts long observation values (PRU-08). Runbooks: L6 on copies with a stand-in key and an import on the same server, L7 with restart timing and two RHEL 9 rebuilds, as shipped and with SELinux enforcing, L12 with its cells, L13 with revocation, L14 with the idle-ETag rate. |
+| Oct 15, 2026 | `server instance list` records each instance's `volatile.uuid` and takes `--filter` (PRS-12), to learn whether LXD filters instances by `volatile.uuid` for the attestor's uniqueness check (gate L6); `util overlap` also rejects a disk below the proof directory, as the L12 decision tightens the attestor's isolation check (PRU-04); the body of a files-API error response is kept in records, artifacts and fixtures, since it is an LXD error envelope, not content (PRS-35). |
 
 ## Overview
 
@@ -85,7 +93,7 @@ Working runs write to `--evidence-dir` (default `./evidence`). Sanitized evidenc
 | PRE-03 | **Sanitization (mandatory, applied at write time, not afterwards):** remove `Authorization` and cookie headers; remove client certificates/keys and any bearer tokens; redact the values of `cloud-init.*`, `user.*` (except `user.lxd-probe.*` and `user.spire.challenge.*`) and `environment.*` config keys; replace MAC addresses and, when `--redact-names` is set, instance and project names with stable aliases (PRE-09). The host name in `run.json` is `redacted` unless `--record-host` is given. Apart from the alias map of PRE-09, the unsanitized data is never persisted. |
 | PRE-04 | `outcome: unexpected` is assigned whenever the status code, a header, or a body shape differs from the tool's built-in expectation table (PRE-06). This is a finding, not an error: the exit code is still 0 unless `--strict` is given (exit 8). |
 | PRE-05 | Evidence files are written with mode 0600, directories 0700. |
-| PRE-06 | **Expectation table.** Each verb that calls an API has one or more expectations, kept as data in `internal/probe` (not as code paths). An expectation names the call (method and path template) and lists: the accepted status codes; the headers that must be present (for example `ETag` on an instance read, at least one `X-LXD-*` header on a files read); and the body shape (the envelope `type`, `sync`, `async` or `error`, and the `metadata` fields that must be present). With `--expect-denied`, 403 is the accepted status instead; with `--expect-hidden`, 404 (what LXD answers a trusted identity that may not view the entity, indistinguishable from a missing one); both expect an `error` envelope and nothing else. The record names the expectation it was checked against, and each deviation becomes an observation (`expectation.status`, `expectation.header.<name>`, `expectation.body.<field>`). Calls without an expectation are recorded with outcome `ok`. |
+| PRE-06 | **Expectation table.** Each verb that calls an API has one or more expectations, kept as data in `internal/probe` (not as code paths). An expectation names the call (method and path template) and lists: the accepted status codes; the headers that must be present (for example `ETag` on an instance read, at least one `X-LXD-*` header on a files read); and the body shape (the envelope `type`, `sync`, `async` or `error`, and the `metadata` fields that must be present). With `--expect-denied`, 403 is the accepted status instead; with `--expect-hidden`, 404 (what LXD answers a trusted identity that may not view the entity, indistinguishable from a missing one); both expect an `error` envelope and nothing else. The record names the expectation it was checked against, and each deviation becomes an observation (`expectation.status`, `expectation.header.<name>`, `expectation.body.<field>`). Calls without an expectation are recorded with outcome `ok`. devLXD expectations accept either format of PRF-10: the fields are checked at the top level of a plain JSON body, or in `metadata` of an envelope, and the format is recorded (`devlxd.format`). |
 | PRE-07 | **Record numbering.** Each environment writes to its own run directory (`evidence/<run_id>/<env>/`). Within it, the record number `NNNN` is allocated by creating `records/NNNN-<verb>.json` with `O_CREAT\|O_EXCL`, starting at one plus the highest existing number and retrying with the next number on `EEXIST`, so concurrent invocations on the same machine never overwrite each other. Fixture and artifact names reuse the record's number. |
 | PRE-08 | **Raw and typed.** Every `server` response is stored raw (sanitized artifact) **and** decoded with the typed structs of `internal/lxd`. A decode failure is not a command error: it is recorded as an observation (`decode.error`) with outcome `unexpected`, and the raw body remains the evidence (gate L15). |
 | PRE-09 | **Aliases.** `--redact-names` keeps its name → alias map in `aliases.json` (mode 0600) in the environment's run directory, so that a name has the same alias in every record of the run. Aliases are not stable across runs. `aliases.json` is the only file that holds unsanitized names: `util sanitize` leaves it out of the sanitized copy, and `util sanitize --check` fails if it is present. |
@@ -94,7 +102,7 @@ Working runs write to `--evidence-dir` (default `./evidence`). Sanitized evidenc
 
 | ID | Requirement |
 |---|---|
-| PRE-10 | With `--record DIR`, every HTTP exchange of the `server` environment is stored, after sanitization, as `DIR/<lxd-version>/NNNN-SS-<method>-<path>.request.json` and `.response.json`, where `NNNN` is the record number and `SS` the exchange's sequence within the command. The request holds method, path, query, headers and body; the response status, headers and body (JSON bodies as JSON, others as text). The replaying fake matches on method, path and query (PRT-10). Fixtures live only under `DIR`, not in the run directory. |
+| PRE-10 | With `--record DIR`, every HTTP exchange of the `server` environment is stored, after sanitization, as `DIR/<lxd-version>/NNNN-SS-<method>-<path>.request.json` and `.response.json`, where `NNNN` is the record number and `SS` the exchange's sequence within the command. The request holds method, path, query, headers and body; the response status, headers and body (JSON bodies as JSON, others as text). The replaying fake matches on method, path and query (PRT-10). Fixtures live only under `DIR`, not in the run directory. In the `guest` environment, `--record DIR` stores the devLXD exchanges the same way, as `DIR/devlxd/NNNN-SS-<method>-<path>.*`: the guest cannot learn the LXD version through devLXD, so whoever collects them files them by server version (the lab: `test/fixtures/<lxd-version>/devlxd/<instance>/`). A files-API response body is kept only for paths under `/run/lxd-probe/` (PRS-35). |
 | PRE-11 | Fixtures include the error cases 403, 404, 412 and the `operation` envelopes (sync/async/error), which the lab runbooks provoke on purpose. |
 | PRE-12 | A fixture set can be replayed by the fake LXD API of the test suite (PRT-10) with no network. |
 
@@ -141,6 +149,7 @@ Build: same module, toolchain and goreleaser configuration as the plugins (attes
 | PRN-02 | Writes are limited to: config keys `user.lxd-probe.*` (and `user.spire.challenge.*` with `--allow-spire-keys`); guest paths under `/run/lxd-probe/` (and `/run/spire/lxd/` with `--allow-spire-paths`). Any other target is rejected before a request is sent. |
 | PRN-03 | The tool never performs state-changing instance operations (start, stop, freeze, restore, delete, snapshot, copy, move, publish). Experiments requiring them (gate L6) are performed by the operator with `lxc`, and observed with `server instance watch` and `util note`. |
 | PRN-04 | With `--dry-run`, a write verb prints the request it would send (or, in the guest, the file operation) and exits 0 without acting. Read-only verbs ignore it. |
+| PRN-05 | Guest writes (`file put`, `rm`, `layout`) go through an `os.Root` opened on the lab directory, so that a symlink or `..` planted in the path cannot make them touch anything outside it, whatever the lexical check of PRN-02 saw. The lab directory is created mode 0700 when missing. |
 
 ### Credentials and logging
 
@@ -160,27 +169,27 @@ Negative privilege tests (for example, "a client with only `can_view` receives 4
 
 | ID | Requirement |
 |---|---|
-| PRF-01 | `guest preflight` records: effective uid/gid, `/proc/self/uid_map` and `gid_map`, kernel version, presence and mode/owner of `/dev/lxd/sock`, whether a `lxd-agent` process exists (VM), mount type and options of `/run`, instance type guess (container/VM) from `/proc` and `systemd-detect-virt` **if present** (absence is recorded, not an error). Supports gates L1, L4, L7. |
+| PRF-01 | `guest preflight` records: effective uid/gid, `/proc/self/uid_map` and `gid_map`, kernel version, presence and mode/owner of `/dev/lxd/sock`, whether a `lxd-agent` process exists (VM; from `/proc/<pid>/comm`), mount type and options of `/run` (from `/proc/self/mountinfo`), instance type guess (container/VM) from `/proc` and `systemd-detect-virt` **if present** (absence is recorded, not an error). Supports gates L1, L4, L7. |
 | PRF-02 | Preflight is read-only and needs no privileges beyond those of the invoking user. |
 
 ### devLXD
 
 | ID | Requirement |
 |---|---|
-| PRF-10 | `guest devlxd get PATH` performs `GET` on the devLXD socket and records status, headers, body (sanitized), latency. Paths used by runbooks: `/`, `/1.0`, `/1.0/config`, `/1.0/config/<key>`, `/1.0/meta-data`, `/1.0/devices`, `/1.0/events` (when available). |
-| PRF-11 | `guest devlxd dump` walks all known read paths (PRF-10 list) and stores one record per path. Unknown or failing paths are recorded with their status, not skipped. |
-| PRF-12 | `guest devlxd watch KEY [--for DUR]` polls `/1.0/config/KEY` (and uses the events endpoint when it exists) and records timestamps of each change, to measure propagation delay after a host-side `config set` (gate L2). |
-| PRF-13 | `guest devlxd access --as-uid N[,N...]` performs the preflight `GET /1.0` as each uid and records allowed/denied (gate L4). It requires root in the guest. For each uid, the probe re-executes its own binary (`/proc/self/exe`) with `SysProcAttr.Credential` set to that uid (and its primary gid, or the same number when the uid has no passwd entry), running the hidden command `guest devlxd access-child`. The child performs the call and writes its result as JSON on stdout; the parent writes the record. Failure to switch uid or to start the child is recorded as an observation. |
-| PRF-14 | The devLXD client is `internal/devlxd`, built on the SDK's `ConnectDevLXD`. Calls go through its raw access (`RawQuery`) so that every path of PRF-10 is reachable, including those the SDK has no typed method for, and the response is recorded as received. |
+| PRF-10 | `guest devlxd get PATH` performs `GET` on the devLXD socket and records status, headers, body (sanitized), latency, and the response format: devLXD's own (a plain body: JSON, or text for a single config key, the meta-data and errors) or the LXD envelope (which the SDK expects over vsock). Paths used by runbooks: `/`, `/1.0`, `/1.0/config`, `/1.0/config/<key>`, `/1.0/meta-data`, `/1.0/devices`, `/1.0/events` (when available). The body of a successful `/1.0/config/<key>` is the bare value, so it is redacted by the key's name (PRE-03), not only by the JSON sanitizer: a `cloud-init.*` or `user.*` value never reaches evidence or fixtures. An error response carries a message, not the value, and stays readable. |
+| PRF-11 | `guest devlxd dump` walks all known read paths (PRF-10 list, and `/1.0/config/<key>` for every key `/1.0/config` lists) and stores one record per path. Unknown or failing paths are recorded with their status, not skipped. `/1.0/events` streams: it gets a plain `GET` with a 2-second deadline, and its status and headers (or the timeout) are recorded, not the stream. |
+| PRF-12 | `guest devlxd watch KEY [--for DUR]` polls `/1.0/config/KEY` every 100 ms and, at the same time, listens to devLXD's event stream (through the SDK) when it exists, and records each change of the value with its UTC timestamp and its source (`poll` or `event`), and the events received, to measure propagation delay after a host-side `config set` (gate L2). Values are redacted by the key's name (PRE-03). |
+| PRF-13 | `guest devlxd access --as-uid N[,N...] [--path P]...` performs `GET` of each path (default `/1.0`) as each uid and records allowed/denied (gate L4). It requires root in the guest. For each uid, the probe re-executes its own binary (`/proc/self/exe`) with `SysProcAttr.Credential` set to that uid (and its primary gid, or the same number when the uid has no passwd entry), running the hidden command `guest devlxd access-child`. The child performs the calls and writes, as JSON on stdout, only each call's status, format or error, never a body, so that no value read as another uid reaches evidence; the parent writes the record. Failure to switch uid or to start the child is recorded as an observation. |
+| PRF-14 | The devLXD client is `internal/devlxd`, built on the SDK's `ConnectDevLXD`. Calls go through the SDK connection's raw HTTP access (`DoHTTP`), with a recording transport as in `internal/lxd`, so that every path of PRF-10 is reachable, including those the SDK has no typed method for, and the response is recorded as received in either format (the SDK's `RawQuery` parses it first). It applies the agent's limits (attestor spec FR-A3): 5 s per request, response bodies ≤ 64 KiB. The guest code may use Linux-only interfaces (`/proc`, credentials): the probe is built for Linux only (PRN-22). |
 
 ### Local files (proof path rehearsal)
 
 | ID | Requirement |
 |---|---|
-| PRF-20 | `guest file put PATH --content-file F [--mode 0600]` writes a file under `/run/lxd-probe/` (or under `/run/spire/lxd/` with `--allow-spire-paths`, PRN-02) using `O_CREAT\|O_EXCL`, mode as requested, and records the resulting `stat` (uid, gid, mode, size, mtime, inode). |
+| PRF-20 | `guest file put PATH --content-file F [--mode 0600]` writes a file under `/run/lxd-probe/` (or under `/run/spire/lxd/` with `--allow-spire-paths`, PRN-02) using `O_CREAT\|O_EXCL`, mode as requested, and records the resulting `stat` (uid, gid, mode, size, mtime, inode). Under `/run/spire/lxd/` it also writes a marker, `.<name>.lxd-probe`, next to the file (PRF-22). |
 | PRF-21 | `guest file stat PATH` records `lstat` (so symlinks are visible) and `stat`. |
-| PRF-22 | `guest file rm PATH` removes a file created by `lxd-probe` only (checks a sidecar marker or the lab directory). |
-| PRF-23 | `guest file layout` creates the set of "hostile layouts" used by L1: a regular file, a symlink to a file, a directory, a file with mode 0666, a file owned by another uid (when root). Used with `server file stat` (*Server environment → Files API*) to learn what the files API reports for each. Created only under `/run/lxd-probe/layout/`. |
+| PRF-22 | `guest file rm PATH` removes a file `lxd-probe` may own: anything but a directory under `/run/lxd-probe/`, the probe's own directory; under `/run/spire/lxd/` (with `--allow-spire-paths`) only a file with the marker `put` wrote, and the marker with it. |
+| PRF-23 | `guest file layout` creates the set of "hostile layouts" used by L1: a regular file, a symlink to a file outside the lab directory (`/etc/hostname`: a proof path redirected elsewhere, the attack on `file_pull`), a directory, a file with mode 0666, a file owned by another uid (uid 1000, when root). Used with `server file stat` (*Server environment → Files API*) to learn what the files API reports for each. Created only under `/run/lxd-probe/layout/`. |
 
 ### idmap
 
@@ -204,37 +213,38 @@ Negative privilege tests (for example, "a client with only `can_view` receives 4
 | ID | Requirement |
 |---|---|
 | PRS-10 | `server instance show NAME` calls `GET /1.0/instances/NAME?project=P` (recursion 1 and 0, both stored) and records the **raw ETag header**, `config` (volatile keys included), `devices`, `expanded_devices`, `location`, `status`, `type`, `architecture`. Supports L1, L3, L6, L9. |
-| PRS-11 | `server instance watch NAME [--for DUR]` polls the instance and prints/records a change log of `volatile.uuid`, `volatile.uuid.generation`, `volatile.idmap.*`, `location`, `status`, and ETag. Used during copy/move/restore experiments (L6, L11). |
-| PRS-12 | `server instance list` records name, type, status, location for the project (used to confirm the uniqueness checks of FR-S3 and SEC-05). |
+| PRS-11 | `server instance watch NAME [--for DUR] [--interval DUR]` polls the instance (every second by default) and prints/records a change log of `volatile.uuid`, `volatile.uuid.generation`, `volatile.cloud-init.instance-id`, `volatile.idmap.*`, `location`, `status`, and ETag, each change with its UTC time; an instance that disappears or reappears is a change too. Used during copy/move/restore experiments (L6, L11). |
+| PRS-12 | `server instance list` records name, type, status, location and `volatile.uuid` of each instance of the project, and their count (used to confirm the uniqueness checks of FR-S3 and SEC-05). With `--filter EXPR` it passes `EXPR` to LXD as the `filter` parameter (API extension `api_filtering`), for example `config.volatile.uuid eq <uuid>`, and records it; what LXD makes of a filter is evidence, not something the probe checks (gate L6). |
 
 ### Config writes (gate L2, L14)
 
-All verbs in this subsection require `--allow-write --lab`, and only touch keys `user.lxd-probe.*` (or `user.spire.challenge.*` when `--allow-spire-keys` is given, to rehearse the real key layout).
+The write verbs of this subsection (`set`, `unset`, `race`) require `--allow-write --lab`, and only touch keys `user.lxd-probe.*` (or `user.spire.challenge.*` when `--allow-spire-keys` is given, to rehearse the real key layout); `get` only reads.
 
 | ID | Requirement |
 |---|---|
-| PRS-20 | `server config get NAME KEY` reads the key from the instance object and prints it. |
-| PRS-21 | `server config set NAME KEY VALUE --method patch\|put --if-match auto\|none\|stale [--wait]` writes the key. `--method patch` sends `PATCH` with only the key; `--method put` reads the instance, modifies, and sends `PUT` of the whole object. `--if-match auto` uses the ETag read just before; `none` sends no header; `stale` deliberately sends an outdated ETag to provoke 412. `--wait` waits on the returned operation (`/1.0/operations/ID/wait`). The command records: request (sanitized), status, headers, operation metadata, duration, and whether a restart was triggered (instance `status` before/after). |
-| PRS-22 | `server config unset NAME KEY --method patch-empty\|patch-null\|put` tries the candidate ways of removing a single `user.*` key and records which actually removes the key (as opposed to leaving an empty value). Gate L14. |
-| PRS-23 | `server config race NAME KEY --writers N` launches N concurrent writers with `--if-match auto` on the same key and records the sequence of 200/412 outcomes, the number of retries, and the final value. Verifies the FR-S14 retry logic empirically and the rate of spurious 412 responses (for example when volatile keys change under the writer). |
+| PRS-20 | `server config get NAME KEY` reads the key from the instance object and records it (sanitized as any config value: PRE-03). |
+| PRS-21 | `server config set NAME KEY VALUE --method patch\|put --if-match auto\|none\|stale [--wait]` writes the key. `--method patch` sends `PATCH` with only the key; `--method put` reads the instance, modifies, and sends `PUT` of the whole object. `--if-match auto` uses the ETag read just before; `none` sends no header; `stale` deliberately sends an outdated ETag to provoke 412: it reads the ETag, writes the key once with it (value `<VALUE>~pre`), then sends the request with the ETag read first, now outdated. `--wait` waits on the returned operation (`/1.0/operations/ID/wait`). The command records: request (sanitized), status, headers, operation metadata, duration, and whether a restart was triggered (instance `status` before/after). |
+| PRS-22 | `server config unset NAME KEY --method patch-empty\|patch-null\|put` tries the candidate ways of removing a single `user.*` key then reads the instance again and records whether the key is gone, present with an empty value, or unchanged. Gate L14. |
+| PRS-23 | `server config race NAME KEY --writers N` launches N concurrent writers with `--if-match auto` on the same key and records the sequence of 200/412 outcomes, the number of retries, and the final value. Each writer reads, then `PATCH`es with `If-Match`, and on 412 retries after 10–100 ms of jitter, at most 10 times. Verifies the FR-S14 retry logic empirically and the rate of spurious 412 responses (for example when volatile keys change under the writer). |
 | PRS-24 | Every write verb prints, before acting, the exact request line, and, when `--expect-instance-uuid` is supplied, reads the instance first and refuses to run (exit 5) if its `volatile.uuid` differs from the flag (guard against the wrong target). |
 
 ### Files API (gate L1, L7, L12)
 
 | ID | Requirement |
 |---|---|
-| PRS-30 | `server file stat NAME PATH` performs `GET /1.0/instances/NAME/files?path=PATH` (with and without body reading as appropriate) and records **all** response headers, in particular the `X-LXD-uid`, `X-LXD-gid`, `X-LXD-mode`, `X-LXD-type` family, with their raw values. No header name is assumed: the verb dumps every `X-LXD-*` header found (resolves the "header names unverified" note of the attestor spec). |
-| PRS-31 | `server file get NAME PATH [--max-bytes N]` reads the content with a limit reader and records size, hash, and latency. The `--max-bytes` default is 1 MiB. |
+| PRS-30 | `server file stat NAME PATH` performs `GET /1.0/instances/NAME/files?path=PATH` and records **all** response headers, in particular the `X-LXD-uid`, `X-LXD-gid`, `X-LXD-mode`, `X-LXD-type` family, with their raw values, and the body's size and SHA-256. No header name is assumed: the verb dumps every `X-LXD-*` header found (resolves the "header names unverified" note of the attestor spec). With `--wait DUR` it retries every 250 ms while the call fails, up to `DUR`, and records the number of attempts, the time until the first success, and each distinct failure (status and error) with the time it was first seen; only the final exchange is stored as an artifact and fixture (L7). |
+| PRS-31 | `server file get NAME PATH [--max-bytes N]` reads the content with a limit reader and records size, hash, and latency. The `--max-bytes` default is 1 MiB; a body over it is recorded (PRS-34), not a failure. |
 | PRS-32 | `server file head NAME PATH` tries `HEAD` and records whether metadata is obtainable without the body. |
 | PRS-33 | `server file dir NAME PATH` lists a directory and records what the API returns for a directory, symlink target, or special file. |
 | PRS-34 | Behaviour for a missing file (404 body), a permission-denied file, an oversize file (`--max-bytes` exceeded) and a stopped or frozen instance is recorded verbatim. |
+| PRS-35 | A file's content never reaches records or artifacts: the files API can return anything the identity may read, a real proof value included. They hold its size and SHA-256; a directory listing, which is metadata, is kept, and so is the body of an error response (status outside 2xx), an LXD error envelope. Under `--record`, fixtures keep the content of files under `/run/lxd-probe/` (made by the lab) and replace any other with a placeholder giving its size and SHA-256 (PRE-10). |
 
 ### Permissions and identities (gates L9, L13)
 
 | ID | Requirement |
 |---|---|
-| PRS-40 | `server permissions NAME` runs a fixed matrix of **read-only** calls for the presented identity (`GET` instance, `GET` files, `GET` events websocket handshake, `GET` operations) and records per call whether it is allowed, denied (403) or hidden (404). The operator runs it once per probe identity (read, files, edit, full) to build the entitlement matrix. |
-| PRS-41 | `server bearer check` (when `--auth bearer`) records whether the token authenticates against the remote API, its reported lifetime/expiry if exposed, and the first failing call after expiry (`--wait-expiry` option). Gate L13. |
+| PRS-40 | `server permissions NAME` runs a fixed matrix of **read-only** calls for the presented identity (`GET` instance, `GET` instance state, `GET` files, `GET` events websocket handshake, `GET` operations, `GET /1.0/auth/identities/current`) and records per call whether it is allowed, denied (403) or hidden (404). The operator runs it once per probe identity (read, files, edit, full, outsider, bearer) to build the entitlement matrix. |
+| PRS-41 | `server bearer check` (only with `--auth bearer`, otherwise exit 2) decodes the token as a JWT **without verifying it** and records the header's `alg` and `typ` and the claims `iss`, `aud`, `iat`, `nbf` and `exp` (times in UTC, and the lifetime `exp − iat`); whether `sub` and LXD's `server_cert_fingerprint` are present, but never the token, its signature or any other claim. A token that is not a JWT is a usage error (exit 2) for every server verb: the SDK refuses it when connecting. It then calls `GET /1.0` (recording the `auth` state) and `GET /1.0/auth/identities/current`, each recorded as allowed, unauthenticated, denied or hidden as in PRS-40. With `--wait-expiry` it repeats `GET /1.0/auth/identities/current` every `--interval` until the first refusal, or until `--max-wait`, and records the last success and the first refusal (time, status, error text) and the refusal's offset from `exp`; reaching `--max-wait` without a refusal is an `unexpected` outcome. A token refused at the first call exits 4, unless `--expect-denied` (a revoked token, L13). Gate L13. |
 
 ### Rehearsal of the real proofs (stage 3)
 
@@ -248,14 +258,14 @@ All verbs in this subsection require `--allow-write --lab`, and only touch keys 
 
 | ID | Requirement |
 |---|---|
-| PRU-01 | `util diff A.json B.json` compares two evidence records ignoring volatile fields (timestamps, durations, ETag values when asked) and prints differences. Used to compare LXD 5.21 and 6.x outputs. |
-| PRU-02 | `util idmap translate --uid-map FILE-or-string --volatile-idmap JSON --uid N` runs the translation algorithm of attestor spec *Proof of co-location → UID translation* (exactly one matching entry; use `volatile.idmap.current`; fail closed) and prints the host uid or the reason for refusal. The same code is used by the plugin. |
-| PRU-03 | `util idmap check INSTANCE_RECORD GUEST_PREFLIGHT_RECORD` cross-checks `volatile.idmap.base/current` of the LXD record against the guest's `/proc/self/uid_map` and reports a match or mismatch (gate L1). |
-| PRU-04 | `util overlap RECORD [--proof-dir PATH]` runs the device-overlap check of the attestor spec (*Proof of co-location → Mode `file_pull`*, proof-path device rules) on the recorded `expanded_devices` and reports shared or bind-mounted paths over the proof directory (gate L12). |
+| PRU-01 | `util diff A.json B.json` compares two evidence records observation by observation, ignoring what changes on every run (record id and time, durations and `*_ms` latencies, tool version, run-specific values such as operation ids, and ETag values with `--ignore-etag`), and prints and records the differences. Used to compare LXD 5.21 and 6.x outputs. |
+| PRU-02 | `util idmap translate --volatile-idmap JSON --uid N [--uid-map FILE-or-string]` runs the translation algorithm of attestor spec *Proof of co-location → UID translation* for the namespace uid N (only uid entries; exactly one entry covering N; host uid `Hostid + (N − Nsid)`; fail closed on a missing or unparseable map, overlapping entries or values over 32 bits) and prints the host uid or the reason for refusal; with `--uid-map` it also checks the guest's map agrees. The algorithm lives in `internal/policy`, shared with the plugin. |
+| PRU-03 | `util idmap check INSTANCE_RECORD GUEST_PREFLIGHT_RECORD` cross-checks `volatile.idmap.current` of an `instance show` record against the guest's `/proc/self/uid_map` from a `preflight` record and reports a match, a mismatch, or "not applicable" (a privileged container, whose empty map stands for the identity map, or a VM, which has no idmap). Gate L1. |
+| PRU-04 | `util overlap RECORD... [--proof-dir PATH]` runs the isolation check of the attestor spec (*Proof of co-location*, step 5: reject when a `disk` device other than the root disk has a `path` that overlaps the proof directory: equal to it, an ancestor of it, or below it) on the `expanded_devices` of each `instance show` record, through `internal/policy`, the code the plugin uses. It records the verdict (pass or reject) with the devices that cause it, and lists, as information, `disk` devices without a `path` and devices of other types that carry a `path`. With several records it also lists the disk sources (host path, or pool and volume) that more than one of them mounts. A reject is the check working, not a failure: the outcome stays `ok` (gate L12). |
 | PRU-05 | `util sanitize DIR` applies the sanitization rules of *Overview → Evidence model → Record schema* (PRE-03) to an evidence directory; `util sanitize --check DIR` fails (exit 6) if forbidden material is found. |
-| PRU-06 | `util fixtures verify DIR` decodes every recorded response in `DIR` with the typed structs of `internal/lxd` and reports decode errors, unknown fields (informational) and missing required fields (gate L15). |
-| PRU-07 | `util note --gate Ln --cell C "text"` appends an operator observation (for example manual negative privilege tests with `lxc`) to the evidence of the run. With `--decision`, the note records the operator's decision for the gate instead (which outcome of the runbook's decision rules applies, and why). Free text is sanitized like everything else. |
-| PRU-08 | `util report RUN_DIR...` merges the environments of one or more runs and renders a Markdown report per gate: question, cells covered, observations with their record ids, the gate's decision rules as text (*Testing → Gate runbooks*), the operator's decisions recorded with `util note --decision`, and open items (gates without a decision, unreached endpoints). It never matches observations to rules by itself. |
+| PRU-06 | `util fixtures verify DIR...` decodes every fixture response under each `DIR` (PRE-10, devLXD fixtures included) into the type the probe decodes it into, and reports per fixture: decode errors (outcome `unexpected`, exit 8 with `--strict`), unknown fields (information: a field the SDK's struct does not know), and missing fields from the attestor's *Minimal API contract* (outcome `unexpected`); the contract's `environment.*` fields of `GET /1.0` are required only of an answer to a trusted client, since LXD tells an untrusted one nothing about its environment. Error responses must be LXD error envelopes (`type`, `error`, `error_code`). Fixtures of calls the probe does not decode are counted as skipped. The checks live in `internal/probe/fixturecheck`, which the test of `test/fixtures` runs too (gate L15). |
+| PRU-07 | `util note --gate Ln --cell C "text"` appends an operator observation (for example manual negative privilege tests with `lxc`) to the evidence of the run, as a record of its `util` environment. With `--decision` (which needs `--gate`), the note records the operator's decision for the gate instead (which outcome of the runbook's decision rules applies, and why). Free text is sanitized like everything else. |
+| PRU-08 | `util report RUN_DIR... [--out DIR]` merges the environments of one or more runs and renders a Markdown report per gate: question, cells covered, observations with their record ids, the gate's decision rules as text (*Testing → Gate runbooks*), the operator's decisions recorded with `util note --decision`, and open items (gates without a decision, records with outcome `unexpected` or `error`, and, for L10, the calls of the attestor's *API usage* table no record reached). It never matches observations to rules by itself. The gate texts are kept in the probe as data, a copy of *Testing → Gate runbooks* that a test checks against this spec, together with each gate's relevant axis values (*Lab matrix → Cells*; a cell covers a value when its name contains it, and notes with cell `all` are not real cells). Observation values longer than 200 characters are cut in the report (notes never); the record keeps them whole. With `--out`, it writes `<gate>.md` per gate and `index.md`, the gates with their status; otherwise it prints one document. It reads runs only, and writes no record. |
 
 ## Configuration
 
@@ -329,9 +339,12 @@ Each verb also accepts the global flags and the flags of its environment. Positi
 | `server info` | `--probe-tls12` | bool | also try a TLS 1.2 handshake and record the result (PRS-03) |
 | `guest devlxd watch KEY` | `--for` | duration, 60s | how long to watch (PRF-12) |
 | `guest devlxd access` | `--as-uid` | list of uids, required | uids to try (PRF-13) |
+| `guest devlxd access` | `--path` | devLXD path, repeatable; default `/1.0` | paths to try as each uid (PRF-13) |
 | `guest file put PATH` | `--content-file` | path, required | content to write; `-` reads stdin |
 | | `--mode` | octal, 0600 | file mode |
+| `server instance list` | `--filter` | string | LXD filter expression, sent as `filter` (PRS-12) |
 | `server instance watch NAME` | `--for` | duration, 10m | how long to watch (PRS-11) |
+| | `--interval` | duration, 1s | poll interval (PRS-11) |
 | | `--interval` | duration, 1s | poll interval |
 | `server config set NAME KEY VALUE` | `--method` | `patch\|put`, `patch` | PRS-21 |
 | | `--if-match` | `auto\|none\|stale`, `auto` | PRS-21 |
@@ -342,17 +355,20 @@ Each verb also accepts the global flags and the flags of its environment. Positi
 | `server config race NAME KEY` | `--writers` | integer, 8 | concurrent writers (PRS-23) |
 | | `--retries` | integer, 3 | retry budget per writer on 412 |
 | | `--expect-instance-uuid` | UUID | PRS-24 |
+| `server file stat NAME PATH` | `--wait` | duration, 0 | retry while the call fails, up to this long (PRS-30) |
 | `server file get NAME PATH` | `--max-bytes` | size, 1 MiB | read limit (PRS-31) |
 | `server bearer check` | `--wait-expiry` | bool | keep calling until the token expires and record the first failure (PRS-41) |
 | | `--max-wait` | duration, 1h | upper bound for `--wait-expiry` |
+| | `--interval` | duration, 1s | poll interval of `--wait-expiry` |
 | `util idmap translate` | `--uid-map` | path or inline map, required | PRU-02 |
 | | `--volatile-idmap` | path or JSON, required | PRU-02 |
 | | `--uid` | integer, required | PRU-02 |
-| `util overlap RECORD` | `--proof-dir` | path, `/run/spire/lxd` | PRU-04 |
+| `util overlap RECORD...` | `--proof-dir` | path, `/run/spire/lxd` | PRU-04 |
 | `util sanitize DIR` | `--check` | bool | check only (PRU-05) |
 | | `--out` | path | write the sanitized copy here (default: in place) |
 | `util diff A B` | `--ignore-etag` | bool | ignore ETag values (PRU-01) |
 | `util note TEXT` | `--decision` | bool | record a gate decision (PRU-07) |
+| `util report RUN_DIR...` | `--out` | path | write one file per gate here (PRU-08) |
 
 #### Exit codes
 
@@ -377,7 +393,7 @@ Each verb also accepts the global flags and the flags of its environment. Positi
 | Axis | Values |
 |---|---|
 | LXD server | 5.21 LTS standalone; latest 6.x standalone; a 3-node cluster; a second standalone (backup import, L6) |
-| Instance | unprivileged container; privileged container; container with `security.idmap.isolated=true`; container with `raw.idmap`; Alpine VM; Ubuntu VM; Debian VM |
+| Instance | unprivileged container; privileged container; container with `security.idmap.isolated=true`; container with `raw.idmap`; Alpine VM; Ubuntu VM; Debian VM; Rocky Linux 9 VM (SELinux enforcing); AlmaLinux 9 VM (SELinux as shipped) |
 | Probe identity | read-only; files; edit; full; outsider (trusted, but without access to the restricted project, where LXD answers 404); (bearer, when available) |
 | Project | `default`; a restricted project |
 
@@ -423,8 +439,8 @@ Each runbook gives the question, the matrix cells, the commands, the evidence, a
 
 **Procedure:**
 1. In the guest: `$G preflight`, `$G idmap show`, `$G file layout`, `$G file put /run/lxd-probe/proof --mode 0600`.
-2. On the server: `$S instance show NAME`, `$S file stat NAME /run/lxd-probe/proof`, and the same for each layout item.
-3. Offline: `lxd-probe util idmap check <instance record> <preflight record>`, `lxd-probe util idmap translate ...`.
+2. On the server, as `files` (the least privilege the attestor uses for `file_pull`): `$S instance show NAME`, `$S file stat NAME /run/lxd-probe/proof`, the same for each layout item, `file get`, `file head` and `file dir` on them, with `--record`; and once as `read`, to record the 403 of an identity without `can_access_files`.
+3. Offline, on the committed records: `lxd-probe util idmap check <instance record> <preflight record>`, `lxd-probe util idmap translate ...`; their records join each cell's run as its `util` environment.
 
 **Decision rules:**
 - Header names found → update attestor spec *Server-side plugin → LXD integration → Minimal API contract* with the exact names and check that the SDK's `GetInstanceFile` reads the same headers; remove `[V:L1]` tag.
@@ -437,7 +453,7 @@ Each runbook gives the question, the matrix cells, the commands, the evidence, a
 
 **Question:** Is `PATCH` of `user.*` on a running instance accepted without restart, how fast is it visible through devLXD, is an event emitted?
 
-**Commands:** `$G devlxd watch user.lxd-probe.t1 --for 60s` while `$S config set NAME user.lxd-probe.t1 v1 --method patch --wait`.
+**Commands:** `$G devlxd watch user.lxd-probe.t1 --for 30s` while `$S config set NAME user.lxd-probe.t1 vN --method patch --wait`, five times about 2 s apart, in a container and a VM. The delay of each write is the guest's change timestamp minus the write's completion, both UTC; the offset between the two clocks is estimated per cell (the guest's clock read through `lxc exec`, with half the round trip as error bound) and recorded with the result.
 
 **Decision:** propagation delay p95 sets the default `proof_timeout` floor; absence of events fixes polling as normative in attestor spec *Mode `config_push`*; restart triggered → `config_push` is rejected as a mode.
 
@@ -447,7 +463,7 @@ Each runbook gives the question, the matrix cells, the commands, the evidence, a
 
 #### L4 — Who can open `/dev/lxd/sock`
 
-**Commands:** `$G preflight`, `$G devlxd access --as-uid 0,1000,65534` in an unprivileged container, a privileged container, and a VM. **Decision:** if non-root users can open the socket, `config_push` challenge data is readable by any local process → FR/SEC for `config_push` states that the challenge is not secret and that proof strength relies on the nonce binding only; add the corresponding threat entry. If only root can, record it as a control.
+**Commands:** `$G preflight`, `$G devlxd access --as-uid 0,1000,65534 --path /1.0 --path /1.0/config/cloud-init.user-data` in an unprivileged container, a privileged container, and a VM. The second path answers whether a non-root process can read cloud-init data through devLXD (attestor spec *Alternatives → Keys delivered through cloud-init*). **Decision:** if non-root users can open the socket, `config_push` challenge data is readable by any local process → FR/SEC for `config_push` states that the challenge is not secret and that proof strength relies on the nonce binding only; add the corresponding threat entry. If only root can, record it as a control.
 
 #### L5 — Withdrawn
 
@@ -459,15 +475,17 @@ Kept for reference stability. No runbook.
 
 **Procedure:** start `$S instance watch NAME --for 10m`; perform the operations with `lxc` and note each with `util note`. Use `util diff` between instance records before/after.
 
+In the lab, the operations run on copies of `c-unpriv` and `v-ubuntu` made for the runbook, never on the baseline instances, and the runbook ends with `lab.sh reset`. Each copy carries a stand-in key before the first operation: a random, non-secret marker in `user.lxd-probe.l6-key` and the same marker in `cloud-init.user-data`, so that each step also shows whether a key in instance config travels with the result (attestor spec *Alternatives → Keys delivered through cloud-init*). The operations: local copy, snapshot and restore, rename, copy and move to the other server (through an `lxc` remote between the two servers, added for the runbook), export and import on the other server, export and import on the same server while the original still exists, and recovery (`lxd recover` of an instance whose database entry was removed; recorded as not testable with the reason if the lab cannot do it). For every step: `$S instance show` of the source and the result, before and after, `util diff` between them, and `$S config get` of the marker key.
+
 **Decision:** confirms or amends the [V:L6] statements of attestor spec *Claims about identity* and *Claims about provenance and configuration*; a duplicate `volatile.uuid` across servers confirms that the SPIFFE ID must include `server_id` (FR-S7) and that the ambiguity rule of T7 applies; rollback-detection (`generation`) rules in FR-S10 are confirmed or adapted.
 
 #### L7 — VMs and `lxd-agent`
 
-**Cells:** Ubuntu, Debian, Alpine VMs (the probe does not run in Windows guests, PRN-22). **Commands:** `$G preflight` at boot (via a systemd unit or cloud-init runcmd, repeated to time the agent), `$S file stat` at increasing delays after start. **Decision:** the agent-start-order documentation for operators; which image families are supported; Windows guests stay untested and unsupported.
+**Cells:** Ubuntu, Debian, Alpine VMs, and two RHEL 9 rebuilds with SELinux enforcing, Rocky Linux and AlmaLinux (session-only instances in the lab); the probe does not run in Windows guests (PRN-22). **Commands:** `$G preflight` at boot (via a systemd unit or cloud-init runcmd, repeated to time the agent), `$S file stat` at increasing delays after start. In the lab: `$S file stat NAME /etc/hostname` once while the VM is stopped (Q2), then, three times per VM, a restart with `lxc` followed by `$S file stat NAME /etc/hostname --wait 5m`, which times the files API from the restart; then `$G preflight`. In every VM, a `util note` records how `lxd-agent` is started (its systemd unit or OpenRC service, which the SPIRE agent is to be ordered after) and, on the RHEL rebuilds, the SELinux mode and the AVC denials of the boot. The RHEL rebuilds are also run with the targeted SELinux policy enforcing, with and without the `lxd-agent` drop-in that the decision documents, and a root-owned 0600 proof under `/run/spire/lxd` is read through the files API. **Decision:** the agent-start-order documentation for operators; which image families are supported; Windows guests stay untested and unsupported.
 
 #### L8 — Versions and extensions
 
-**Command:** `$S info --probe-tls12` on each LXD server, which also learns whether TLS 1.2 is accepted (Q3). **Decision:** minimum LXD version list; the table of required extensions in attestor spec *API usage and required extensions* is confirmed (`projects`, `instance_generation_id`, ...); each additional extension found necessary is added.
+**Command:** `$S info --probe-tls12` on each LXD server, which also learns whether TLS 1.2 is accepted (Q3); S0-1's records provide it (Lab 0). **Decision:** minimum LXD version list; the table of required extensions in attestor spec *API usage and required extensions* is confirmed (`projects`, `instance_generation_id`, ...); each additional extension found necessary is added.
 
 #### L9 — Entitlements
 
@@ -485,11 +503,11 @@ Non-lab. The licence question is closed in attestor spec v0.4 (the SDK's `client
 
 #### L12 — Shared devices and nested LXD
 
-**Procedure:** build instances A and B sharing a disk device or bind mount over `/run/lxd-probe`; from B write a file at the path A would use. **Commands:** `$S instance show` on both, `util overlap`. **Decision:** the overlap check is complete enough or must additionally forbid listed device types; nested LXD inside a container is out of scope unless shown to defeat the check.
+**Procedure:** build instances A and B sharing a disk device or bind mount over `/run/lxd-probe`; from B write a file at the path A would use. **Commands:** `$S instance show` on both, `util overlap`. In the lab the cells are: a host directory mounted by two containers at the proof directory, hot-plugged and present at boot; a custom storage volume attached to two containers there; the same through a profile, so that only `expanded_devices` shows it; a disk at an ancestor (`/run`); a disk below the proof directory (information only until the L12 decision, which rejects it); and a custom volume shared by a VM and an unprivileged and a privileged container. In each, B writes with `$G file put` and A's file is read with `$S file stat`; `util overlap --proof-dir /run/lxd-probe` runs on the records. The runbook deletes what it creates. **Decision:** the overlap check is complete enough or must additionally forbid listed device types; nested LXD inside a container is out of scope unless shown to defeat the check.
 
 #### L13 — Bearer identities and short-lived tokens
 
-**Commands:** `$S bearer check --auth bearer --wait-expiry`. **Decision:** whether the plugin can run without long-lived client certificates; the expiry behaviour determines the rotation requirements.
+**Commands:** `$S bearer check --auth bearer --wait-expiry`. In the lab (servers with bearer identities only; LXD 5.21 has none, recorded with `util note`): `bearer check` with the long-lived token; a token issued for 2 minutes, checked with `--wait-expiry`; and a token checked after a new one was issued for the same identity (revocation), with `--expect-denied`. **Decision:** whether the plugin can run without long-lived client certificates; the expiry behaviour determines the rotation requirements.
 
 #### L14 — Instance update semantics
 
@@ -510,6 +528,8 @@ $S config race NAME user.lxd-probe.r --writers 8
 - Spurious 412 rate in the race test > a few percent → raise the retry budget and the jitter; record the figure.
 - Whether writes are synchronous or asynchronous and the typical `wait` duration → default `proof_timeout`.
 
+**Idle ETag (Q5):** `$S instance watch NAME --for 5m` on an idle container and an idle VM; the ETag changes counted while nothing writes are the rate of spurious 412 the retry budget must absorb.
+
 #### L15 — Fixtures
 
 **Procedure:** run the commands above with `--record test/fixtures/<lxd-version>/`; add the provocations of 403 (identity without permission), 404 (unknown instance/file), 412 (stale ETag). **Commands:** `util sanitize`, `util sanitize --check`, `util fixtures verify`. **Decision:** the committed fixtures become the contract of the fake LXD API (PRT-10); any decode failure results in a client struct fix.
@@ -519,7 +539,7 @@ $S config race NAME user.lxd-probe.r --writers 8
 | Stage | Scope | Exit criterion |
 |---|---|---|
 | 0 | Skeleton, command tree, `internal/lxd` client with pin/TLS, evidence writer and sanitizer, `server info`, `server whoami`, `server instance show`, `--record`, `guest preflight`, `guest devlxd get/dump` | First real fixtures from LXD 5.21 and 6.x committed; PRT-02/PRT-11 green |
-| 1 | `server file stat/get/head/dir`, `server config get/set/unset/race`, `guest file put/stat/rm/layout`, `guest idmap show`, `guest devlxd watch/access`, `util idmap`, `util diff`, `util sanitize` | Evidence for L1, L2, L4, L14. **Spec-amendment checkpoint:** attestor spec revised (v0.4) before stage 2 |
+| 1 | `server file stat/get/head/dir`, `server config get/set/unset/race`, `guest file put/stat/rm/layout`, `guest idmap show`, `guest devlxd watch/access`, `util idmap`, `util diff`, `util sanitize` | Evidence for L1, L2, L4, L14. **Spec-amendment checkpoint:** attestor spec revised (v0.5) before stage 2 |
 | 2 | `server instance watch`, `server permissions`, `server bearer check`, `util overlap`, `util fixtures verify`, `util report`; tooling for L6, L7, L8, L9, L11, L12, L13 | All gates have either evidence or a recorded "cannot be tested here" reason |
 | 3 | `server rehearse file-pull`, `server rehearse config-push` | One end-to-end rehearsal per mode passes in the lab |
 

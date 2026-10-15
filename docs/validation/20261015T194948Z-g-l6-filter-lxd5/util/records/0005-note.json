@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0005",
+  "time": "2026-10-15T19:50:10.335887514Z",
+  "tool_version": "444d7c2",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L6",
+  "cell": "lxd5-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "uuid filter: c-unpriv's uuid as read: exit 0, 1 found [c-unpriv]"
+    }
+  ],
+  "raw": null
+}

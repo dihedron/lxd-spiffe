@@ -1,0 +1,44 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 19:09:33 GMT"
+    ],
+    "X-Content-Type-Options": [
+      "nosniff"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "class": "task",
+      "created_at": "2026-10-12T19:09:33.399607392Z",
+      "description": "Updating instance",
+      "err": "",
+      "err_code": 0,
+      "id": "01a13185-2b57-7942-adab-2bac8000cb5d",
+      "location": "none",
+      "may_cancel": true,
+      "metadata": {
+        "entity_url": "/1.0/instances/c-unpriv"
+      },
+      "requestor": {
+        "address": "10.251.0.1:43348",
+        "protocol": "tls",
+        "username": "c369a3ce8c305cdb4c6a2b833eaf89f38485a7850d6c2fecfa5002985b14cadd"
+      },
+      "resources": {},
+      "status": "Success",
+      "status_code": 200,
+      "updated_at": "2026-10-12T19:09:33.422954757Z"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

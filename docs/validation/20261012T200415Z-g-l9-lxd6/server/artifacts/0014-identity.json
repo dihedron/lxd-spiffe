@@ -1,0 +1,89 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "2018"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 20:04:17 GMT"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "authentication_method": "tls",
+      "effective_groups": [
+        "lab-read"
+      ],
+      "effective_permissions": [
+        {
+          "entitlement": "can_view",
+          "entity_type": "project",
+          "url": "/1.0/projects/default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "project",
+          "url": "/1.0/projects/restricted"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-iso?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-raw?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-ubuntu?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-debian?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-unpriv?project=restricted"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-alpine?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-unpriv?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-priv?project=default"
+        }
+      ],
+      "expires_at": "2028-10-10T18:30:04Z",
+      "fine_grained": true,
+      "groups": [
+        "lab-read"
+      ],
+      "id": "3df1c001841fae35c57be19196fdc0887bce35c706c5176752392d678dae00d4",
+      "name": "lab-read",
+      "tls_certificate": "[redacted]\n",
+      "type": "Client certificate"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

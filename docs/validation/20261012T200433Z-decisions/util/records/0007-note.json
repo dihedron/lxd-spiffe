@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0007",
+  "time": "2026-10-12T20:04:33.949219454Z",
+  "tool_version": "26b6b17",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L9",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 12, 2026): file_pull needs can_view and can_access_files; config_push needs can_edit, which does not include reading files, so the two modes need separate grants; a restricted project behaves the same for identities with grants there; every identity can read identities/current with its effective permissions, so the SEC-16 warning is feasible. Evidence: runs 20261012T200415Z-g-l9-*."
+    }
+  ],
+  "raw": null
+}

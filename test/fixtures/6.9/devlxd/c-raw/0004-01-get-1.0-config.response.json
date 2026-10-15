@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "37"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 14:33:29 GMT"
+    ]
+  },
+  "body": [
+    "/1.0/config/cloud-init.user-data"
+  ]
+}

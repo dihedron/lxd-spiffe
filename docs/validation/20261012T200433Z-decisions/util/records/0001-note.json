@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0001",
+  "time": "2026-10-12T20:04:33.925915417Z",
+  "tool_version": "26b6b17",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L1",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 12, 2026): the files API headers X-LXD-uid, -gid, -mode, -type and -modified go into the attestor's minimal API contract and [V:L1] is removed; file_pull expects uid 0 in every instance class, since LXD reports the in-container owner everywhere; UID translation becomes a fallback; volatile.idmap.current matches the guest's uid_map, so it is a usable source. Evidence: runs 20261012T181538Z-g-l1-* (with their util idmap check records)."
+    }
+  ],
+  "raw": null
+}

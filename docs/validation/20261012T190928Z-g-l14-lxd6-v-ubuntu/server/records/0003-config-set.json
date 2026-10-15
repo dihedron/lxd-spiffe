@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "id": "server/0003",
+  "time": "2026-10-12T19:09:35.158084308Z",
+  "tool_version": "4d3c1d1",
+  "env": "server",
+  "verb": "config set",
+  "args": [
+    "v-ubuntu",
+    "user.lxd-probe.l14",
+    "3",
+    "--method",
+    "put",
+    "--if-match",
+    "stale"
+  ],
+  "gate": "L14",
+  "cell": "lxd6-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 66,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "instance",
+    "instance-patch",
+    "instance-put+412",
+    "instance"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "before.http_status",
+      "value": 200
+    },
+    {
+      "key": "pre.http_status",
+      "value": 200
+    },
+    {
+      "key": "pre.duration_ms",
+      "value": 28
+    },
+    {
+      "key": "write.http_status",
+      "value": 412
+    },
+    {
+      "key": "write.duration_ms",
+      "value": 5
+    },
+    {
+      "key": "write.error",
+      "value": "ETag does not match: 7e1bcae85129cecf94c712718a9590ab7c6727d81804ec9a57ccac9c8ce131e3 vs 45ad96c35378227c51fa69d64925b1d18ec20e423ee11f7c476449f779b147d6. The configuration has been modified since this change began. Please retrieve the updated configuration before proceeding."
+    },
+    {
+      "key": "after.http_status",
+      "value": 200
+    },
+    {
+      "key": "config.after",
+      "value": {
+        "user.lxd-probe.l14": "3~pre"
+      }
+    },
+    {
+      "key": "instance.status_before",
+      "value": "Running"
+    },
+    {
+      "key": "instance.status_after",
+      "value": "Running"
+    },
+    {
+      "key": "instance.restarted",
+      "value": false
+    }
+  ],
+  "raw": [
+    "artifacts/0003-server.json",
+    "artifacts/0003-before.json",
+    "artifacts/0003-pre.json",
+    "artifacts/0003-write.json",
+    "artifacts/0003-after.json"
+  ]
+}

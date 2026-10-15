@@ -40,7 +40,7 @@ func NewAliases() *Aliases {
 // created with the first alias.
 func OpenAliases(path string) (*Aliases, error) {
 	a := &Aliases{path: path, m: map[string]map[string]string{}}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // G304: the run's own aliases.json, under the evidence directory
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, fmt.Errorf("reading aliases: %w", err)
 	}

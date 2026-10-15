@@ -1,0 +1,33 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "504"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 20:04:17 GMT"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "success": [
+        "/1.0/operations/01a131b7-3519-74ea-b438-de2416c7ff09",
+        "/1.0/operations/01a131b7-3659-7945-adff-cd420f5a7c44",
+        "/1.0/operations/01a131b7-37c0-7b84-8cde-dcdfe3b8a5dc",
+        "/1.0/operations/01a131b7-390c-77ce-920b-8945b0851da9",
+        "/1.0/operations/01a131b7-3a77-78a5-bee7-2945ba5a8b23",
+        "/1.0/operations/01a131b7-3c08-7146-b61e-51836b455411",
+        "/1.0/operations/01a131b7-3d8b-7508-bf9e-a44568b08418"
+      ]
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "id": "server/0005",
+  "time": "2026-10-13T20:55:24.859462753Z",
+  "tool_version": "19235a6",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "v-debian",
+    "/etc/hostname"
+  ],
+  "gate": "L7",
+  "cell": "lxd5-v-debian",
+  "outcome": "unexpected",
+  "duration_ms": 19,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 500
+    },
+    {
+      "key": "expectation.status",
+      "value": {
+        "expectation": "file",
+        "got": 500,
+        "want": [
+          200
+        ]
+      }
+    },
+    {
+      "key": "expectation.header.X-LXD-*",
+      "value": {
+        "expectation": "file",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "file.headers",
+      "value": {}
+    },
+    {
+      "key": "file.error",
+      "value": "Instance is not running"
+    }
+  ],
+  "raw": [
+    "artifacts/0005-server.json",
+    "artifacts/0005-file.json"
+  ]
+}

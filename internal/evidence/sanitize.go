@@ -140,6 +140,19 @@ func (s *Sanitizer) Value(v any) any {
 	}
 }
 
+// RedactConfigBody returns body, or Redacted when path is devLXD's
+// /1.0/config/<key> for a key whose value is redacted (PRE-03) and status
+// is a success: devLXD returns that value bare, as text, where the JSON
+// sanitizer cannot tell it from any other text (probe spec PRF-10). An
+// error carries a message, not the value, and is kept.
+func RedactConfigBody(path string, status int, body []byte) []byte {
+	key, ok := strings.CutPrefix(path, "/1.0/config/")
+	if !ok || key == "" || !redactedKey(key) || status < 200 || status > 299 {
+		return body
+	}
+	return []byte(Redacted)
+}
+
 func redactedKey(key string) bool {
 	switch {
 	case strings.HasPrefix(key, "user.lxd-probe."), strings.HasPrefix(key, "user.spire.challenge."):

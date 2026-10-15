@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "id": "guest/0002",
+  "time": "2026-10-12T18:16:02.986993819Z",
+  "tool_version": "0c2d75c",
+  "env": "guest",
+  "verb": "idmap show",
+  "args": [],
+  "gate": "L1",
+  "cell": "lxd6-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "idmap.uid_map",
+      "value": [
+        {
+          "count": 1000000000,
+          "inside": 0,
+          "outside": 1000000
+        }
+      ]
+    },
+    {
+      "key": "idmap.gid_map",
+      "value": [
+        {
+          "count": 1000000000,
+          "inside": 0,
+          "outside": 1000000
+        }
+      ]
+    }
+  ],
+  "raw": null
+}

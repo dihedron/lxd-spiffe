@@ -66,8 +66,26 @@ lxd_resolve() {
 	env_set ".servers[\"$server\"].endpoint" "$(lxd_endpoint "$server")"
 }
 
+# snap_hold SERVER: holds LXD's refreshes and the automatic refreshes of every
+# other snap, then waits for any change already under way: an automatic
+# refresh of LXD's base snap (core24, core26) unmounts it for a moment, and
+# lxc then fails with "cannot locate base snap". A VM reverted to an older
+# snapshot is the likeliest to start one at boot.
+snap_hold() {
+	local server="$1"
+	vm_ssh "$server" 'set -e
+		sudo snap wait system seed.loaded
+		sudo snap refresh --hold lxd >/dev/null
+		sudo snap refresh --hold >/dev/null
+		for _ in $(seq 120); do
+			snap changes | awk "NR > 1 && \$2 ~ /^(Do|Doing|Undo|Undoing|Wait)$/ { busy = 1 } END { exit !busy }" || exit 0
+			sleep 5
+		done
+		exit 1' || die "$server: snapd is still busy after 10 minutes (lab.sh ssh $server snap changes)"
+}
+
 # lxd_install SERVER: installs the snap at the recorded channel and revision,
-# and holds its refreshes.
+# and holds refreshes (snap_hold).
 lxd_install() {
 	local server="$1" channel revision current tracking
 	channel="$(env_get ".servers[\"$server\"].channel")"
@@ -87,7 +105,7 @@ lxd_install() {
 		vm_ssh "$server" "sudo snap refresh lxd --channel=$channel --revision=$revision" >/dev/null ||
 			die "$server: the Snap Store refuses LXD revision $revision (no longer released?): pin another revision, or none, and run lab.sh down && lab.sh up"
 	fi
-	vm_ssh "$server" "sudo snap refresh --hold lxd" >/dev/null
+	snap_hold "$server"
 }
 
 # lxd_allow_idmap SERVER: lets LXD map host uid and gid 1000 into c-raw
@@ -194,6 +212,7 @@ lxd_check() {
 # answers over the lab network with the pin and version env.json records.
 lxd_verify() {
 	local server="$1" fp version
+	snap_hold "$server"
 	vm_ssh "$server" "sudo lxd waitready --timeout=300" || die "$server: LXD does not start (lab.sh logs $server snap.lxd.daemon)"
 	fp="$(openssl s_client -connect "$(vm_ip "$server"):$LXD_PORT" </dev/null 2>/dev/null | lxd_fingerprint_pem)"
 	[[ "$fp" == "$(env_get ".servers[\"$server\"].fingerprint")" ]] ||

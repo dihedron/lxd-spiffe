@@ -125,6 +125,7 @@ func (r *Run) Begin(verb string) (*Entry, error) {
 	}
 	name := fileName(verb)
 	for {
+		//nolint:gosec // G304: a new record in the run's records directory, created with O_EXCL
 		f, err := os.OpenFile(filepath.Join(records, fmt.Sprintf("%04d-%s.json", n, name)), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 		if err == nil {
 			return &Entry{Number: n, run: r, file: f}, nil
@@ -269,7 +270,7 @@ func roundTrip(v any) (any, error) {
 
 // createFile creates path with O_EXCL and mode 0600.
 func createFile(path string, data []byte) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600) //nolint:gosec // G304: a new file in the run directory, created with O_EXCL
 	if err != nil {
 		return err
 	}

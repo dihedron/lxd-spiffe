@@ -2,6 +2,7 @@ package probe
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
@@ -24,5 +25,14 @@ func TestLXDError(t *testing.T) {
 	}
 	if LXDError(nil) != nil {
 		t.Errorf("LXDError(nil) != nil")
+	}
+}
+
+// TestLXDErrorKeepsExitCode checks that an error that already carries an
+// exit code, such as a refusal inside a session, keeps it.
+func TestLXDErrorKeepsExitCode(t *testing.T) {
+	err := fmt.Errorf("server config set: %w", exit.New(exit.Refused, errors.New("wrong instance")))
+	if code := exit.Code(LXDError(err)); code != exit.Refused {
+		t.Errorf("exit %d; want %d", code, exit.Refused)
 	}
 }

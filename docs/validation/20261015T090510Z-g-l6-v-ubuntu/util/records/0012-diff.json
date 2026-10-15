@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "util/0012",
+  "time": "2026-10-15T09:14:34.299227708Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "diff",
+  "args": [
+    "0017-instance-show.json",
+    "0018-instance-show.json"
+  ],
+  "gate": "L6",
+  "cell": "lxd6-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "diff.records",
+      "value": {
+        "a": "server/0017",
+        "b": "server/0018"
+      }
+    },
+    {
+      "key": "diff.count",
+      "value": 6
+    },
+    {
+      "key": "diff.differences",
+      "value": [
+        {
+          "a": "l6-v-renamed",
+          "b": "l6-v-imported",
+          "path": "args[0]"
+        },
+        {
+          "a": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684",
+          "b": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175",
+          "path": "server.api_extensions_hash"
+        },
+        {
+          "a": "5.21.8",
+          "b": "6.9",
+          "path": "server.version"
+        },
+        {
+          "a": "\"8c3995abf05a531e556e74dfd2f08cf66b8ed0ef1ae20c6a0e0b8055b5159784\"",
+          "b": "\"a3bea976cbc98a1f006a13085befb9ecf9b19dc10b55f6b84f33bd13d8c7cd19\"",
+          "path": "observations.instance-full.etag"
+        },
+        {
+          "a": "18538954-4bb6-4ad6-94dd-d1d93e17de22",
+          "b": "2d8d04af-9089-49e1-89d4-1b9dff413cc6",
+          "path": "observations.instance.config.volatile.uuid.generation"
+        },
+        {
+          "a": "\"8c3995abf05a531e556e74dfd2f08cf66b8ed0ef1ae20c6a0e0b8055b5159784\"",
+          "b": "\"a3bea976cbc98a1f006a13085befb9ecf9b19dc10b55f6b84f33bd13d8c7cd19\"",
+          "path": "observations.instance.etag"
+        }
+      ]
+    }
+  ],
+  "raw": null
+}

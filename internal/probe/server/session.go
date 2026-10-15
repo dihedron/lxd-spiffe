@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/canonical/lxd/shared/api"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
@@ -37,12 +37,18 @@ type session struct {
 	server *api.Server
 	// denied is set by a 403 that was not expected (exit code 4).
 	denied bool
+	// refusalsAreData keeps 403s from failing the command: for verbs whose
+	// result is which calls are refused (server permissions).
+	refusalsAreData bool
 	// unexpected is set by a finding that is not an expectation.* or
 	// decode.* observation.
 	unexpected bool
 
 	mu        sync.Mutex
 	exchanges []lxd.Exchange
+	// quiet keeps exchanges out of --record while set: polls that would
+	// drown the fixtures (file stat --wait).
+	quiet bool
 }
 
 // newSession validates the options, opens the run, connects and reserves
@@ -105,24 +111,42 @@ func newSession(ctx context.Context, opts *probe.ServerCommand, stdout io.Writer
 
 // bearerToken returns the token of --auth bearer, from --token-file or
 // LXD_PROBE_TOKEN (never from an argument, PRN-12); empty for --auth tls.
+// LXD's bearer tokens are JWTs, and the SDK refuses anything else when
+// connecting: checked here, so that it is a usage error.
 func bearerToken(opts *probe.ServerCommand) (string, error) {
 	if opts.Auth != "bearer" {
 		return "", nil
 	}
+	token := strings.TrimSpace(os.Getenv("LXD_PROBE_TOKEN"))
 	if opts.TokenFile != "" {
-		return lxd.ReadSecretFile(opts.TokenFile)
+		var err error
+		if token, err = lxd.ReadSecretFile(opts.TokenFile); err != nil {
+			return "", err
+		}
 	}
-	if token := strings.TrimSpace(os.Getenv("LXD_PROBE_TOKEN")); token != "" {
-		return token, nil
+	if token == "" {
+		return "", errors.New("--auth bearer needs --token-file or LXD_PROBE_TOKEN")
 	}
-	return "", errors.New("--auth bearer needs --token-file or LXD_PROBE_TOKEN")
+	if _, _, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{}); err != nil {
+		return "", fmt.Errorf("the bearer token is not a JWT: %w", err)
+	}
+	return token, nil
 }
 
 // record keeps an exchange for --record.
 func (s *session) record(x lxd.Exchange) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.exchanges = append(s.exchanges, x)
+	if !s.quiet {
+		s.exchanges = append(s.exchanges, x)
+	}
+}
+
+// setQuiet sets quiet (see the field).
+func (s *session) setQuiet(quiet bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.quiet = quiet
 }
 
 // observe adds an observation to the record.
@@ -136,7 +160,8 @@ func (s *session) finding(key string, value any) {
 	s.unexpected = true
 }
 
-// call sends a request, stores the response as the artifact name and, when
+// call sends a request, stores the response as the artifact name (a
+// file's content replaced by its size and hash, PRS-35) and, when
 // exp is not nil, checks it against exp, or against exp.Denied() under
 // --expect-denied and exp.Hidden() under --expect-hidden. It returns an error only when no response was received.
 func (s *session) call(ctx context.Context, name string, req lxd.RawRequest, exp *expect.Expectation) (*lxd.RawResponse, error) {
@@ -144,7 +169,12 @@ func (s *session) call(ctx context.Context, name string, req lxd.RawRequest, exp
 	if err != nil {
 		return nil, err
 	}
-	if _, err := s.entry.ArtifactResponse(name, resp.Status, resp.Header, resp.Body); err != nil {
+	body := resp.Body
+	if filePath, ok := evidence.FilesAPIPath(req.Path, req.Query.Encode()); ok {
+		// a file's content never reaches evidence (PRS-35)
+		body = evidence.FileBody(filePath, resp.Status, resp.Header, body, false)
+	}
+	if _, err := s.entry.ArtifactResponse(name, resp.Status, resp.Header, body); err != nil {
 		return nil, err
 	}
 	s.observe(name+".http_status", resp.Status)
@@ -159,7 +189,7 @@ func (s *session) call(ctx context.Context, name string, req lxd.RawRequest, exp
 		s.rec.Expectations = append(s.rec.Expectations, e.Name)
 		s.rec.Observations = append(s.rec.Observations, e.Check(resp.Status, resp.Header, resp.Body)...)
 	}
-	if resp.Status == http.StatusForbidden && !s.opts.ExpectDenied {
+	if resp.Status == http.StatusForbidden && !s.opts.ExpectDenied && !s.refusalsAreData {
 		s.denied = true
 	}
 	return resp, nil
@@ -263,26 +293,7 @@ func (s *session) writeFixtures() error {
 	return nil
 }
 
-// print writes the committed record: as JSON with --json, else as a summary
-// and one line per observation.
+// print writes the committed record (probe.PrintRecord).
 func (s *session) print() error {
-	if s.opts.JSON {
-		data, err := json.MarshalIndent(s.rec, "", "  ")
-		if err != nil {
-			return err
-		}
-		_, err = fmt.Fprintf(s.stdout, "%s\n", data)
-		return err
-	}
-	var b strings.Builder
-	fmt.Fprintf(&b, "%s %s: %s (%s)\n", s.rec.ID, s.rec.Verb, s.rec.Outcome, s.entry.Path())
-	for _, o := range s.rec.Observations {
-		v, err := json.Marshal(o.Value)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(&b, "  %s = %s\n", o.Key, v)
-	}
-	_, err := io.WriteString(s.stdout, b.String())
-	return err
+	return probe.PrintRecord(s.stdout, &s.rec, s.entry.Path(), s.opts.JSON)
 }

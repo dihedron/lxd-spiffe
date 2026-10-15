@@ -1,0 +1,188 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Thu, 15 Oct 2026 09:07:42 GMT"
+    ],
+    "Etag": [
+      "\"c84df055ee3b08f03ab1ac792d3035e574a6bb4fb397e05e9b9a50b1aa497d66\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "backups": null,
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "user.lxd-probe.l6-key": "56b1f4e3697e2c03",
+        "volatile.apply_template": "copy",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "e8bbff30-e2e3-4b93-bd88-836361a8aed9",
+        "volatile.eth0.hwaddr": "mac-3",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.uuid": "f20aa6e8-5a79-4727-9524-77f997704680",
+        "volatile.uuid.generation": "f20aa6e8-5a79-4727-9524-77f997704680"
+      },
+      "created_at": "2026-10-15T09:07:39.591588556Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "user.lxd-probe.l6-key": "56b1f4e3697e2c03",
+        "volatile.apply_template": "copy",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "e8bbff30-e2e3-4b93-bd88-836361a8aed9",
+        "volatile.eth0.hwaddr": "mac-3",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.uuid": "f20aa6e8-5a79-4727-9524-77f997704680",
+        "volatile.uuid.generation": "f20aa6e8-5a79-4727-9524-77f997704680"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "1970-01-01T00:00:00Z",
+      "location": "none",
+      "name": "l6-c-renamed",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "snapshots": [
+        {
+          "architecture": "x86_64",
+          "config": {
+            "cloud-init.user-data": "[redacted]",
+            "image.architecture": "amd64",
+            "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+            "image.label": "release",
+            "image.os": "ubuntu",
+            "image.release": "noble",
+            "image.serial": "20260926",
+            "image.type": "squashfs",
+            "image.version": "24.04",
+            "user.lxd-probe.l6-key": "56b1f4e3697e2c03",
+            "volatile.apply_template": "copy",
+            "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+            "volatile.cloud-init.instance-id": "da6d5c2b-f614-496f-acea-04c473c9c209",
+            "volatile.eth0.hwaddr": "mac-1",
+            "volatile.idmap.base": "0",
+            "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+            "volatile.last_state.idmap": "[]",
+            "volatile.uuid": "934ddabd-9420-4fed-b35a-5a64a6b759cd",
+            "volatile.uuid.generation": "934ddabd-9420-4fed-b35a-5a64a6b759cd"
+          },
+          "created_at": "2026-10-15T09:07:34Z",
+          "devices": {},
+          "ephemeral": false,
+          "expanded_config": {
+            "cloud-init.user-data": "[redacted]",
+            "image.architecture": "amd64",
+            "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+            "image.label": "release",
+            "image.os": "ubuntu",
+            "image.release": "noble",
+            "image.serial": "20260926",
+            "image.type": "squashfs",
+            "image.version": "24.04",
+            "user.lxd-probe.l6-key": "56b1f4e3697e2c03",
+            "volatile.apply_template": "copy",
+            "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+            "volatile.cloud-init.instance-id": "da6d5c2b-f614-496f-acea-04c473c9c209",
+            "volatile.eth0.hwaddr": "mac-1",
+            "volatile.idmap.base": "0",
+            "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+            "volatile.last_state.idmap": "[]",
+            "volatile.uuid": "934ddabd-9420-4fed-b35a-5a64a6b759cd",
+            "volatile.uuid.generation": "934ddabd-9420-4fed-b35a-5a64a6b759cd"
+          },
+          "expanded_devices": {
+            "eth0": {
+              "name": "eth0",
+              "network": "lxdbr0",
+              "type": "nic"
+            },
+            "root": {
+              "path": "/",
+              "pool": "default",
+              "type": "disk"
+            }
+          },
+          "expires_at": "0001-01-01T00:00:00Z",
+          "last_used_at": "0001-01-01T00:00:00Z",
+          "name": "l6-snap",
+          "profiles": [
+            "default"
+          ],
+          "size": -1,
+          "stateful": false
+        }
+      ],
+      "state": {
+        "cpu": {
+          "usage": 0
+        },
+        "disk": {
+          "root": {
+            "total": 0,
+            "usage": 528265728
+          }
+        },
+        "memory": {
+          "swap_usage": 0,
+          "swap_usage_peak": 0,
+          "total": 0,
+          "usage": 0,
+          "usage_peak": 0
+        },
+        "network": null,
+        "pid": 0,
+        "processes": 0,
+        "status": "Stopped",
+        "status_code": 102
+      },
+      "stateful": false,
+      "status": "Stopped",
+      "status_code": 102,
+      "type": "container"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

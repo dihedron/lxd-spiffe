@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0009",
+  "time": "2026-10-15T12:26:18.483884925Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L7",
+  "cell": "lxd5-v-alma",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "selinux Disabled; AVC denials this boot: unknown, naming lxd-agent: unknown"
+    }
+  ],
+  "raw": null
+}

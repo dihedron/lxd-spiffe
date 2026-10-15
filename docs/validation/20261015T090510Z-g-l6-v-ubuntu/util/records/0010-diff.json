@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "id": "util/0010",
+  "time": "2026-10-15T09:12:52.18724729Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "diff",
+  "args": [
+    "0014-instance-show.json",
+    "0015-instance-show.json"
+  ],
+  "gate": "L6",
+  "cell": "lxd6-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "diff.records",
+      "value": {
+        "a": "server/0014",
+        "b": "server/0015"
+      }
+    },
+    {
+      "key": "diff.count",
+      "value": 3
+    },
+    {
+      "key": "diff.differences",
+      "value": [
+        {
+          "a": "l6-v-copy",
+          "b": "l6-v-moved",
+          "path": "args[0]"
+        },
+        {
+          "a": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684",
+          "b": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175",
+          "path": "server.api_extensions_hash"
+        },
+        {
+          "a": "5.21.8",
+          "b": "6.9",
+          "path": "server.version"
+        }
+      ]
+    }
+  ],
+  "raw": null
+}

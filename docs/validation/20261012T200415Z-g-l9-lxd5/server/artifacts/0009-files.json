@@ -1,0 +1,62 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "298"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 20:04:16 GMT"
+    ],
+    "X-Lxd-Gid": [
+      "0"
+    ],
+    "X-Lxd-Mode": [
+      "0755"
+    ],
+    "X-Lxd-Modified": [
+      "2026-09-26 12:59:46 +0000 UTC"
+    ],
+    "X-Lxd-Type": [
+      "directory"
+    ],
+    "X-Lxd-Uid": [
+      "0"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": [
+      "dev",
+      "sbin",
+      "var",
+      "bin.usr-is-merged",
+      "tmp",
+      "mnt",
+      "home",
+      "sys",
+      "opt",
+      "lib64",
+      "media",
+      "srv",
+      "snap",
+      "sbin.usr-is-merged",
+      "lib.usr-is-merged",
+      "proc",
+      "root",
+      "lib",
+      "bin",
+      "usr",
+      "boot",
+      "etc",
+      "run"
+    ],
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

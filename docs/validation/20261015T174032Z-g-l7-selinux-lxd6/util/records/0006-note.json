@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0006",
+  "time": "2026-10-15T17:47:24.372980773Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L7",
+  "cell": "lxd6-v-rocky-selinux",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "proof under /run/spire/lxd (root, 0600) read through the files API: 200 uid 0 fdb89306; sha256 matches the guest's: true; selinux Enforcing; agent system_u:system_r:unconfined_service_t:s0; binary system_u:object_r:bin_t:s0; AVC denials this boot: 0"
+    }
+  ],
+  "raw": null
+}

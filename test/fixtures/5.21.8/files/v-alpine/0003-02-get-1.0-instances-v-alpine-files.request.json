@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "path": "/1.0/instances/v-alpine/files",
+  "query": "path=%2Frun%2Flxd-probe%2Flayout%2Fregular\u0026project=default",
+  "header": {
+    "User-Agent": [
+      "lxd-spiffe/0c2d75c"
+    ]
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "id": "server/0007",
+  "time": "2026-10-12T20:04:16.96949847Z",
+  "tool_version": "26b6b17",
+  "env": "server",
+  "verb": "whoami",
+  "args": [],
+  "gate": "L9",
+  "cell": "lxd6-full",
+  "outcome": "ok",
+  "duration_ms": 19,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "identity-current"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.authentication_method",
+      "value": "tls"
+    },
+    {
+      "key": "identity.type",
+      "value": "Client certificate"
+    },
+    {
+      "key": "identity.id",
+      "value": "09670ad38c1210154e02d88e017bf30678e443b23e61cecea690ec4d9c47242b"
+    },
+    {
+      "key": "identity.name",
+      "value": "lab-full"
+    },
+    {
+      "key": "identity.groups",
+      "value": [
+        "lab-full"
+      ]
+    },
+    {
+      "key": "identity.effective_groups",
+      "value": [
+        "lab-full"
+      ]
+    },
+    {
+      "key": "identity.effective_permissions",
+      "value": [
+        {
+          "entitlement": "admin",
+          "entity_type": "server",
+          "url": "/1.0"
+        }
+      ]
+    },
+    {
+      "key": "identity.fine_grained",
+      "value": true
+    }
+  ],
+  "raw": [
+    "artifacts/0007-server.json",
+    "artifacts/0007-identity.json"
+  ]
+}

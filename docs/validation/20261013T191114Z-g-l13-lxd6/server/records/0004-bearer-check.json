@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "id": "server/0004",
+  "time": "2026-10-13T19:13:17.228604237Z",
+  "tool_version": "c085bf9",
+  "env": "server",
+  "verb": "bearer check",
+  "args": [
+    "--expect-denied"
+  ],
+  "gate": "L13",
+  "cell": "lxd6-bearer-short-revoked",
+  "outcome": "ok",
+  "duration_ms": 13,
+  "expectations": [
+    "server+denied",
+    "identity-current+denied"
+  ],
+  "observations": [
+    {
+      "key": "token.format",
+      "value": "jwt"
+    },
+    {
+      "key": "token.header",
+      "value": {
+        "alg": "HS512",
+        "typ": "JWT"
+      }
+    },
+    {
+      "key": "token.claims",
+      "value": {
+        "aud": [
+          "lxd:01a12c24-43bb-781a-ad3a-36b2490f435c"
+        ],
+        "exp": "2026-10-13T19:23:16Z",
+        "iat": "2026-10-13T19:13:16Z",
+        "iss": "lxd:01a12c24-43bb-781a-ad3a-36b2490f435c",
+        "lifetime_s": 600,
+        "nbf": "2026-10-13T19:13:16Z",
+        "server_cert_fingerprint_present": true,
+        "sub_present": true
+      }
+    },
+    {
+      "key": "server.http_status",
+      "value": 403
+    },
+    {
+      "key": "server.error",
+      "value": "Failed verifying bearer token: Failed authenticating bearer token: Token is not valid: token signature is invalid: signature is invalid"
+    },
+    {
+      "key": "identity.http_status",
+      "value": 403
+    },
+    {
+      "key": "identity.error",
+      "value": "Failed verifying bearer token: Failed authenticating bearer token: Token is not valid: token signature is invalid: signature is invalid"
+    },
+    {
+      "key": "bearer.calls",
+      "value": {
+        "identity": "denied",
+        "server": "denied"
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0004-server.json",
+    "artifacts/0004-identity.json"
+  ]
+}

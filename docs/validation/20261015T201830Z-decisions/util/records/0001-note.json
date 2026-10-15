@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0001",
+  "time": "2026-10-15T20:18:30.426150638Z",
+  "tool_version": "4f4d2e1",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L10",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 15, 2026): the LXD Go SDK pinned at github.com/canonical/lxd v0.0.0-20261009201946-d2f5e0ca1f9e covers every call of the attestor API usage: typed methods for GET /1.0 (GetServer), the instance read with its ETag (GetInstance), the files read with X-LXD-uid/gid/mode/type parsed (GetInstanceFile), GET /1.0/auth/identities/current (GetCurrentIdentityInfo) and the operation wait; RawQuery for the PATCH of the challenge key (the SDK UpdateInstance only does PUT) and the filtered instance list of FR-S18 (no typed instance filter). All were reached in the lab through the SDK connection and decoded into shared/api types. Only the SDK client and shared packages are imported; the NFR-03 allow-list holds as defined (the SDK transitive requirements, including OIDC, OpenTelemetry and sftp libraries). The CI allow-list check and the agent-size report are tasks of implementation step (b), with this module list as the baseline. FR-S17 (9) is corrected accordingly. Evidence: the util report of all runs (API usage calls reached), go.mod."
+    }
+  ],
+  "raw": null
+}

@@ -1,0 +1,161 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Thu, 15 Oct 2026 19:50:09 GMT"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": [
+      {
+        "architecture": "x86_64",
+        "config": {
+          "cloud-init.user-data": "[redacted]",
+          "image.architecture": "amd64",
+          "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+          "image.label": "release",
+          "image.os": "ubuntu",
+          "image.release": "noble",
+          "image.serial": "20260926",
+          "image.type": "squashfs",
+          "image.version": "24.04",
+          "volatile.apply_template": "copy",
+          "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+          "volatile.cloud-init.instance-id": "b5aa846c-280f-4e71-8429-e5e1f8acd694",
+          "volatile.eth0.hwaddr": "mac-2",
+          "volatile.idmap.base": "0",
+          "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+          "volatile.last_state.idmap": "[]",
+          "volatile.uuid": "dc4de768-f7aa-461e-9725-fb5fa154e917",
+          "volatile.uuid.generation": "dc4de768-f7aa-461e-9725-fb5fa154e917"
+        },
+        "created_at": "2026-10-15T19:49:49.965244549Z",
+        "description": "",
+        "devices": {},
+        "ephemeral": false,
+        "expanded_config": {
+          "cloud-init.user-data": "[redacted]",
+          "image.architecture": "amd64",
+          "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+          "image.label": "release",
+          "image.os": "ubuntu",
+          "image.release": "noble",
+          "image.serial": "20260926",
+          "image.type": "squashfs",
+          "image.version": "24.04",
+          "volatile.apply_template": "copy",
+          "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+          "volatile.cloud-init.instance-id": "b5aa846c-280f-4e71-8429-e5e1f8acd694",
+          "volatile.eth0.hwaddr": "mac-2",
+          "volatile.idmap.base": "0",
+          "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+          "volatile.last_state.idmap": "[]",
+          "volatile.uuid": "dc4de768-f7aa-461e-9725-fb5fa154e917",
+          "volatile.uuid.generation": "dc4de768-f7aa-461e-9725-fb5fa154e917"
+        },
+        "expanded_devices": {
+          "eth0": {
+            "name": "eth0",
+            "network": "lxdbr0",
+            "type": "nic"
+          },
+          "root": {
+            "path": "/",
+            "pool": "default",
+            "type": "disk"
+          }
+        },
+        "last_used_at": "1970-01-01T00:00:00Z",
+        "location": "none",
+        "name": "l6-f",
+        "profiles": [
+          "default"
+        ],
+        "project": "default",
+        "stateful": false,
+        "status": "Stopped",
+        "status_code": 102,
+        "type": "container"
+      },
+      {
+        "architecture": "x86_64",
+        "config": {
+          "cloud-init.user-data": "[redacted]",
+          "image.architecture": "amd64",
+          "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+          "image.label": "release",
+          "image.os": "ubuntu",
+          "image.release": "noble",
+          "image.serial": "20260926",
+          "image.type": "squashfs",
+          "image.version": "24.04",
+          "volatile.apply_template": "copy",
+          "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+          "volatile.cloud-init.instance-id": "b5aa846c-280f-4e71-8429-e5e1f8acd694",
+          "volatile.eth0.hwaddr": "mac-2",
+          "volatile.idmap.base": "0",
+          "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+          "volatile.last_state.idmap": "[]",
+          "volatile.uuid": "dc4de768-f7aa-461e-9725-fb5fa154e917",
+          "volatile.uuid.generation": "dc4de768-f7aa-461e-9725-fb5fa154e917"
+        },
+        "created_at": "2026-10-15T19:49:49.965244549Z",
+        "description": "",
+        "devices": {},
+        "ephemeral": false,
+        "expanded_config": {
+          "cloud-init.user-data": "[redacted]",
+          "image.architecture": "amd64",
+          "image.description": "ubuntu 24.04 LTS amd64 (release) (20260926)",
+          "image.label": "release",
+          "image.os": "ubuntu",
+          "image.release": "noble",
+          "image.serial": "20260926",
+          "image.type": "squashfs",
+          "image.version": "24.04",
+          "volatile.apply_template": "copy",
+          "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+          "volatile.cloud-init.instance-id": "b5aa846c-280f-4e71-8429-e5e1f8acd694",
+          "volatile.eth0.hwaddr": "mac-2",
+          "volatile.idmap.base": "0",
+          "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+          "volatile.last_state.idmap": "[]",
+          "volatile.uuid": "dc4de768-f7aa-461e-9725-fb5fa154e917",
+          "volatile.uuid.generation": "dc4de768-f7aa-461e-9725-fb5fa154e917"
+        },
+        "expanded_devices": {
+          "eth0": {
+            "name": "eth0",
+            "network": "lxdbr0",
+            "type": "nic"
+          },
+          "root": {
+            "path": "/",
+            "pool": "default",
+            "type": "disk"
+          }
+        },
+        "last_used_at": "1970-01-01T00:00:00Z",
+        "location": "none",
+        "name": "l6-f-twin",
+        "profiles": [
+          "default"
+        ],
+        "project": "default",
+        "stateful": false,
+        "status": "Stopped",
+        "status_code": 102,
+        "type": "container"
+      }
+    ],
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

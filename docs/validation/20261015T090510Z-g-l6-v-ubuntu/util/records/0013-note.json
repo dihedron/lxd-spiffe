@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0013",
+  "time": "2026-10-15T09:14:35.071916186Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L6",
+  "cell": "lxd6-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "export and import on the other server: lxd5: lxc export l6-v-renamed /root/l6-v.tar --compression none --instance-only; copy /root/l6-v.tar from lxd5 to lxd6; lxd6: lxc import /root/l6-v.tar l6-v-imported; done; result lxd6/l6-v-imported; stand-in key kept: yes; cloud-init marker kept: yes"
+    }
+  ],
+  "raw": null
+}

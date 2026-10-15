@@ -1,0 +1,161 @@
+{
+  "schema": 1,
+  "id": "server/0001",
+  "time": "2026-10-12T20:04:16.508884878Z",
+  "tool_version": "26b6b17",
+  "env": "server",
+  "verb": "whoami",
+  "args": [],
+  "gate": "L9",
+  "cell": "lxd6-edit",
+  "outcome": "ok",
+  "duration_ms": 19,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "identity-current"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.authentication_method",
+      "value": "tls"
+    },
+    {
+      "key": "identity.type",
+      "value": "Client certificate"
+    },
+    {
+      "key": "identity.id",
+      "value": "c369a3ce8c305cdb4c6a2b833eaf89f38485a7850d6c2fecfa5002985b14cadd"
+    },
+    {
+      "key": "identity.name",
+      "value": "lab-edit"
+    },
+    {
+      "key": "identity.groups",
+      "value": [
+        "lab-edit"
+      ]
+    },
+    {
+      "key": "identity.effective_groups",
+      "value": [
+        "lab-edit"
+      ]
+    },
+    {
+      "key": "identity.effective_permissions",
+      "value": [
+        {
+          "entitlement": "can_view",
+          "entity_type": "project",
+          "url": "/1.0/projects/default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "project",
+          "url": "/1.0/projects/restricted"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-iso?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-raw?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-ubuntu?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-debian?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-unpriv?project=restricted"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-alpine?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-unpriv?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-priv?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-iso?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-raw?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-ubuntu?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-debian?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-unpriv?project=restricted"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-alpine?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-unpriv?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-priv?project=default"
+        }
+      ]
+    },
+    {
+      "key": "identity.fine_grained",
+      "value": true
+    }
+  ],
+  "raw": [
+    "artifacts/0001-server.json",
+    "artifacts/0001-identity.json"
+  ]
+}

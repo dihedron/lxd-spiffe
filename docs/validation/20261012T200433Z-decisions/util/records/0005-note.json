@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0005",
+  "time": "2026-10-12T20:04:33.941689273Z",
+  "tool_version": "26b6b17",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L14",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 12, 2026): FR-S14 writes with PATCH and If-Match (412 when stale); the challenge key is removed with a PATCH setting it to null; PATCH is synchronous, so the server waits only for operations PUT returns; up to 10 retries with backoff from 50 ms capped at 1 s and jitter. Open: the rate of ETag changes on an idle instance. Evidence: runs 20261012T190928Z-g-l14-*."
+    }
+  ],
+  "raw": null
+}

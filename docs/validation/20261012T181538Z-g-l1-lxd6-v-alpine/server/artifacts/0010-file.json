@@ -1,0 +1,44 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "170"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Mon, 12 Oct 2026 18:16:24 GMT"
+    ],
+    "X-Lxd-Gid": [
+      "0"
+    ],
+    "X-Lxd-Mode": [
+      "0700"
+    ],
+    "X-Lxd-Modified": [
+      "2026-10-12 18:16:21 +0000 UTC"
+    ],
+    "X-Lxd-Type": [
+      "directory"
+    ],
+    "X-Lxd-Uid": [
+      "0"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": [
+      "other-owner",
+      "world-writable",
+      "directory",
+      "symlink",
+      "regular"
+    ],
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

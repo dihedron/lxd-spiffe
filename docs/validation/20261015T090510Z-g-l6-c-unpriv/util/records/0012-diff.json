@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "util/0012",
+  "time": "2026-10-15T09:08:08.35691852Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "diff",
+  "args": [
+    "0017-instance-show.json",
+    "0018-instance-show.json"
+  ],
+  "gate": "L6",
+  "cell": "lxd6-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "diff.records",
+      "value": {
+        "a": "server/0017",
+        "b": "server/0018"
+      }
+    },
+    {
+      "key": "diff.count",
+      "value": 6
+    },
+    {
+      "key": "diff.differences",
+      "value": [
+        {
+          "a": "l6-c-renamed",
+          "b": "l6-c-imported",
+          "path": "args[0]"
+        },
+        {
+          "a": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684",
+          "b": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175",
+          "path": "server.api_extensions_hash"
+        },
+        {
+          "a": "5.21.8",
+          "b": "6.9",
+          "path": "server.version"
+        },
+        {
+          "a": "\"83ec77a2d312a4c24195897532538e3d9ba39515a25d8138e0c3bd9404949723\"",
+          "b": "\"b4ea098521b098bb60e88e1b154dfeabf9b5bb1c2e2895bd618c832db4424fcf\"",
+          "path": "observations.instance-full.etag"
+        },
+        {
+          "a": "d1e17fe7-4593-4774-89d8-dc3263015f54",
+          "b": "934ddabd-9420-4fed-b35a-5a64a6b759cd",
+          "path": "observations.instance.config.volatile.uuid.generation"
+        },
+        {
+          "a": "\"83ec77a2d312a4c24195897532538e3d9ba39515a25d8138e0c3bd9404949723\"",
+          "b": "\"b4ea098521b098bb60e88e1b154dfeabf9b5bb1c2e2895bd618c832db4424fcf\"",
+          "path": "observations.instance.etag"
+        }
+      ]
+    }
+  ],
+  "raw": null
+}

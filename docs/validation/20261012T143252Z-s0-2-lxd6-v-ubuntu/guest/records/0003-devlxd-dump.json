@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "id": "guest/0003",
+  "time": "2026-10-12T14:33:33.062577915Z",
+  "tool_version": "987956e",
+  "env": "guest",
+  "verb": "devlxd dump",
+  "args": [
+    "/1.0"
+  ],
+  "gate": "L3",
+  "cell": "lxd6-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 10,
+  "expectations": [
+    "devlxd-server"
+  ],
+  "observations": [
+    {
+      "key": "devlxd.http_status",
+      "value": 200
+    },
+    {
+      "key": "devlxd.format",
+      "value": "plain"
+    },
+    {
+      "key": "devlxd.latency_ms",
+      "value": 9
+    },
+    {
+      "key": "devlxd.content",
+      "value": {
+        "api_version": "1.0",
+        "auth": "untrusted",
+        "instance_type": "virtual-machine",
+        "location": "lxd6",
+        "state": "Started",
+        "supported_storage_drivers": []
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0003-devlxd.json"
+  ]
+}

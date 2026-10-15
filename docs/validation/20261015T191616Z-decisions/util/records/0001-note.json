@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0001",
+  "time": "2026-10-15T19:16:16.161961414Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L6",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 15, 2026): volatile.uuid stays the basis of the SPIFFE ID, but it is not globally unique: an export and import keeps it, on another server and on the same server (two live instances with one uuid, generation and cloud-init instance-id). Hence server_id stays mandatory in the ID (FR-S7); T7 covers both cases; the plugin fails closed when the uuid is found on more than one instance of the allowed projects of a server (new requirement; api_filtering becomes a required extension, with an unfiltered list as fallback if L8 shows a version without it) or on two configured servers. Copies, local or to another server, get a new uuid, generation and cloud-init instance-id (T14 confirmed). Snapshot restore changes only volatile.uuid.generation (FR-S10 confirmed). Move and lxd recover change nothing; a move to another server changes the ID through server_id. Rename changes only volatile.cloud-init.instance-id, which is therefore a consistency hint, not an identity. volatile.base_image never changes (historic claim confirmed). Keys in instance config, the cloud-init ones included, travel with every copy, move and import. Evidence: runs 20261015T090510Z-g-l6-*, 20261015T114139Z-g-l6-same-server-import-lxd5."
+    }
+  ],
+  "raw": null
+}

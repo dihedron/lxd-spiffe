@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "id": "guest/0002",
+  "time": "2026-10-12T16:49:42.585393257Z",
+  "tool_version": "6ec4c4c",
+  "env": "guest",
+  "verb": "devlxd access",
+  "args": [
+    "--as-uid",
+    "0,1000,65534",
+    "--path",
+    "/1.0",
+    "--path",
+    "/1.0/config/cloud-init.user-data"
+  ],
+  "gate": "L4",
+  "cell": "lxd6-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 33,
+  "observations": [
+    {
+      "key": "access.uid.0",
+      "value": {
+        "gid": 0,
+        "results": [
+          {
+            "allowed": true,
+            "format": "plain",
+            "path": "/1.0",
+            "status": 200
+          },
+          {
+            "allowed": true,
+            "format": "plain",
+            "path": "/1.0/config/cloud-init.user-data",
+            "status": 200
+          }
+        ]
+      }
+    },
+    {
+      "key": "access.uid.1000",
+      "value": {
+        "gid": 1000,
+        "results": [
+          {
+            "allowed": false,
+            "error": "Access denied for non-root user",
+            "format": "plain",
+            "path": "/1.0",
+            "status": 401
+          },
+          {
+            "allowed": false,
+            "error": "Access denied for non-root user",
+            "format": "plain",
+            "path": "/1.0/config/cloud-init.user-data",
+            "status": 401
+          }
+        ]
+      }
+    },
+    {
+      "key": "access.uid.65534",
+      "value": {
+        "gid": 65534,
+        "results": [
+          {
+            "allowed": false,
+            "error": "Access denied for non-root user",
+            "format": "plain",
+            "path": "/1.0",
+            "status": 401
+          },
+          {
+            "allowed": false,
+            "error": "Access denied for non-root user",
+            "format": "plain",
+            "path": "/1.0/config/cloud-init.user-data",
+            "status": 401
+          }
+        ]
+      }
+    }
+  ],
+  "raw": null
+}

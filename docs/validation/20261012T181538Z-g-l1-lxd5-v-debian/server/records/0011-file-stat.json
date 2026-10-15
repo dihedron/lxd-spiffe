@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "id": "server/0011",
+  "time": "2026-10-12T18:15:57.770065742Z",
+  "tool_version": "0c2d75c",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "v-debian",
+    "/run/lxd-probe/proof",
+    "--expect-denied"
+  ],
+  "gate": "L1",
+  "cell": "lxd5-v-debian",
+  "outcome": "ok",
+  "duration_ms": 25,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "file+denied"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 403
+    },
+    {
+      "key": "file.headers",
+      "value": {}
+    },
+    {
+      "key": "file.error",
+      "value": "Forbidden"
+    }
+  ],
+  "raw": [
+    "artifacts/0011-server.json",
+    "artifacts/0011-file.json"
+  ]
+}

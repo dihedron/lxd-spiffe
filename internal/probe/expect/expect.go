@@ -16,6 +16,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/dihedron/lxd-spiffe/internal/devlxd"
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 )
 
@@ -34,9 +35,15 @@ type Expectation struct {
 	Headers []string
 	// Envelope is the expected envelope type: sync, async or error.
 	Envelope string
-	// Fields must be present in the envelope's metadata; nested fields are
-	// written with dots, as in environment.server_version.
+	// Fields must be present in the envelope's metadata (for DevLXD: in
+	// the content, whichever its format); nested fields are written with
+	// dots, as in environment.server_version.
 	Fields []string
+	// JSON requires a JSON body (DevLXD, where bodies may be text).
+	JSON bool
+	// HeaderPrefixes each need at least one header starting with them, as
+	// X-LXD- on a files read, whose exact names gate L1 learns.
+	HeaderPrefixes []string
 }
 
 // Envelope types.
@@ -44,6 +51,12 @@ const (
 	Sync  = "sync"
 	Async = "async"
 	Error = "error"
+	// DevLXD is a devLXD response: its own plain format (the content
+	// itself, JSON or text) or an LXD envelope (PRF-10, PRE-06).
+	DevLXD = "devlxd"
+	// Raw is a body that is not an LXD document, as a file's content: it
+	// is not checked.
+	Raw = "raw"
 )
 
 // The expectations of the stage-0 server verbs.
@@ -93,8 +106,86 @@ var RequiredExtensions = []string{"projects", "instance_generation_id"}
 // server offers it (PRS-02).
 const IdentityExtension = "access_management"
 
+// The expectations of the devLXD reads (guest devlxd get and dump,
+// PRF-10), from what LXD 5.21 and 6.9 answered in the lab.
+var (
+	DevLXDRoot = Expectation{
+		Name: "devlxd-root", Method: http.MethodGet, Path: "/",
+		Status: []int{http.StatusOK}, Envelope: DevLXD, JSON: true,
+	}
+	DevLXDServer = Expectation{
+		Name: "devlxd-server", Method: http.MethodGet, Path: "/1.0",
+		Status: []int{http.StatusOK}, Envelope: DevLXD, JSON: true,
+		Fields: []string{"api_version", "instance_type", "location", "state"},
+	}
+	DevLXDConfig = Expectation{
+		Name: "devlxd-config", Method: http.MethodGet, Path: "/1.0/config",
+		Status: []int{http.StatusOK}, Envelope: DevLXD, JSON: true,
+	}
+	DevLXDConfigKey = Expectation{
+		Name: "devlxd-config-key", Method: http.MethodGet, Path: "/1.0/config/{key}",
+		Status: []int{http.StatusOK}, Envelope: DevLXD,
+	}
+	DevLXDMetadata = Expectation{
+		Name: "devlxd-meta-data", Method: http.MethodGet, Path: "/1.0/meta-data",
+		Status: []int{http.StatusOK}, Envelope: DevLXD,
+	}
+	DevLXDDevices = Expectation{
+		Name: "devlxd-devices", Method: http.MethodGet, Path: "/1.0/devices",
+		Status: []int{http.StatusOK}, Envelope: DevLXD, JSON: true,
+	}
+)
+
+// The expectations of the files API (server file stat, get, head and dir,
+// PRS-30 to PRS-33): a file's content is not checked; a directory is a
+// sync listing. Every answer carries X-LXD-* headers.
+var (
+	FileRead = Expectation{
+		Name: "file", Method: http.MethodGet, Path: "/1.0/instances/{name}/files", Query: "path={path}",
+		Status: []int{http.StatusOK}, Envelope: Raw, HeaderPrefixes: []string{"X-LXD-"},
+	}
+	FileHead = Expectation{
+		Name: "file-head", Method: http.MethodHead, Path: "/1.0/instances/{name}/files", Query: "path={path}",
+		Status: []int{http.StatusOK}, Envelope: Raw, HeaderPrefixes: []string{"X-LXD-"},
+	}
+	FileDir = Expectation{
+		Name: "file-dir", Method: http.MethodGet, Path: "/1.0/instances/{name}/files", Query: "path={path}",
+		Status: []int{http.StatusOK}, Envelope: Sync, HeaderPrefixes: []string{"X-LXD-"},
+	}
+)
+
+// The expectations of config writes (server config set, unset and race,
+// PRS-21 to PRS-23), from what LXD 6.9 answered in the lab: PATCH is
+// synchronous, PUT answers with an operation, which --wait waits for.
+var (
+	InstancePatch = Expectation{
+		Name: "instance-patch", Method: http.MethodPatch, Path: "/1.0/instances/{name}",
+		Status: []int{http.StatusOK}, Envelope: Sync,
+	}
+	InstancePut = Expectation{
+		Name: "instance-put", Method: http.MethodPut, Path: "/1.0/instances/{name}",
+		Status: []int{http.StatusAccepted}, Envelope: Async,
+	}
+	OperationWait = Expectation{
+		Name: "operation-wait", Method: http.MethodGet, Path: "/1.0/operations/{id}/wait",
+		Status: []int{http.StatusOK}, Envelope: Sync, Fields: []string{"status", "status_code"},
+	}
+)
+
+// InstanceList is GET /1.0/instances?recursion=1 (server instance list,
+// PRS-12).
+var InstanceList = Expectation{
+	Name: "instance-list", Method: http.MethodGet, Path: "/1.0/instances", Query: "recursion=1",
+	Status: []int{http.StatusOK}, Envelope: Sync,
+}
+
 // Table lists every expectation, for documentation and tests.
-var Table = []Expectation{Server, IdentityCurrent, Instance, InstanceFull}
+var Table = []Expectation{
+	Server, IdentityCurrent, Instance, InstanceFull,
+	DevLXDRoot, DevLXDServer, DevLXDConfig, DevLXDConfigKey, DevLXDMetadata, DevLXDDevices,
+	FileRead, FileHead, FileDir,
+	InstancePatch, InstancePut, OperationWait, InstanceList,
+}
 
 // Denied returns the expectation of the same call when a 403 is the expected
 // result (--expect-denied): status 403, an error envelope, nothing else.
@@ -102,6 +193,15 @@ func (e Expectation) Denied() Expectation {
 	return Expectation{
 		Name: e.Name + "+denied", Method: e.Method, Path: e.Path, Query: e.Query,
 		Status: []int{http.StatusForbidden}, Envelope: Error,
+	}
+}
+
+// Precondition returns the expectation of the same call when a 412 is the
+// expected result (--if-match stale): an error envelope, nothing else.
+func (e Expectation) Precondition() Expectation {
+	return Expectation{
+		Name: e.Name + "+412", Method: e.Method, Path: e.Path, Query: e.Query,
+		Status: []int{http.StatusPreconditionFailed}, Envelope: Error,
 	}
 }
 
@@ -139,6 +239,24 @@ func (e Expectation) Check(status int, header http.Header, body []byte) []eviden
 			add("header."+name, "present", "absent")
 		}
 	}
+	for _, prefix := range e.HeaderPrefixes {
+		found := false
+		for name := range header {
+			if strings.HasPrefix(strings.ToLower(name), strings.ToLower(prefix)) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			add("header."+prefix+"*", "present", "absent")
+		}
+	}
+	switch e.Envelope {
+	case DevLXD:
+		return append(out, e.checkDevLXD(body)...)
+	case Raw:
+		return out
+	}
 	var env struct {
 		Type     string          `json:"type"`
 		Metadata json.RawMessage `json:"metadata"`
@@ -163,6 +281,43 @@ func (e Expectation) Check(status int, header http.Header, body []byte) []eviden
 	}
 	for _, field := range e.Fields {
 		if !has(metadata, field) {
+			add("body."+field, "present", "absent")
+		}
+	}
+	return out
+}
+
+// checkDevLXD checks a devLXD body: an envelope must be a sync one with
+// the fields in its metadata; a plain body has them at the top level.
+func (e Expectation) checkDevLXD(body []byte) []evidence.Observation {
+	var out []evidence.Observation
+	add := func(key string, want, got any) {
+		out = append(out, evidence.Observation{Key: "expectation." + key, Value: Deviation{Expectation: e.Name, Want: want, Got: got}})
+	}
+	content := body
+	if devlxd.DetectFormat(body) == devlxd.FormatEnvelope {
+		var env struct {
+			Type     string          `json:"type"`
+			Metadata json.RawMessage `json:"metadata"`
+		}
+		_ = json.Unmarshal(body, &env) // DetectFormat decoded it already
+		if env.Type != Sync {
+			add("body.type", Sync, env.Type)
+		}
+		content = env.Metadata
+	}
+	if !e.JSON && len(e.Fields) == 0 {
+		return out
+	}
+	var v any
+	dec := json.NewDecoder(bytes.NewReader(content))
+	dec.UseNumber()
+	if err := dec.Decode(&v); err != nil {
+		add("body", "JSON", "not JSON")
+		return out
+	}
+	for _, field := range e.Fields {
+		if !has(v, field) {
 			add("body."+field, "present", "absent")
 		}
 	}
