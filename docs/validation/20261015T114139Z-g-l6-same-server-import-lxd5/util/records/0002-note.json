@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0002",
+  "time": "2026-10-15T11:42:02.086652742Z",
+  "tool_version": "751e4ec",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L6",
+  "cell": "lxd5-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "same-server import: lxd5: lxc export l6-s /root/l6-s.tar --compression none --instance-only; lxc import /root/l6-s.tar l6-s-imported; done; uuid same, uuid.generation same, cloud-init.instance-id same; l6-s uuid 3eb23260-db48-47db-b307-9da3304ae02b; l6-s-imported uuid 3eb23260-db48-47db-b307-9da3304ae02b"
+    }
+  ],
+  "raw": null
+}

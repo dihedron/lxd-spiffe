@@ -1,0 +1,18 @@
+{
+  "status": 500,
+  "header": {
+    "Content-Length": [
+      "128"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Thu, 15 Oct 2026 12:23:35 GMT"
+    ],
+    "X-Content-Type-Options": [
+      "nosniff"
+    ]
+  },
+  "body_text": "[content omitted: 128 bytes, sha256 e56ff0f1b30159c2429bbaf61e7556b4003dadb17cde3ca5253c62cfd0e5472e]"
+}

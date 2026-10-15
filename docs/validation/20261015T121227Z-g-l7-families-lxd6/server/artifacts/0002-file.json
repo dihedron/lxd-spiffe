@@ -1,0 +1,39 @@
+{
+  "status": 200,
+  "header": {
+    "Accept-Ranges": [
+      "bytes"
+    ],
+    "Content-Disposition": [
+      "inline;filename=hostname"
+    ],
+    "Content-Length": [
+      "9"
+    ],
+    "Content-Type": [
+      "application/octet-stream"
+    ],
+    "Date": [
+      "Thu, 15 Oct 2026 12:30:57 GMT"
+    ],
+    "Last-Modified": [
+      "Thu, 15 Oct 2026 12:29:55 GMT"
+    ],
+    "X-Lxd-Gid": [
+      "0"
+    ],
+    "X-Lxd-Mode": [
+      "0644"
+    ],
+    "X-Lxd-Modified": [
+      "2026-10-15 12:29:55 +0000 UTC"
+    ],
+    "X-Lxd-Type": [
+      "file"
+    ],
+    "X-Lxd-Uid": [
+      "0"
+    ]
+  },
+  "body_text": "[content omitted: 9 bytes, sha256 6d8ad10451dc44fdbdeca2f625b446c6cde702d07347b6176f5715e8096fbcc6]"
+}

@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "id": "server/0005",
+  "time": "2026-10-15T12:36:48.653192876Z",
+  "tool_version": "751e4ec",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "l7-alma",
+    "/etc/hostname"
+  ],
+  "gate": "L7",
+  "cell": "lxd6-v-alma",
+  "outcome": "unexpected",
+  "duration_ms": 23,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 500
+    },
+    {
+      "key": "expectation.status",
+      "value": {
+        "expectation": "file",
+        "got": 500,
+        "want": [
+          200
+        ]
+      }
+    },
+    {
+      "key": "expectation.header.X-LXD-*",
+      "value": {
+        "expectation": "file",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "file.headers",
+      "value": {}
+    },
+    {
+      "key": "file.error",
+      "value": "Instance is not running"
+    }
+  ],
+  "raw": [
+    "artifacts/0005-server.json",
+    "artifacts/0005-file.json"
+  ]
+}
