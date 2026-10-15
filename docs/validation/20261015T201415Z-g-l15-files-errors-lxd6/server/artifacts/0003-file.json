@@ -1,0 +1,26 @@
+{
+  "status": 404,
+  "header": {
+    "Content-Length": [
+      "199"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Thu, 15 Oct 2026 20:14:15 GMT"
+    ],
+    "X-Content-Type-Options": [
+      "nosniff"
+    ]
+  },
+  "body": {
+    "error": "Failed accessing \"/run/lxd-probe/no-such-file\" in instance \"v-ubuntu\": file does not exist",
+    "error_code": 404,
+    "metadata": null,
+    "operation": "",
+    "status": "",
+    "status_code": 0,
+    "type": "error"
+  }
+}

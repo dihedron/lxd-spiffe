@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "server/0008",
+  "time": "2026-10-15T20:14:41.544325644Z",
+  "tool_version": "4f4d2e1",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "v-alpine",
+    "/etc/hostname"
+  ],
+  "gate": "L15",
+  "cell": "lxd5-v-alpine",
+  "outcome": "ok",
+  "duration_ms": 24,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0644"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-12 10:11:11 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "file.size",
+      "value": 9
+    },
+    {
+      "key": "file.sha256",
+      "value": "eac244c7e6e1ad508a68e110c3c13394dbb5b2a5bbbfcd8f0ed94d3cd56f6a52"
+    }
+  ],
+  "raw": [
+    "artifacts/0008-server.json",
+    "artifacts/0008-file.json"
+  ]
+}

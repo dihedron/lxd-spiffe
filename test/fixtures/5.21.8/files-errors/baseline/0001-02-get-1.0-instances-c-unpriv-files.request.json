@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "path": "/1.0/instances/c-unpriv/files",
+  "query": "path=%2Fetc%2Fhostname\u0026project=default",
+  "header": {
+    "User-Agent": [
+      "lxd-spiffe/4f4d2e1"
+    ]
+  }
+}
