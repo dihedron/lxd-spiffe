@@ -340,3 +340,60 @@ func watchView(r *run) string {
 	data, _ := json.Marshal(changes)
 	return fmt.Sprintf("exit %d, polls %v, changes %s", r.code, polls, data)
 }
+
+// TestGL6SameServerImport completes G-L6: on lxd5, an export of a stopped
+// copy of c-unpriv imported back on the same server under another name
+// while the original exists, to learn whether LXD keeps volatile.uuid (two
+// instances of one server with one uuid, hence one SPIFFE ID) or refuses
+// or regenerates it. Instance show of both, util diff, a note with the
+// result. It cleans up after itself; it fails only when the probe fails or
+// the evidence is not sanitized, and with LAB_COLLECT=yes copies the run
+// to docs/validation/.
+func TestGL6SameServerImport(t *testing.T) {
+	l := newLab(t)
+	server, base, name := "lxd5", "c-unpriv", "l6-s"
+	runID := time.Now().UTC().Format("20060102T150405Z") + "-g-l6-same-server-import-" + server
+	s := session{evidenceDir: l.evidence, runID: runID}
+	tags := []string{"--gate", "L6", "--cell", server + "-" + base}
+	tarball := "/root/" + name + ".tar"
+	teardown := "sudo lxc delete -f " + name + " 2>/dev/null; sudo lxc delete -f " + name + "-imported 2>/dev/null; sudo rm -f " + tarball + "; true"
+	l.ssh(t, server, teardown)
+	t.Cleanup(func() { l.trySSH(server, teardown) }) //nolint:errcheck // best effort
+
+	for _, c := range []string{"copy " + base + " " + name, "export " + name + " " + tarball + " --compression none --instance-only"} {
+		if _, err := l.trySSH(server, "sudo timeout 10m lxc "+c); err != nil {
+			t.Fatalf("lxc %s: %v", c, err)
+		}
+	}
+	original := l.probe(t, s, server, "full", append([]string{"server", "instance", "show", name}, tags...)...)
+	cmd := "import " + tarball + " " + name + "-imported"
+	out, err := l.trySSH(server, "sudo timeout 10m lxc "+cmd+" 2>&1")
+	result := "done"
+	if err != nil {
+		result = "refused: " + inline(out+" "+err.Error())
+	}
+	view := "no imported instance"
+	if l.exists(server, name+"-imported") {
+		imported := l.probe(t, s, server, "full", append([]string{"server", "instance", "show", name + "-imported"}, tags...)...)
+		l.util(t, s, append([]string{"diff", recordPath(l.evidence, runID, original), recordPath(l.evidence, runID, imported)}, tags...)...)
+		view = identityChange(original, imported)
+		// both instances still there, with their uuids
+		for _, i := range []string{name, name + "-imported"} {
+			uuid, _ := l.trySSH(server, "sudo lxc config get "+i+" volatile.uuid")
+			view += "; " + i + " uuid " + strings.TrimSpace(uuid)
+		}
+	}
+	l.util(t, s, append([]string{"note", fmt.Sprintf("same-server import: %s: lxc export %s %s --compression none --instance-only; lxc %s; %s; %s",
+		server, name, tarball, cmd, result, view)}, tags...)...)
+
+	runDir := filepath.Join(l.evidence, runID)
+	staging := filepath.Join(t.TempDir(), runID)
+	l.sanitize(t, runDir, staging)
+	l.sanitizeCheck(t, staging)
+	t.Logf("run %s, in %s", runID, runDir)
+	t.Logf("  import of %s on %s while it exists: %s; %s", name, server, result, view)
+	t.Log(ruleL6)
+	if os.Getenv("LAB_COLLECT") == "yes" && !t.Failed() {
+		l.collectRun(t, runID, staging)
+	}
+}

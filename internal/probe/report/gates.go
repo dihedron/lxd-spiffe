@@ -60,7 +60,7 @@ var axes = map[string][]Axis{
 	"L3":  {servers, {"instance", instances}},
 	"L4":  {servers, {"instance", []string{"c-unpriv", "c-priv", "v-ubuntu"}}},
 	"L6":  {servers, {"instance", []string{"c-unpriv", "v-ubuntu"}}},
-	"L7":  {servers, {"instance", []string{"v-ubuntu", "v-debian", "v-alpine"}}},
+	"L7":  {servers, {"instance", []string{"v-ubuntu", "v-debian", "v-alpine", "v-rocky", "v-alma"}}},
 	"L8":  {servers},
 	"L9":  {servers, {"identity", []string{"read", "files", "edit", "full", "outsider"}}},
 	"L11": {{"server", []string{"cluster"}}},
