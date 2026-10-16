@@ -1,0 +1,146 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Fri, 16 Oct 2026 19:48:03 GMT"
+    ],
+    "Etag": [
+      "\"a6de4c3e32166abbdbd39db1d5c697b8a65585c2e72ec1007f1f5eb36aef8130\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "backups": null,
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS (release)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "disk1.img",
+        "image.version": "24.04",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "d4ff18198fb2ed8c88d408421e610c143cf1f5c1c0178e57178fb586880c3e56",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "456bfd6a-304c-40da-a6d7-670edcf49ba0",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tap85f1a2dd",
+        "volatile.eth0.hwaddr": "mac-2",
+        "volatile.evacuate.origin": "c6n2",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.last_state.ready": "false",
+        "volatile.uuid": "b7f2acdf-a9c7-4b17-a77a-85f4777322ef",
+        "volatile.uuid.generation": "b7f2acdf-a9c7-4b17-a77a-85f4777322ef",
+        "volatile.vsock_id": "1781687016"
+      },
+      "created_at": "2026-10-15T20:59:31.385053117Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS (release)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "disk1.img",
+        "image.version": "24.04",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "d4ff18198fb2ed8c88d408421e610c143cf1f5c1c0178e57178fb586880c3e56",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "456bfd6a-304c-40da-a6d7-670edcf49ba0",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tap85f1a2dd",
+        "volatile.eth0.hwaddr": "mac-2",
+        "volatile.evacuate.origin": "c6n2",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.last_state.ready": "false",
+        "volatile.uuid": "b7f2acdf-a9c7-4b17-a77a-85f4777322ef",
+        "volatile.uuid.generation": "b7f2acdf-a9c7-4b17-a77a-85f4777322ef",
+        "volatile.vsock_id": "1781687016"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-16T19:48:02.527608012Z",
+      "location": "c6n1",
+      "name": "v-ubuntu",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "snapshots": null,
+      "state": {
+        "cpu": {
+          "usage": 0
+        },
+        "disk": {
+          "root": {
+            "total": 0,
+            "usage": 889105408
+          }
+        },
+        "memory": {
+          "swap_usage": 0,
+          "swap_usage_peak": 0,
+          "total": 0,
+          "usage": 0,
+          "usage_peak": 0
+        },
+        "network": {
+          "eth0": {
+            "addresses": [],
+            "counters": {
+              "bytes_received": 0,
+              "bytes_sent": 0,
+              "errors_received": 0,
+              "errors_sent": 0,
+              "packets_dropped_inbound": 0,
+              "packets_dropped_outbound": 0,
+              "packets_received": 0,
+              "packets_sent": 0
+            },
+            "host_name": "tap85f1a2dd",
+            "hwaddr": "mac-2",
+            "mtu": 1500,
+            "state": "up",
+            "type": "broadcast"
+          }
+        },
+        "pid": 5383,
+        "processes": -1,
+        "status": "Running",
+        "status_code": 103
+      },
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "virtual-machine"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

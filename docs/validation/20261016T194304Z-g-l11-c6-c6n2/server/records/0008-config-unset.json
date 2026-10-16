@@ -1,0 +1,68 @@
+{
+  "schema": 1,
+  "id": "server/0008",
+  "time": "2026-10-16T19:47:12.506828521Z",
+  "tool_version": "1c024f5",
+  "env": "server",
+  "verb": "config unset",
+  "args": [
+    "v-ubuntu",
+    "user.lxd-probe.l11",
+    "--method",
+    "patch-null"
+  ],
+  "gate": "L11",
+  "cell": "c6-c6n2-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 94,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175",
+    "member": "c6n2"
+  },
+  "expectations": [
+    "instance",
+    "instance-patch",
+    "instance"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "before.http_status",
+      "value": 200
+    },
+    {
+      "key": "unset.present_before",
+      "value": true
+    },
+    {
+      "key": "write.http_status",
+      "value": 200
+    },
+    {
+      "key": "write.duration_ms",
+      "value": 56
+    },
+    {
+      "key": "write.completed_at",
+      "value": "2026-10-16T19:47:12.589074976Z"
+    },
+    {
+      "key": "after.http_status",
+      "value": 200
+    },
+    {
+      "key": "unset.result",
+      "value": "gone"
+    }
+  ],
+  "raw": [
+    "artifacts/0008-server.json",
+    "artifacts/0008-before.json",
+    "artifacts/0008-write.json",
+    "artifacts/0008-after.json"
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "id": "server/0003",
+  "time": "2026-10-16T19:47:16.036988912Z",
+  "tool_version": "1c024f5",
+  "env": "server",
+  "verb": "instance watch",
+  "args": [
+    "v-ubuntu",
+    "--for",
+    "8m0s",
+    "--interval",
+    "1s"
+  ],
+  "gate": "L11",
+  "cell": "c6-moves-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 480853,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175",
+    "member": "c6n1"
+  },
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "watch.started",
+      "value": "2026-10-16T19:47:16.052819902Z"
+    },
+    {
+      "key": "watch.initial",
+      "value": {
+        "cloud-init.instance-id": "[redacted]",
+        "etag": "\"61b25a6cafb6550f2b2e8a4d45b0d9d206b72cb78ac7ddb61be6398e3f38dca7\"",
+        "location": "c6n2",
+        "present": true,
+        "status": "Running",
+        "uuid": "b7f2acdf-a9c7-4b17-a77a-85f4777322ef",
+        "uuid.generation": "b7f2acdf-a9c7-4b17-a77a-85f4777322ef"
+      }
+    },
+    {
+      "key": "watch.polls",
+      "value": 468
+    },
+    {
+      "key": "watch.changes",
+      "value": [
+        {
+          "at": "2026-10-16T19:47:57.849105643Z",
+          "field": "status",
+          "from": "Running",
+          "to": "Stopped"
+        },
+        {
+          "at": "2026-10-16T19:47:57.849105643Z",
+          "field": "etag",
+          "from": "\"61b25a6cafb6550f2b2e8a4d45b0d9d206b72cb78ac7ddb61be6398e3f38dca7\"",
+          "to": "\"88ad0f027bcd124439477954d6071f1cd0f68b47cf3a36255f0f629b68845a44\""
+        },
+        {
+          "at": "2026-10-16T19:48:02.022922021Z",
+          "field": "location",
+          "from": "c6n2",
+          "to": "c6n1"
+        },
+        {
+          "at": "2026-10-16T19:48:03.045437226Z",
+          "field": "status",
+          "from": "Stopped",
+          "to": "Running"
+        },
+        {
+          "at": "2026-10-16T19:48:03.045437226Z",
+          "field": "etag",
+          "from": "\"88ad0f027bcd124439477954d6071f1cd0f68b47cf3a36255f0f629b68845a44\"",
+          "to": "\"a6de4c3e32166abbdbd39db1d5c697b8a65585c2e72ec1007f1f5eb36aef8130\""
+        },
+        {
+          "at": "2026-10-16T19:49:02.148582649Z",
+          "field": "status",
+          "from": "Running",
+          "to": "Stopped"
+        },
+        {
+          "at": "2026-10-16T19:49:02.148582649Z",
+          "field": "etag",
+          "from": "\"a6de4c3e32166abbdbd39db1d5c697b8a65585c2e72ec1007f1f5eb36aef8130\"",
+          "to": "\"76802bca9e2e853d1db96f3ba9bde78b31ca3f336d472e1a8245f4992691026c\""
+        },
+        {
+          "at": "2026-10-16T19:49:07.245292268Z",
+          "field": "location",
+          "from": "c6n1",
+          "to": "c6n2"
+        },
+        {
+          "at": "2026-10-16T19:49:07.245292268Z",
+          "field": "status",
+          "from": "Stopped",
+          "to": "Running"
+        },
+        {
+          "at": "2026-10-16T19:49:07.245292268Z",
+          "field": "etag",
+          "from": "\"76802bca9e2e853d1db96f3ba9bde78b31ca3f336d472e1a8245f4992691026c\"",
+          "to": "\"95a853b24464a57255cfff59a99a0c2c3df3b4dd7efdb4383cab849449f6a01b\""
+        }
+      ]
+    },
+    {
+      "key": "watch.final",
+      "value": {
+        "cloud-init.instance-id": "[redacted]",
+        "etag": "\"95a853b24464a57255cfff59a99a0c2c3df3b4dd7efdb4383cab849449f6a01b\"",
+        "location": "c6n2",
+        "present": true,
+        "status": "Running",
+        "uuid": "b7f2acdf-a9c7-4b17-a77a-85f4777322ef",
+        "uuid.generation": "b7f2acdf-a9c7-4b17-a77a-85f4777322ef"
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0003-server.json"
+  ]
+}

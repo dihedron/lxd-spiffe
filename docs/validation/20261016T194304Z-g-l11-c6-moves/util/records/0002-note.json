@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0002",
+  "time": "2026-10-16T19:47:16.014330716Z",
+  "tool_version": "1c024f5",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L11",
+  "cell": "c6-moves-notes",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "snap and deb packages are not compared: Ubuntu 24.04 has no LXD deb; the lab runs the snap"
+    }
+  ],
+  "raw": null
+}

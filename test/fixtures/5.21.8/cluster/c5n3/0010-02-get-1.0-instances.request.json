@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "path": "/1.0/instances",
+  "query": "filter=config.volatile.uuid+eq+857c2b48-4869-4ff1-b370-e62b6fa480ae\u0026project=default\u0026recursion=1",
+  "header": {
+    "User-Agent": [
+      "lxd-spiffe/1c024f5"
+    ]
+  }
+}
