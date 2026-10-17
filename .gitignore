@@ -40,3 +40,6 @@ test/lab/.state/
 # lxd-probe working runs (lab.sh probe); sanitized evidence goes to docs/validation/
 /evidence/
 test/lab/lab.local.env
+
+# SonarQube scanner work directory
+.scannerwork/
