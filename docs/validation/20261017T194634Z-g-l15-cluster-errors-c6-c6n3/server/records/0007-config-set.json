@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "id": "server/0007",
+  "time": "2026-10-17T19:46:34.78599129Z",
+  "tool_version": "f744f22",
+  "env": "server",
+  "verb": "config set",
+  "args": [
+    "v-ubuntu",
+    "user.lxd-probe.l15",
+    "x",
+    "--method",
+    "patch",
+    "--if-match",
+    "stale"
+  ],
+  "gate": "L15",
+  "cell": "c6-c6n3-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 267,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175",
+    "member": "c6n3"
+  },
+  "expectations": [
+    "instance",
+    "instance-patch",
+    "instance-patch+412",
+    "instance"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "before.http_status",
+      "value": 200
+    },
+    {
+      "key": "pre.http_status",
+      "value": 200
+    },
+    {
+      "key": "pre.duration_ms",
+      "value": 44
+    },
+    {
+      "key": "pre.completed_at",
+      "value": "2026-10-17T19:46:34.935383155Z"
+    },
+    {
+      "key": "write.http_status",
+      "value": 412
+    },
+    {
+      "key": "write.duration_ms",
+      "value": 15
+    },
+    {
+      "key": "write.completed_at",
+      "value": "2026-10-17T19:46:34.951147904Z"
+    },
+    {
+      "key": "write.error",
+      "value": "ETag does not match: 851bc787ac204595ee4659d96089dbebefbdcf44e9c7e5ed218b3f2389f36376 vs 4880425e23efad455a9f451a823825d6e0257acc026d99ead2059f664e1c9d5e. The configuration has been modified since this change began. Please retrieve the updated configuration before proceeding."
+    },
+    {
+      "key": "after.http_status",
+      "value": 200
+    },
+    {
+      "key": "config.after",
+      "value": {
+        "user.lxd-probe.l15": "x~pre"
+      }
+    },
+    {
+      "key": "instance.status_before",
+      "value": "Running"
+    },
+    {
+      "key": "instance.status_after",
+      "value": "Running"
+    },
+    {
+      "key": "instance.restarted",
+      "value": false
+    }
+  ],
+  "raw": [
+    "artifacts/0007-server.json",
+    "artifacts/0007-before.json",
+    "artifacts/0007-pre.json",
+    "artifacts/0007-write.json",
+    "artifacts/0007-after.json"
+  ]
+}

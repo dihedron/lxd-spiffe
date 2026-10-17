@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "id": "server/0002",
+  "time": "2026-10-17T19:42:50.855383033Z",
+  "tool_version": "28a7a97",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "c-unpriv",
+    "/etc/hostname",
+    "--expect-denied"
+  ],
+  "gate": "L15",
+  "cell": "c5-c5n3-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 60,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684",
+    "member": "c5n3"
+  },
+  "expectations": [
+    "file+denied"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 403
+    },
+    {
+      "key": "file.headers",
+      "value": {}
+    },
+    {
+      "key": "file.error",
+      "value": "Forbidden"
+    }
+  ],
+  "raw": [
+    "artifacts/0002-server.json",
+    "artifacts/0002-file.json"
+  ]
+}

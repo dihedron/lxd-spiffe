@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "path": "/1.0/instances/lab-missing",
+  "query": "project=default",
+  "header": {
+    "User-Agent": [
+      "lxd-spiffe/28a7a97"
+    ]
+  }
+}

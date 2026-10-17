@@ -1,0 +1,26 @@
+{
+  "status": 412,
+  "header": {
+    "Content-Length": [
+      "380"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sat, 17 Oct 2026 19:42:51 GMT"
+    ],
+    "X-Content-Type-Options": [
+      "nosniff"
+    ]
+  },
+  "body": {
+    "error": "ETag doesn't match: 75bed0c0d9fd94879c5f737c95b819573097d5f817023ae6291f1bb3bd32cf66 vs 51f57c063c439e344671f896da717cb29ec1e0bcac3d72c86c5b56113cd758bb. The configuration has been modified since this change began. Please retrieve the updated configuration before proceeding.",
+    "error_code": 412,
+    "metadata": null,
+    "operation": "",
+    "status": "",
+    "status_code": 0,
+    "type": "error"
+  }
+}

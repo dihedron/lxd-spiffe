@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "run_id": "20261017T194634Z-g-l15-cluster-errors-c6-c6n3",
+  "env": "server",
+  "created": "2026-10-17T19:46:34.072050961Z",
+  "tool_version": "f744f22",
+  "git_commit": "f744f22fe2c2af84f0dee74b1d3ea3dd6280763f",
+  "host": "redacted",
+  "endpoint": "https://10.251.0.26:8443"
+}

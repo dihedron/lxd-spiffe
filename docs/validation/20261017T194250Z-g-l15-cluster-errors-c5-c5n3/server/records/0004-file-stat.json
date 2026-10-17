@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "id": "server/0004",
+  "time": "2026-10-17T19:42:51.075487814Z",
+  "tool_version": "28a7a97",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "c-unpriv",
+    "/run/lxd-probe/no-such-file"
+  ],
+  "gate": "L15",
+  "cell": "c5-c5n3-c-unpriv",
+  "outcome": "unexpected",
+  "duration_ms": 68,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684",
+    "member": "c5n3"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 404
+    },
+    {
+      "key": "expectation.status",
+      "value": {
+        "expectation": "file",
+        "got": 404,
+        "want": [
+          200
+        ]
+      }
+    },
+    {
+      "key": "expectation.header.X-LXD-*",
+      "value": {
+        "expectation": "file",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "file.headers",
+      "value": {}
+    },
+    {
+      "key": "file.error",
+      "value": "Not Found"
+    }
+  ],
+  "raw": [
+    "artifacts/0004-server.json",
+    "artifacts/0004-file.json"
+  ]
+}

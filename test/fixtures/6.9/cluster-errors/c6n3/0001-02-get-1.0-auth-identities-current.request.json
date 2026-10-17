@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "path": "/1.0/auth/identities/current",
+  "query": "project=default",
+  "header": {
+    "User-Agent": [
+      "lxd-spiffe/f744f22"
+    ]
+  }
+}

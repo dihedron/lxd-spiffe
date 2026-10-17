@@ -1,0 +1,64 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "1562"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sat, 17 Oct 2026 19:46:34 GMT"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "authentication_method": "tls",
+      "effective_groups": [
+        "lab-files"
+      ],
+      "effective_permissions": [
+        {
+          "entitlement": "can_view",
+          "entity_type": "project",
+          "url": "/1.0/projects/default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-unpriv?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-ubuntu?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-unpriv?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-ubuntu?project=default"
+        }
+      ],
+      "expires_at": "2028-10-10T18:30:04Z",
+      "fine_grained": true,
+      "groups": [
+        "lab-files"
+      ],
+      "id": "35a15e84d9342f3ce91a56ae2668916456f71e498f54dd6ffb0fd540e63afcef",
+      "name": "lab-files",
+      "tls_certificate": "[redacted]\n",
+      "type": "Client certificate"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}
