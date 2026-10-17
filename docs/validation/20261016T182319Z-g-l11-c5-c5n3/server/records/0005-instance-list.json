@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "id": "server/0005",
+  "time": "2026-10-16T18:27:10.580440966Z",
+  "tool_version": "1c024f5",
+  "env": "server",
+  "verb": "instance list",
+  "args": [
+    "--filter",
+    "config.volatile.uuid eq c31241cf-92a9-41b7-9501-23458982b6dd"
+  ],
+  "gate": "L11",
+  "cell": "c5-c5n3-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 42,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684",
+    "member": "c5n3"
+  },
+  "expectations": [
+    "instance-list"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "list.filter",
+      "value": "config.volatile.uuid eq c31241cf-92a9-41b7-9501-23458982b6dd"
+    },
+    {
+      "key": "list.http_status",
+      "value": 200
+    },
+    {
+      "key": "instances",
+      "value": [
+        {
+          "location": "c5n1",
+          "name": "c-unpriv",
+          "status": "Running",
+          "type": "container",
+          "uuid": "c31241cf-92a9-41b7-9501-23458982b6dd"
+        }
+      ]
+    },
+    {
+      "key": "instances.count",
+      "value": 1
+    }
+  ],
+  "raw": [
+    "artifacts/0005-server.json",
+    "artifacts/0005-list.json"
+  ]
+}

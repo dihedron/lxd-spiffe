@@ -64,24 +64,58 @@ select_scenarios() {
 	done
 	((${#LAB_SELECTED[@]} > 0)) || die "no scenario selected: set LAB_SCENARIOS or --scenario"
 	case "$LAB_CLUSTER" in
-	no | "") ;;
-	yes) die "LAB_CLUSTER=yes is not built yet: the cluster comes with gate L11" ;;
-	*) die "LAB_CLUSTER must be yes or no, not \"$LAB_CLUSTER\"" ;;
+	no | "" | 5.21 | 6.9 | both) ;;
+	*) die "LAB_CLUSTER must be no, 5.21, 6.9 or both, not \"$LAB_CLUSTER\"" ;;
 	esac
 }
 
 # scenario_selected NAME: whether NAME is in LAB_SELECTED.
 scenario_selected() { [[ " ${LAB_SELECTED[*]} " == *" $1 "* ]]; }
 
+# Every cluster the lab can have: c5 (LXD 5.21 LTS) and c6 (6.x).
+readonly LAB_ALL_CLUSTERS=(c5 c6)
+
+# lab_clusters: the clusters LAB_CLUSTER chooses, one per line.
+lab_clusters() {
+	case "$LAB_CLUSTER" in
+	5.21) echo c5 ;;
+	6.9) echo c6 ;;
+	both) printf '%s\n' c5 c6 ;;
+	esac
+}
+
+# is_cluster NAME: whether NAME is one of the lab's clusters.
+is_cluster() { [[ " ${LAB_ALL_CLUSTERS[*]} " == *" $1 "* ]]; }
+
+# cluster_members CLUSTER: its member VMs, the first one bootstraps it.
+cluster_members() { printf '%s\n' "${1}n1" "${1}n2" "${1}n3"; }
+
+# cluster_sibling CLUSTER: the standalone server whose channel and revision
+# the cluster runs.
+cluster_sibling() {
+	case "$1" in
+	c5) echo lxd5 ;;
+	c6) echo lxd6 ;;
+	esac
+}
+
+# server_vms SERVER: the VMs of a server: its own, or a cluster's members.
+server_vms() {
+	if is_cluster "$1"; then
+		cluster_members "$1"
+	else
+		echo "$1"
+	fi
+}
+
 # lab_vms: the VMs of the selected scenarios and topology, one per line.
 lab_vms() {
+	local cluster
 	echo lxd5
 	echo lxd6
-	if [[ "$LAB_CLUSTER" == yes ]]; then
-		echo node1
-		echo node2
-		echo node3
-	fi
+	for cluster in $(lab_clusters); do
+		cluster_members "$cluster"
+	done
 	if scenario_selected plugins; then
 		echo spire
 	fi
@@ -93,7 +127,7 @@ vm_size() {
 	local kind
 	case "$1" in
 	lxd5 | lxd6) kind=LXD ;;
-	node*) kind=NODE ;;
+	c5n[1-3] | c6n[1-3]) kind=NODE ;;
 	spire) kind=SPIRE ;;
 	*) die "unknown VM $1" ;;
 	esac
@@ -109,16 +143,22 @@ vm_domain() { echo "$LAB_NETWORK-$1"; }
 
 # Every VM the lab can have, in any scenario and topology: the network knows
 # them all, and "down" removes them all.
-readonly LAB_ALL_VMS=(lxd5 lxd6 node1 node2 node3 spire)
+readonly LAB_ALL_VMS=(lxd5 lxd6 c5n1 c5n2 c5n3 c6n1 c6n2 c6n3 spire)
 
-# vm_host VM: the host part of the VM's address.
+# vm_host VM: the host part of the VM's address; a cluster's is its first
+# member's, so that what reaches a server by name reaches a cluster through
+# that member.
 vm_host() {
 	case "$1" in
 	lxd5) echo "$LAB_LXD5_HOST" ;;
 	lxd6) echo "$LAB_LXD6_HOST" ;;
-	node1) echo "$LAB_NODE1_HOST" ;;
-	node2) echo "$LAB_NODE2_HOST" ;;
-	node3) echo "$LAB_NODE3_HOST" ;;
+	c5n1) echo "$LAB_C5N1_HOST" ;;
+	c5n2) echo "$LAB_C5N2_HOST" ;;
+	c5n3) echo "$LAB_C5N3_HOST" ;;
+	c6n1) echo "$LAB_C6N1_HOST" ;;
+	c6n2) echo "$LAB_C6N2_HOST" ;;
+	c6n3) echo "$LAB_C6N3_HOST" ;;
+	c5 | c6) vm_host "${1}n1" ;;
 	spire) echo "$LAB_SPIRE_HOST" ;;
 	*) die "unknown VM $1" ;;
 	esac

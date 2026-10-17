@@ -56,6 +56,7 @@ type Server struct {
 	deny      []string             // path prefixes answered with 403
 	hidden    []string             // projects answered with 404
 	exts      []string             // api_extensions of GET /1.0
+	member    string               // server_name of GET /1.0 when clustered
 	nextOp    int
 	replay    map[string][]evidence.Fixture
 	// bearerExpiry, when set, refuses bearer tokens from then on, as LXD
@@ -210,6 +211,14 @@ func (s *Server) SetExtensions(extensions ...string) {
 	s.exts = extensions
 }
 
+// SetClusterMember makes the fake a cluster member named name, as
+// GET /1.0 reports it (server_clustered, server_name).
+func (s *Server) SetClusterMember(name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.member = name
+}
+
 // SetInstanceConfig changes one config key of an instance, and its ETag.
 func (s *Server) SetInstanceConfig(project, name, key, value string) {
 	s.mu.Lock()
@@ -325,12 +334,16 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	switch {
 	case r.URL.Path == "/1.0" && r.Method == http.MethodGet:
+		name := "fake"
+		if s.member != "" {
+			name = s.member
+		}
 		writeSync(w, map[string]any{
 			"api_extensions": s.exts,
 			"api_version":    "1.0",
 			"auth":           "trusted",
 			"environment": map[string]any{
-				"server_version": "6.5", "server_clustered": false, "server_name": "fake",
+				"server_version": "6.5", "server_clustered": s.member != "", "server_name": name,
 				"kernel": "Linux", "kernel_version": "6.8.0", "driver": "lxc | qemu", "driver_version": "6.0.0 | 8.2.2",
 			},
 		}, "")

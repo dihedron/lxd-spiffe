@@ -45,7 +45,8 @@ type Record struct {
 	Outcome Outcome `json:"outcome"`
 	// DurationMS is the duration of the command.
 	DurationMS int64 `json:"duration_ms"`
-	// Server attributes a server record to a server version (PRE-02).
+	// Server attributes a server record to a server version and, on a
+	// cluster, to the member that answered (PRE-02).
 	Server *ServerInfo `json:"server,omitempty"`
 	// Expectations name the expectations the responses were checked
 	// against, in call order (PRE-06).
@@ -62,6 +63,9 @@ type ServerInfo struct {
 	Version string `json:"version"`
 	// APIExtensionsHash is HashExtensions of the server's api_extensions.
 	APIExtensionsHash string `json:"api_extensions_hash"`
+	// Member is the cluster member that answered (environment.server_name);
+	// empty on a standalone server.
+	Member string `json:"member,omitempty"`
 }
 
 // Observation is one structured finding.

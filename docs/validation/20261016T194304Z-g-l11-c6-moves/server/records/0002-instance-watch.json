@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "id": "server/0002",
+  "time": "2026-10-16T19:47:16.036944149Z",
+  "tool_version": "1c024f5",
+  "env": "server",
+  "verb": "instance watch",
+  "args": [
+    "c-unpriv",
+    "--for",
+    "8m0s",
+    "--interval",
+    "1s"
+  ],
+  "gate": "L11",
+  "cell": "c6-moves-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 480948,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175",
+    "member": "c6n1"
+  },
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "watch.started",
+      "value": "2026-10-16T19:47:16.057655663Z"
+    },
+    {
+      "key": "watch.initial",
+      "value": {
+        "cloud-init.instance-id": "[redacted]",
+        "etag": "\"23faf5e8c9b110502af5698e0ca8d226b8a76a7c6a7efc620ad6f76ce3b0837c\"",
+        "idmap.base": "0",
+        "idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "location": "c6n1",
+        "present": true,
+        "status": "Running",
+        "uuid": "9a434824-fcfa-431a-b33e-95f6ffa8b7bd",
+        "uuid.generation": "9a434824-fcfa-431a-b33e-95f6ffa8b7bd"
+      }
+    },
+    {
+      "key": "watch.polls",
+      "value": 467
+    },
+    {
+      "key": "watch.changes",
+      "value": [
+        {
+          "at": "2026-10-16T19:47:18.118459277Z",
+          "field": "status",
+          "from": "Running",
+          "to": "Stopped"
+        },
+        {
+          "at": "2026-10-16T19:47:18.118459277Z",
+          "field": "etag",
+          "from": "\"23faf5e8c9b110502af5698e0ca8d226b8a76a7c6a7efc620ad6f76ce3b0837c\"",
+          "to": "\"dda26917393409bb10c509fcb1a3ce2adf1a2667de5de4a7cd642869163ebf8a\""
+        },
+        {
+          "at": "2026-10-16T19:47:30.413389012Z",
+          "field": "location",
+          "from": "c6n1",
+          "to": "c6n3"
+        },
+        {
+          "at": "2026-10-16T19:47:43.035837411Z",
+          "field": "etag",
+          "from": "\"dda26917393409bb10c509fcb1a3ce2adf1a2667de5de4a7cd642869163ebf8a\"",
+          "to": "\"027840800f4f01b1129a710e778ed6412c587977c5fde9e7289ea768f1abf9b3\""
+        },
+        {
+          "at": "2026-10-16T19:47:44.082049833Z",
+          "field": "status",
+          "from": "Stopped",
+          "to": "Running"
+        }
+      ]
+    },
+    {
+      "key": "watch.final",
+      "value": {
+        "cloud-init.instance-id": "[redacted]",
+        "etag": "\"027840800f4f01b1129a710e778ed6412c587977c5fde9e7289ea768f1abf9b3\"",
+        "idmap.base": "0",
+        "idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "location": "c6n3",
+        "present": true,
+        "status": "Running",
+        "uuid": "9a434824-fcfa-431a-b33e-95f6ffa8b7bd",
+        "uuid.generation": "9a434824-fcfa-431a-b33e-95f6ffa8b7bd"
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0002-server.json"
+  ]
+}

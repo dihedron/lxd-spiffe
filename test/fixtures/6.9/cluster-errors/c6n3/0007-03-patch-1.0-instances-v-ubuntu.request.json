@@ -1,0 +1,21 @@
+{
+  "method": "PATCH",
+  "path": "/1.0/instances/v-ubuntu",
+  "query": "project=default",
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "If-Match": [
+      "\"4880425e23efad455a9f451a823825d6e0257acc026d99ead2059f664e1c9d5e\""
+    ],
+    "User-Agent": [
+      "lxd-spiffe/f744f22"
+    ]
+  },
+  "body": {
+    "config": {
+      "user.lxd-probe.l15": "x~pre"
+    }
+  }
+}

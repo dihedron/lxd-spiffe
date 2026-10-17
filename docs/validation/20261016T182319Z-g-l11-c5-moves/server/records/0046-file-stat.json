@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "id": "server/0046",
+  "time": "2026-10-16T18:28:40.961217011Z",
+  "tool_version": "1c024f5",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "v-ubuntu",
+    "/etc/hostname"
+  ],
+  "gate": "L11",
+  "cell": "c5-moves-v-ubuntu",
+  "outcome": "unexpected",
+  "duration_ms": 44,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684",
+    "member": "c5n1"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 500
+    },
+    {
+      "key": "expectation.status",
+      "value": {
+        "expectation": "file",
+        "got": 500,
+        "want": [
+          200
+        ]
+      }
+    },
+    {
+      "key": "expectation.header.X-LXD-*",
+      "value": {
+        "expectation": "file",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "file.headers",
+      "value": {}
+    },
+    {
+      "key": "file.error",
+      "value": "Instance is not running"
+    }
+  ],
+  "raw": [
+    "artifacts/0046-server.json",
+    "artifacts/0046-file.json"
+  ]
+}

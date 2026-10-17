@@ -259,7 +259,18 @@ func (l *lab) exists(server, name string) bool {
 // a function that waits for it and returns its run (nil rec on failure).
 func (l *lab) startProbe(t *testing.T, s session, server, identity string, args ...string) func() *run {
 	t.Helper()
-	full := append([]string{"probe", server, "--as", identity, "--"}, args...)
+	return l.startProbeMember(t, s, server, "", identity, args...)
+}
+
+// startProbeMember is startProbe through a cluster member (none: the first).
+func (l *lab) startProbeMember(t *testing.T, s session, server, member, identity string, args ...string) func() *run {
+	t.Helper()
+	full := []string{"probe", server}
+	if member != "" {
+		full = append(full, "--member", member)
+	}
+	full = append(full, "--as", identity, "--")
+	full = append(full, args...)
 	full = append(full, "--json", "--evidence-dir", s.evidenceDir)
 	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), full...)
 	cmd.Env = append(os.Environ(), "LXD_PROBE_RUN_ID="+s.runID)

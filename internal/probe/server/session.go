@@ -213,7 +213,8 @@ func (s *session) decode(name string, resp *lxd.RawResponse, v any) bool {
 }
 
 // readServer reads GET /1.0, which attributes the record to a server
-// version (PRE-02), and checks it against exp when not nil.
+// version and, on a cluster, to the member that answered (PRE-02), and
+// checks it against exp when not nil.
 func (s *session) readServer(ctx context.Context, exp *expect.Expectation) (*lxd.RawResponse, error) {
 	resp, err := s.call(ctx, "server", lxd.RawRequest{Method: http.MethodGet, Path: "/1.0"}, exp)
 	if err != nil {
@@ -223,6 +224,9 @@ func (s *session) readServer(ctx context.Context, exp *expect.Expectation) (*lxd
 	if s.decode("server", resp, &srv) {
 		s.server = &srv
 		s.rec.Server = &evidence.ServerInfo{Version: srv.Environment.ServerVersion, APIExtensionsHash: evidence.HashExtensions(srv.APIExtensions)}
+		if srv.Environment.ServerClustered {
+			s.rec.Server.Member = srv.Environment.ServerName
+		}
 	}
 	return resp, nil
 }

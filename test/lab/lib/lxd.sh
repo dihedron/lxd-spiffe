@@ -5,8 +5,13 @@
 
 readonly LXD_PORT=8443
 
-# lab_servers: the LXD servers among the VMs of the selected scenarios.
-lab_servers() { lab_vms | grep -v '^spire$'; }
+# lab_servers: the LXD servers of the selected topology: the standalone ones,
+# then the chosen clusters (each after its sibling, whose revision it runs).
+lab_servers() {
+	echo lxd5
+	echo lxd6
+	lab_clusters
+}
 
 # lxd_channel SERVER: the snap channel the server follows.
 lxd_channel() {
@@ -48,10 +53,26 @@ lxd_store_revision() {
 
 # lxd_resolve SERVER: records the server's channel and revision in env.json,
 # unless a previous (possibly partial) "up" did: the pinned revision, or the
-# channel's current one.
+# channel's current one. A cluster runs its standalone sibling's, resolved
+# before it (lab_servers lists the siblings first).
 lxd_resolve() {
-	local server="$1" channel revision found
+	local server="$1" channel revision found sibling member
 	[[ "$(env_get ".servers[\"$server\"].revision // empty")" == "" ]] || return 0
+	if is_cluster "$server"; then
+		sibling="$(cluster_sibling "$server")"
+		channel="$(env_get ".servers[\"$sibling\"].channel // empty")"
+		revision="$(env_get ".servers[\"$sibling\"].revision // empty")"
+		[[ -n "$revision" ]] || die "$server: $sibling's revision is not resolved"
+		info "$server: LXD $channel revision $revision, as $sibling"
+		env_set ".servers[\"$server\"].channel" "$channel"
+		env_set ".servers[\"$server\"].revision" "$revision"
+		env_set ".servers[\"$server\"].endpoint" "$(lxd_endpoint "$server")"
+		env_set ".servers[\"$server\"].cluster" yes
+		for member in $(cluster_members "$server"); do
+			env_set ".servers[\"$server\"].members[\"$member\"].endpoint" "$(lxd_endpoint "$member")"
+		done
+		return 0
+	fi
 	channel="$(lxd_channel "$server")"
 	revision="$(lxd_pinned_revision "$server")"
 	if [[ -z "$revision" ]]; then
@@ -72,8 +93,8 @@ lxd_resolve() {
 # lxc then fails with "cannot locate base snap". A VM reverted to an older
 # snapshot is the likeliest to start one at boot.
 snap_hold() {
-	local server="$1"
-	vm_ssh "$server" 'set -e
+	local vm="$1"
+	vm_ssh "$vm" 'set -e
 		sudo snap wait system seed.loaded
 		sudo snap refresh --hold lxd >/dev/null
 		sudo snap refresh --hold >/dev/null
@@ -81,15 +102,21 @@ snap_hold() {
 			snap changes | awk "NR > 1 && \$2 ~ /^(Do|Doing|Undo|Undoing|Wait)$/ { busy = 1 } END { exit !busy }" || exit 0
 			sleep 5
 		done
-		exit 1' || die "$server: snapd is still busy after 10 minutes (lab.sh ssh $server snap changes)"
+		exit 1' || die "$vm: snapd is still busy after 10 minutes (lab.sh ssh $vm snap changes)"
 }
 
-# lxd_install SERVER: installs the snap at the recorded channel and revision,
-# and holds refreshes (snap_hold).
+# lxd_install SERVER: installs the snap at the recorded channel and revision
+# on each of the server's VMs, and holds refreshes (snap_hold).
 lxd_install() {
-	local server="$1" channel revision current tracking
-	channel="$(env_get ".servers[\"$server\"].channel")"
-	revision="$(env_get ".servers[\"$server\"].revision")"
+	local server="$1" vm
+	for vm in $(server_vms "$server"); do
+		lxd_install_vm "$vm" "$(env_get ".servers[\"$server\"].channel")" "$(env_get ".servers[\"$server\"].revision")"
+	done
+}
+
+# lxd_install_vm VM CHANNEL REVISION
+lxd_install_vm() {
+	local server="$1" channel="$2" revision="$3" current tracking
 	vm_ssh "$server" "sudo snap wait system seed.loaded" >/dev/null
 	read -r current tracking < <(vm_ssh "$server" "snap list lxd 2>/dev/null" | awk 'NR == 2 { print $3, $4 }') || true
 	if [[ -z "$current" ]]; then
@@ -113,6 +140,13 @@ lxd_install() {
 # root's default range (1000000, 1000000000) keeps every other map as it is
 # without these files. Done before any instance exists.
 lxd_allow_idmap() {
+	local vm
+	for vm in $(server_vms "$1"); do
+		lxd_allow_idmap_vm "$vm"
+	done
+}
+
+lxd_allow_idmap_vm() {
 	local server="$1"
 	vm_ssh "$server" "grep -qx root:1000:1 /etc/subuid && grep -qx root:1000:1 /etc/subgid" && return
 	info "$server: allowing LXD to map uid and gid 1000 (raw.idmap)"
@@ -125,7 +159,8 @@ lxd_allow_idmap() {
 		sudo lxd waitready --timeout=300' || die "$server: cannot allow LXD to map uid 1000"
 }
 
-# lxd_preseed SERVER: the server's lxd init preseed.
+# lxd_preseed SERVER [MEMBER]: the server's lxd init preseed; with MEMBER,
+# the bootstrap of a cluster by that member.
 lxd_preseed() {
 	local storage
 	case "$LAB_LXD_STORAGE" in
@@ -160,12 +195,73 @@ profiles:
       name: eth0
       network: lxdbr0
 PRESEED
+	if [[ -n "${2:-}" ]]; then
+		cat <<CLUSTER
+cluster:
+  server_name: $2
+  enabled: true
+CLUSTER
+	fi
+}
+
+# lxd_join_preseed MEMBER TOKEN: the preseed by which MEMBER joins a
+# cluster: the pool and the bridge are the cluster's; only the pool's size is
+# the member's own.
+lxd_join_preseed() {
+	cat <<PRESEED
+cluster:
+  enabled: true
+  server_name: $1
+  server_address: "$(vm_ip "$1"):$LXD_PORT"
+  cluster_token: "$2"
+PRESEED
+	if [[ "$LAB_LXD_STORAGE" == zfs ]]; then
+		cat <<MEMBER
+  member_config:
+  - entity: storage-pool
+    name: default
+    key: size
+    value: ${LAB_LXD_ZFS_GIB}GiB
+MEMBER
+	fi
+}
+
+# lxd_init_cluster CLUSTER: the first member bootstraps the cluster with the
+# lab's preseed, the others join it with a join token each; members already
+# in it are left alone.
+lxd_init_cluster() {
+	local cluster="$1" first member members token
+	for member in $(cluster_members "$cluster"); do
+		vm_ssh "$member" "sudo lxd waitready --timeout=300" || die "$member: LXD does not start (lab.sh logs $member snap.lxd.daemon)"
+	done
+	first="$(cluster_members "$cluster" | head -n1)"
+	if ! members="$(vm_ssh "$first" "sudo lxc query /1.0/cluster/members" 2>/dev/null)" || [[ "$(jq -r 'length' <<<"$members")" == 0 ]]; then
+		[[ -z "$(vm_ssh "$first" "sudo lxc storage list -f csv 2>/dev/null")" ]] ||
+			die "$first: LXD is initialized but not clustered: lab.sh down, or reinstall LXD on it"
+		info "$cluster: $first bootstraps the cluster ($LAB_LXD_STORAGE storage, lxdbr0, $(lxd_endpoint "$first"))"
+		lxd_preseed "$first" "$first" | vm_ssh "$first" "sudo lxd init --preseed" ||
+			die "$first: cannot bootstrap cluster $cluster"
+		members="$(vm_ssh "$first" "sudo lxc query /1.0/cluster/members")"
+	fi
+	for member in $(cluster_members "$cluster" | tail -n +2); do
+		jq -e --arg m "$member" '.[] | select(endswith("/" + $m))' <<<"$members" >/dev/null && continue
+		info "$cluster: $member joins the cluster"
+		# a token left by an interrupted up would make "cluster add" fail
+		vm_ssh "$first" "sudo lxc cluster revoke-token $member" >/dev/null 2>&1 || true
+		token="$(vm_ssh "$first" "sudo lxc cluster add $member --quiet")" || die "$cluster: no join token for $member"
+		lxd_join_preseed "$member" "$token" | vm_ssh "$member" "sudo lxd init --preseed" ||
+			die "$member: cannot join cluster $cluster"
+	done
 }
 
 # lxd_init SERVER: initializes the server with its preseed, unless it has a
 # storage pool already.
 lxd_init() {
 	local server="$1"
+	if is_cluster "$server"; then
+		lxd_init_cluster "$server"
+		return
+	fi
 	vm_ssh "$server" "sudo lxd waitready --timeout=300" || die "$server: LXD does not start (lab.sh logs $server snap.lxd.daemon)"
 	if [[ -n "$(vm_ssh "$server" "sudo lxc storage list -f csv 2>/dev/null")" ]]; then
 		return
@@ -197,6 +293,7 @@ lxd_check() {
 	fp_wire="$(openssl s_client -connect "$(vm_ip "$server"):$LXD_PORT" </dev/null 2>/dev/null | lxd_fingerprint_pem)"
 	[[ -n "$fp_local" && "$fp_local" == "$fp_wire" ]] ||
 		die "$server: the certificate on $endpoint ($fp_wire) is not the server's ($fp_local)"
+	is_cluster "$server" && lxd_check_members "$server" "$fp_local"
 	version="$(jq -r .environment.server_version <<<"$local_json")"
 	# as evidence.HashExtensions: sorted, joined by newlines, SHA-256
 	hash="sha256:$(jq -j '.api_extensions | sort | join("\n")' <<<"$local_json" | sha256sum | cut -d' ' -f1)"
@@ -208,18 +305,36 @@ lxd_check() {
 	info "$server: LXD $version at $endpoint, pin ${fp_local:0:16}..."
 }
 
+# lxd_check_members CLUSTER PIN: every member is online, and presents the
+# cluster's certificate (PIN) on its own address.
+lxd_check_members() {
+	local cluster="$1" pin="$2" members member fp
+	members="$(vm_lxc "$cluster" query "/1.0/cluster/members?recursion=1")" || die "$cluster: cannot list the members"
+	for member in $(cluster_members "$cluster"); do
+		[[ "$(jq -r --arg m "$member" '.[] | select(.server_name == $m) | .status' <<<"$members")" == Online ]] ||
+			die "$cluster: $member is not an online member: $(jq -c --arg m "$member" '.[] | select(.server_name == $m) | {status, message}' <<<"$members")"
+		fp="$(openssl s_client -connect "$(vm_ip "$member"):$LXD_PORT" </dev/null 2>/dev/null | lxd_fingerprint_pem)"
+		[[ "$fp" == "$pin" ]] || die "$cluster: $member presents $fp, not the cluster's certificate $pin"
+	done
+}
+
 # lxd_verify SERVER: waits until the server is ready, then checks that it
 # answers over the lab network with the pin and version env.json records.
 lxd_verify() {
-	local server="$1" fp version
-	snap_hold "$server"
-	vm_ssh "$server" "sudo lxd waitready --timeout=300" || die "$server: LXD does not start (lab.sh logs $server snap.lxd.daemon)"
+	local server="$1" fp version vm
+	for vm in $(server_vms "$server"); do
+		snap_hold "$vm"
+		vm_ssh "$vm" "sudo lxd waitready --timeout=300" || die "$vm: LXD does not start (lab.sh logs $vm snap.lxd.daemon)"
+	done
 	fp="$(openssl s_client -connect "$(vm_ip "$server"):$LXD_PORT" </dev/null 2>/dev/null | lxd_fingerprint_pem)"
 	[[ "$fp" == "$(env_get ".servers[\"$server\"].fingerprint")" ]] ||
 		die "$server: the certificate on $(lxd_endpoint "$server") ($fp) is not the recorded pin"
 	version="$(vm_lxc "$server" query /1.0 | jq -r .environment.server_version)"
 	[[ "$version" == "$(env_get ".servers[\"$server\"].version")" ]] ||
 		die "$server: LXD is $version, env.json records $(env_get ".servers[\"$server\"].version")"
+	if is_cluster "$server"; then
+		lxd_check_members "$server" "$fp"
+	fi
 }
 
 # lxd_refresh_plan SERVER: prints "SERVER CURRENT NEW VERSION" when the
@@ -227,6 +342,10 @@ lxd_verify() {
 # not otherwise.
 lxd_refresh_plan() {
 	local server="$1" channel current pinned found
+	if is_cluster "$server"; then
+		info "$server: follows $(cluster_sibling "$server") (up installs the sibling's revision on a new cluster): left alone" >&2
+		return
+	fi
 	channel="$(env_get ".servers[\"$server\"].channel")"
 	current="$(env_get ".servers[\"$server\"].revision")"
 	pinned="$(lxd_pinned_revision "$server")"

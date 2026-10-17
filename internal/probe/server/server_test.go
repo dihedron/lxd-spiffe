@@ -174,7 +174,7 @@ func TestInfo(t *testing.T) {
 	if rec.Outcome != evidence.OutcomeOK || rec.Verb != "info" {
 		t.Errorf("outcome %q verb %q; observations %v", rec.Outcome, rec.Verb, rec.Observations)
 	}
-	if rec.Server == nil || rec.Server.Version != "6.5" || rec.Server.APIExtensionsHash != evidence.HashExtensions([]string{"access_management", "projects"}) {
+	if rec.Server == nil || rec.Server.Version != "6.5" || rec.Server.APIExtensionsHash != evidence.HashExtensions([]string{"access_management", "projects"}) || rec.Server.Member != "" {
 		t.Errorf("server = %+v", rec.Server)
 	}
 	if got := observation(t, rec, "extensions.required.missing"); !reflect.DeepEqual(got, []any{"instance_generation_id"}) {
@@ -286,6 +286,24 @@ func TestInstanceShow(t *testing.T) {
 		t.Errorf("requests: %+v", reqs)
 	}
 	golden(t, "instance-show", rec)
+}
+
+// TestClusterMember checks that a record through a cluster names the
+// member that answered (PRE-02, L11).
+func TestClusterMember(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	fake.SetClusterMember("c5n2")
+	fake.AddInstance("default", "c1", map[string]string{"volatile.uuid": "8d4e1c2a"})
+	opts := options(t, fake)
+	cmd := &InstanceShow{ServerCommand: opts, stdout: &bytes.Buffer{}}
+	cmd.Args.Name = "c1"
+	if err := cmd.Execute(nil); err != nil {
+		t.Fatal(err)
+	}
+	rec := record(t, opts, 1)
+	if rec.Server == nil || rec.Server.Member != "c5n2" {
+		t.Errorf("server = %+v", rec.Server)
+	}
 }
 
 func TestInstanceShowNotFound(t *testing.T) {

@@ -1,0 +1,136 @@
+{
+  "schema": 1,
+  "id": "server/0001",
+  "time": "2026-10-16T18:27:12.158838825Z",
+  "tool_version": "1c024f5",
+  "env": "server",
+  "verb": "instance watch",
+  "args": [
+    "v-ubuntu",
+    "--for",
+    "20m0s",
+    "--interval",
+    "1s"
+  ],
+  "gate": "L11",
+  "cell": "c5-moves-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 1200220,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684",
+    "member": "c5n1"
+  },
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "watch.started",
+      "value": "2026-10-16T18:27:12.177107573Z"
+    },
+    {
+      "key": "watch.initial",
+      "value": {
+        "cloud-init.instance-id": "[redacted]",
+        "etag": "\"3b70e4fb557f1ff286605b03208bf7e22f51530e594b59b73a789cf510954a33\"",
+        "location": "c5n2",
+        "present": true,
+        "status": "Running",
+        "uuid": "857c2b48-4869-4ff1-b370-e62b6fa480ae",
+        "uuid.generation": "857c2b48-4869-4ff1-b370-e62b6fa480ae"
+      }
+    },
+    {
+      "key": "watch.polls",
+      "value": 1177
+    },
+    {
+      "key": "watch.changes",
+      "value": [
+        {
+          "at": "2026-10-16T18:27:51.287328359Z",
+          "field": "etag",
+          "from": "\"3b70e4fb557f1ff286605b03208bf7e22f51530e594b59b73a789cf510954a33\"",
+          "to": "\"a5be2f8ef5490c41735e29ada36d3852380c0f639544a2c2ef5534fadbd3b6da\""
+        },
+        {
+          "at": "2026-10-16T18:27:52.326659663Z",
+          "field": "status",
+          "from": "Running",
+          "to": "Stopped"
+        },
+        {
+          "at": "2026-10-16T18:27:52.326659663Z",
+          "field": "etag",
+          "from": "\"a5be2f8ef5490c41735e29ada36d3852380c0f639544a2c2ef5534fadbd3b6da\"",
+          "to": "\"9aacb0b8507c48ca6e22eb0f2df710aef4cb36f7a55c447e1444d226ce05e643\""
+        },
+        {
+          "at": "2026-10-16T18:27:56.453700805Z",
+          "field": "location",
+          "from": "c5n2",
+          "to": "c5n1"
+        },
+        {
+          "at": "2026-10-16T18:27:56.453700805Z",
+          "field": "status",
+          "from": "Stopped",
+          "to": "Running"
+        },
+        {
+          "at": "2026-10-16T18:27:56.453700805Z",
+          "field": "etag",
+          "from": "\"9aacb0b8507c48ca6e22eb0f2df710aef4cb36f7a55c447e1444d226ce05e643\"",
+          "to": "\"2c09a20b3845b4c8d3ad7ea264d2842b2501fdd8815dfea3621b8833b2376aee\""
+        },
+        {
+          "at": "2026-10-16T18:28:36.955652118Z",
+          "field": "status",
+          "from": "Running",
+          "to": "Stopped"
+        },
+        {
+          "at": "2026-10-16T18:28:36.955652118Z",
+          "field": "etag",
+          "from": "\"2c09a20b3845b4c8d3ad7ea264d2842b2501fdd8815dfea3621b8833b2376aee\"",
+          "to": "\"b39791431d7f7508c963449ac640af8822f46aba2eb42be7098a55fbafbf5c2a\""
+        },
+        {
+          "at": "2026-10-16T18:28:42.120370978Z",
+          "field": "location",
+          "from": "c5n1",
+          "to": "c5n2"
+        },
+        {
+          "at": "2026-10-16T18:28:42.120370978Z",
+          "field": "status",
+          "from": "Stopped",
+          "to": "Running"
+        },
+        {
+          "at": "2026-10-16T18:28:42.120370978Z",
+          "field": "etag",
+          "from": "\"b39791431d7f7508c963449ac640af8822f46aba2eb42be7098a55fbafbf5c2a\"",
+          "to": "\"2408bfabec8007743f91b21eac05f6b9f355e4e092fc0ccfc74d65bd52ac4333\""
+        }
+      ]
+    },
+    {
+      "key": "watch.final",
+      "value": {
+        "cloud-init.instance-id": "[redacted]",
+        "etag": "\"2408bfabec8007743f91b21eac05f6b9f355e4e092fc0ccfc74d65bd52ac4333\"",
+        "location": "c5n2",
+        "present": true,
+        "status": "Running",
+        "uuid": "857c2b48-4869-4ff1-b370-e62b6fa480ae",
+        "uuid.generation": "857c2b48-4869-4ff1-b370-e62b6fa480ae"
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0001-server.json"
+  ]
+}

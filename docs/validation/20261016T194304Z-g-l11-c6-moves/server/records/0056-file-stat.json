@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "id": "server/0056",
+  "time": "2026-10-16T19:49:11.095196905Z",
+  "tool_version": "1c024f5",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "v-ubuntu",
+    "/etc/hostname"
+  ],
+  "gate": "L11",
+  "cell": "c6-moves-v-ubuntu",
+  "outcome": "unexpected",
+  "duration_ms": 37,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175",
+    "member": "c6n1"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 500
+    },
+    {
+      "key": "expectation.status",
+      "value": {
+        "expectation": "file",
+        "got": 500,
+        "want": [
+          200
+        ]
+      }
+    },
+    {
+      "key": "expectation.header.X-LXD-*",
+      "value": {
+        "expectation": "file",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "file.headers",
+      "value": {}
+    },
+    {
+      "key": "file.error",
+      "value": "LXD VM agent is not currently running"
+    }
+  ],
+  "raw": [
+    "artifacts/0056-server.json",
+    "artifacts/0056-file.json"
+  ]
+}

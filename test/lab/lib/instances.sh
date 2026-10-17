@@ -1,19 +1,30 @@
 # shellcheck shell=bash
-# The baseline instances of the probe's lab matrix, on every LXD server: four
-# containers and five VMs in the default project, and one container in the
-# restricted project. Each has a user "probe" with uid 1000.
+# The baseline instances of the probe's lab matrix: on each standalone LXD
+# server, four containers and five VMs in the default project, and one
+# container in the restricted project; on each cluster, c-unpriv on the first
+# member and v-ubuntu on the second (gate L11). Each has a user "probe" with
+# uid 1000.
 
 readonly LAB_RESTRICTED_PROJECT=restricted
 readonly LAB_RESTRICTED_BRIDGE=lxdbr1
 
-# baseline_instances: "PROJECT NAME KIND IMAGE-SETTING CONFIG..." per line.
+# baseline_instances SERVER: "PROJECT NAME KIND IMAGE-SETTING CONFIG..." per
+# line.
 # In CONFIG, "_" stands for a space and @nosecureboot for the server's way to
 # boot a VM without secure boot (Alpine's images are not signed), and
-# @selinux-enforcing a VM that ensure_selinux makes run SELinux enforcing. c-priv needs
+# @selinux-enforcing a VM that ensure_selinux makes run SELinux enforcing,
+# and @member=N the cluster member the instance is created on. c-priv needs
 # nesting: under LXD's AppArmor profile, a privileged Ubuntu 24.04 container
 # cannot set up the mount namespaces of systemd's services (no network).
 # Loops read it on fd 3: the ssh inside them reads stdin.
 baseline_instances() {
+	if is_cluster "${1:?baseline_instances needs a server}"; then
+		cat <<INSTANCES
+default c-unpriv container LAB_IMAGE_UBUNTU @member=1
+default v-ubuntu vm LAB_IMAGE_UBUNTU @member=2
+INSTANCES
+		return
+	fi
 	cat <<INSTANCES
 default c-unpriv container LAB_IMAGE_UBUNTU
 default c-priv container LAB_IMAGE_UBUNTU security.privileged=true security.nesting=true
@@ -100,6 +111,10 @@ ensure_instances() {
 		fi
 		for config in $config; do
 			[[ "$config" == @selinux-enforcing ]] && continue # ensure_selinux
+			if [[ "$config" == @member=* ]]; then
+				args+=(--target "$(cluster_members "$server" | sed -n "${config#@member=}p")")
+				continue
+			fi
 			[[ "$config" == @nosecureboot ]] && config="$(nosecureboot_config "$server")"
 			args+=(-c "${config//_/ }")
 		done
@@ -111,7 +126,7 @@ ensure_instances() {
 			vm_lxc "$server" delete --force "$name" --project "$project" >/dev/null 2>&1 || true
 			die "$server: cannot launch $project/$name"
 		fi
-	done 3< <(baseline_instances)
+	done 3< <(baseline_instances "$server")
 }
 
 # wait_instances SERVER: waits until every baseline instance runs commands
@@ -133,7 +148,8 @@ wait_instances() {
 		env_set ".servers[\"$server\"].instances[\"$project/$name\"].type" "$(jq -r .type <<<"$json")"
 		env_set ".servers[\"$server\"].instances[\"$project/$name\"].image" "$(jq -r '.config["image.description"] // ""' <<<"$json")"
 		env_set ".servers[\"$server\"].instances[\"$project/$name\"].fingerprint" "$(jq -r '.config["volatile.base_image"]' <<<"$json")"
-	done 3< <(baseline_instances)
+		env_set ".servers[\"$server\"].instances[\"$project/$name\"].location" "$(jq -r '.location' <<<"$json")"
+	done 3< <(baseline_instances "$server")
 	info "$server: the baseline instances are ready"
 }
 
@@ -189,15 +205,15 @@ ensure_selinux() {
 		label="$(guest_exec "$server" "$project" "$name" "ps -eo label,comm | awk '\$2 == \"lxd-agent\" { print \$1 }'")"
 		[[ "$label" == *:unconfined_service_t:* ]] || die "$server: lxd-agent in $project/$name runs as \"$label\", not unconfined_service_t"
 		info "$server: $project/$name runs SELinux enforcing, lxd-agent as $label"
-	done 3< <(baseline_instances)
+	done 3< <(baseline_instances "$server")
 }
 
 # baseline_grants SERVER: the identities' grants on the baseline instances.
 baseline_grants() {
 	local server="$1" project
-	for project in default "$LAB_RESTRICTED_PROJECT"; do
+	for project in $(baseline_instances "$server" | awk '{ print $1 }' | sort -u); do
 		# shellcheck disable=SC2046 # one instance name per word
-		lab_grant "$server" "$project" $(baseline_instances | awk -v p="$project" '$1 == p { print $2 }')
+		lab_grant "$server" "$project" $(baseline_instances "$server" | awk -v p="$project" '$1 == p { print $2 }')
 	done
 }
 
@@ -209,7 +225,7 @@ stop_instances() {
 		info "$server: stopping $project/$name"
 		vm_lxc "$server" stop "$name" --project "$project" --timeout 120 >/dev/null ||
 			die "$server: $project/$name does not stop cleanly; no snapshot taken"
-	done 3< <(baseline_instances)
+	done 3< <(baseline_instances "$server")
 }
 
 # start_instances SERVER: starts the baseline instances that are not running.
@@ -222,7 +238,7 @@ start_instances() {
 		info "$server: starting $project/$name"
 		vm_lxc "$server" start "$name" --project "$project" >/dev/null ||
 			die "$server: cannot start $project/$name"
-	done 3< <(baseline_instances)
+	done 3< <(baseline_instances "$server")
 }
 
 # instance_status SERVER PROJECT NAME: Running, Stopped, ...

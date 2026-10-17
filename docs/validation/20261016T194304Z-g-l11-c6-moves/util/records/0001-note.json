@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0001",
+  "time": "2026-10-16T19:47:16.009311855Z",
+  "tool_version": "1c024f5",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L11",
+  "cell": "c6-moves-notes",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "live migration is not run: it needs migration.stateful for VMs and CRIU for containers"
+    }
+  ],
+  "raw": null
+}

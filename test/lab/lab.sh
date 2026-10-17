@@ -48,10 +48,12 @@ commands:
   reset                     return the lab to its baseline (cold boot)
   deploy                    build and install what the scenarios need; after
                             reset, the inner loop after a code change
-  probe <server> [--as <identity>] -- <args>
-                            run lxd-probe on this host against a server, as
-                            an identity: read, files, edit, full (default),
-                            outsider, or bearer where the server has one
+  probe <server> [--member <vm>] [--as <identity>] -- <args>
+                            run lxd-probe on this host against a server (a
+                            cluster through its first member, or --member),
+                            as an identity: read, files, edit, full
+                            (default), outsider, or bearer where the server
+                            has one
   guest <server> <instance> [--project <project>] [--user <uid>] -- <args>
                             run lxd-probe inside an instance (as root
                             unless --user is given)
@@ -72,7 +74,9 @@ commands:
   help                      show this help
 
 preflight, up, deploy, reset and test take --scenario probe|plugins|all
-(default: LAB_SCENARIOS, now "$LAB_SCENARIOS").
+(default: LAB_SCENARIOS, now "$LAB_SCENARIOS"). LAB_CLUSTER (now
+"$LAB_CLUSTER": no, 5.21, 6.9 or both) chooses the running clusters for every
+command.
 
 Settings are in lab.env, overridden by lab.local.env and by the environment.
 USAGE
@@ -146,6 +150,7 @@ cmd_up() {
 	for vm in $(lab_vms); do
 		wait_for_vm "$vm"
 	done
+	shutdown_unchosen_clusters
 
 	section "LXD"
 	for server in $(lab_servers); do
@@ -158,7 +163,7 @@ cmd_up() {
 
 	section "Instances"
 	for server in $(lab_servers); do
-		ensure_restricted_project "$server"
+		is_cluster "$server" || ensure_restricted_project "$server"
 		ensure_instances "$server"
 	done
 	for server in $(lab_servers); do
@@ -179,6 +184,20 @@ cmd_up() {
 
 	section "Done"
 	info "the lab is up: lab.sh status, lab.sh ssh <vm>, lab.sh reset"
+}
+
+# shutdown_unchosen_clusters: shuts down the members of every built cluster
+# LAB_CLUSTER does not choose; they keep their disks and snapshot.
+shutdown_unchosen_clusters() {
+	local cluster member
+	for cluster in "${LAB_ALL_CLUSTERS[@]}"; do
+		lab_clusters | grep -qx "$cluster" && continue
+		for member in $(cluster_members "$cluster"); do
+			[[ "$(vm_state "$member")" == running ]] || continue
+			info "$cluster is not chosen (LAB_CLUSTER=$LAB_CLUSTER): shutting $member down"
+			vm_shutdown "$member"
+		done
+	done
 }
 
 cmd_down() {
@@ -210,7 +229,8 @@ cmd_status() {
 		"\tpin \(.fingerprint // "?")",
 		"\textensions \(.api_extensions_hash // "?")",
 		"\tauthorization \(.auth.model // "?"), bearer identities: \(.auth.bearer // "?")",
-		(.instances // {} | to_entries[] | "\t\(.key)\t\(.value.type)\t\(.value.image)")' |
+		(select(.cluster == "yes") | "\tcluster members \(.members // {} | keys | join(" "))"),
+		(.instances // {} | to_entries[] | "\t\(.key)\t\(.value.type)\t\(.value.image)\(if .value.location and .value.location != "none" then " on \(.value.location)" else "" end)")' |
 		while IFS= read -r line; do info "$line"; done
 	section "Snapshot"
 	if all_snapshots_exist; then
@@ -314,7 +334,7 @@ cmd_test() {
 	done
 	scenario_selected probe || die "no tests for the selected scenarios yet"
 	[[ -n "$(env_get '.probe.sha256 // empty')" ]] || die "lxd-probe is not deployed: run lab.sh deploy"
-	export LAB_DIR REPO_DIR LAB_STATE_DIR LAB_EVIDENCE_DIR LAB_GUEST_VM_VCPUS LAB_GUEST_VM_RAM_GIB
+	export LAB_DIR REPO_DIR LAB_STATE_DIR LAB_EVIDENCE_DIR LAB_GUEST_VM_VCPUS LAB_GUEST_VM_RAM_GIB LAB_CLUSTER
 	export LAB_COLLECT="$collect"
 	local args=(-tags lab -count=1 -v -timeout 60m)
 	[[ -z "$run" ]] || args+=(-run "$run")

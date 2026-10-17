@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "id": "server/0012",
+  "time": "2026-10-16T18:27:28.058389597Z",
+  "tool_version": "1c024f5",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "c-unpriv",
+    "/etc/hostname"
+  ],
+  "gate": "L11",
+  "cell": "c5-moves-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 94,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684",
+    "member": "c5n1"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0644"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-15 20:49:14 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "file.size",
+      "value": 9
+    },
+    {
+      "key": "file.sha256",
+      "value": "6a2665061162d5214e8bc9403503e27347784c3c7091288e1dd021783b7256a7"
+    }
+  ],
+  "raw": [
+    "artifacts/0012-server.json",
+    "artifacts/0012-file.json"
+  ]
+}

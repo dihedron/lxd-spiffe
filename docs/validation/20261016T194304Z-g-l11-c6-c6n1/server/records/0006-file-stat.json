@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "id": "server/0006",
+  "time": "2026-10-16T19:47:10.565471628Z",
+  "tool_version": "1c024f5",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "v-ubuntu",
+    "/etc/hostname"
+  ],
+  "gate": "L11",
+  "cell": "c6-c6n1-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 45,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175",
+    "member": "c6n1"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0644"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-15 21:00:07 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "file.size",
+      "value": 9
+    },
+    {
+      "key": "file.sha256",
+      "value": "9d1bbc078b2cf4b4bd8839e322bd519019c3711810352161f720919c2548304d"
+    }
+  ],
+  "raw": [
+    "artifacts/0006-server.json",
+    "artifacts/0006-file.json"
+  ]
+}

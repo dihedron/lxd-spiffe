@@ -1,0 +1,97 @@
+{
+  "schema": 1,
+  "id": "server/0001",
+  "time": "2026-10-17T19:42:50.811182117Z",
+  "tool_version": "28a7a97",
+  "env": "server",
+  "verb": "whoami",
+  "args": [],
+  "gate": "L15",
+  "cell": "c5-c5n3-whoami",
+  "outcome": "ok",
+  "duration_ms": 17,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684",
+    "member": "c5n3"
+  },
+  "expectations": [
+    "identity-current"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.authentication_method",
+      "value": "tls"
+    },
+    {
+      "key": "identity.type",
+      "value": "Client certificate"
+    },
+    {
+      "key": "identity.id",
+      "value": "35a15e84d9342f3ce91a56ae2668916456f71e498f54dd6ffb0fd540e63afcef"
+    },
+    {
+      "key": "identity.name",
+      "value": "lab-files"
+    },
+    {
+      "key": "identity.groups",
+      "value": [
+        "lab-files"
+      ]
+    },
+    {
+      "key": "identity.effective_groups",
+      "value": [
+        "lab-files"
+      ]
+    },
+    {
+      "key": "identity.effective_permissions",
+      "value": [
+        {
+          "entitlement": "can_view",
+          "entity_type": "project",
+          "url": "/1.0/projects/default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-unpriv?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-ubuntu?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/c-unpriv?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/v-ubuntu?project=default"
+        }
+      ]
+    },
+    {
+      "key": "identity.fine_grained",
+      "value": true
+    }
+  ],
+  "raw": [
+    "artifacts/0001-server.json",
+    "artifacts/0001-identity.json"
+  ]
+}

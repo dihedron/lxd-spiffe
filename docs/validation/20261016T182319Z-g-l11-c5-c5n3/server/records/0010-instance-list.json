@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "id": "server/0010",
+  "time": "2026-10-16T18:27:11.233753326Z",
+  "tool_version": "1c024f5",
+  "env": "server",
+  "verb": "instance list",
+  "args": [
+    "--filter",
+    "config.volatile.uuid eq 857c2b48-4869-4ff1-b370-e62b6fa480ae"
+  ],
+  "gate": "L11",
+  "cell": "c5-c5n3-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 41,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684",
+    "member": "c5n3"
+  },
+  "expectations": [
+    "instance-list"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "list.filter",
+      "value": "config.volatile.uuid eq 857c2b48-4869-4ff1-b370-e62b6fa480ae"
+    },
+    {
+      "key": "list.http_status",
+      "value": 200
+    },
+    {
+      "key": "instances",
+      "value": [
+        {
+          "location": "c5n2",
+          "name": "v-ubuntu",
+          "status": "Running",
+          "type": "virtual-machine",
+          "uuid": "857c2b48-4869-4ff1-b370-e62b6fa480ae"
+        }
+      ]
+    },
+    {
+      "key": "instances.count",
+      "value": 1
+    }
+  ],
+  "raw": [
+    "artifacts/0010-server.json",
+    "artifacts/0010-list.json"
+  ]
+}
