@@ -126,8 +126,13 @@ func TestGL15ClusterErrors(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Logf("  agent answers:        %s", stat("files", "v-ubuntu", "/etc/hostname"))
-			if left := l.ssh(t, members[0], "sudo lxc config show c-unpriv; sudo lxc config show v-ubuntu"); strings.Contains(left, "user.lxd-probe.l15") {
-				t.Errorf("user.lxd-probe.l15 left behind: a stale PATCH was applied")
+			// --if-match stale first writes x~pre with the ETag it read, to
+			// make that ETag stale: x~pre must be left, never x
+			for _, name := range []string{"c-unpriv", "v-ubuntu"} {
+				if got := strings.TrimSpace(l.ssh(t, members[0], "sudo lxc config get "+name+" user.lxd-probe.l15")); got != "x~pre" {
+					t.Errorf("%s: user.lxd-probe.l15 is %q, not x~pre: the stale PATCH was applied", name, got)
+				}
+				l.ssh(t, members[0], "sudo lxc config unset "+name+" user.lxd-probe.l15")
 			}
 
 			runDir := filepath.Join(l.evidence, runID)
