@@ -27,7 +27,7 @@ vm_shutdown() {
 	info "shutting $vm down"
 	vsh shutdown "$(vm_domain "$vm")" >/dev/null
 	until [[ "$(vm_state "$vm")" == "shut off" ]]; do
-		((SECONDS < deadline)) || die "$vm does not shut down (virsh console $(vm_domain "$vm")); no snapshot taken"
+		((SECONDS < deadline)) || die "$vm does not shut down (virsh console $(vm_domain "$vm"))"
 		sleep 3
 	done
 }
@@ -94,4 +94,59 @@ lab_reset() {
 	done
 	lab_ready
 	info "the lab is back to the snapshot taken $(env_get '.snapshot.taken')"
+}
+
+# server_vms SERVER: the VMs a server runs on, one or a cluster's members.
+server_vms() {
+	if is_cluster "$1"; then
+		cluster_members "$1"
+	else
+		echo "$1"
+	fi
+}
+
+# lab_stop: stops the baseline instances of every running server, then shuts
+# every running VM of the lab down cleanly, unchosen clusters included; disks,
+# snapshot and state stay, and lab.sh start resumes from them.
+lab_stop() {
+	local server vm running=()
+	for server in lxd5 lxd6 "${LAB_ALL_CLUSTERS[@]}"; do
+		for vm in $(server_vms "$server"); do
+			[[ "$(vm_state "$vm")" == running ]] || continue 2
+		done
+		stop_instances "$server"
+	done
+	for vm in "${LAB_ALL_VMS[@]}"; do
+		[[ "$(vm_state "$vm")" == running ]] || continue
+		running+=("$vm")
+		# every VM at once, then wait for each
+		vsh shutdown "$(vm_domain "$vm")" >/dev/null
+	done
+	((${#running[@]})) || {
+		info "no VM of the lab is running"
+		return 0
+	}
+	for vm in "${running[@]}"; do
+		vm_shutdown "$vm"
+	done
+	info "the lab is stopped: lab.sh start resumes it"
+}
+
+# lab_start: boots the VMs LAB_CLUSTER chooses, as they were left (no revert,
+# no deploy), shuts the unchosen clusters down, then checks the servers and
+# starts the baseline instances.
+lab_start() {
+	local vm
+	for vm in $(lab_vms); do
+		[[ "$(vm_state "$vm")" != absent ]] || die "$vm does not exist: run lab.sh up"
+	done
+	run_preflight --no-install || die "the preflight failed: fix the failures above and run lab.sh start again"
+	shutdown_unchosen_clusters
+	for vm in $(lab_vms); do
+		[[ "$(vm_state "$vm")" == running ]] && continue
+		info "starting $vm"
+		vsh start "$(vm_domain "$vm")" >/dev/null
+	done
+	lab_ready
+	info "the lab is up: lab.sh status, lab.sh ssh <vm>, lab.sh stop"
 }

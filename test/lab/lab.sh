@@ -46,6 +46,10 @@ commands:
   snapshot                  save the lab's disks as its baseline (the VMs are
                             shut down for it)
   reset                     return the lab to its baseline (cold boot)
+  stop                      stop the instances and shut every VM down
+                            cleanly; disks, snapshot and state stay
+  start                     boot the VMs as they were left (no revert, no
+                            deploy) and start the instances
   deploy                    build and install what the scenarios need; after
                             reset, the inner loop after a code change
   probe <server> [--member <vm>] [--as <identity>] -- <args>
@@ -371,7 +375,7 @@ main() {
 		esac
 	done
 	case "$command" in
-	preflight | up | deploy | reset | test) select_scenarios "$scenario" ;;
+	preflight | up | deploy | reset | start | test) select_scenarios "$scenario" ;;
 	*) [[ -z "$scenario" ]] || die "lab.sh $command does not take --scenario" ;;
 	esac
 
@@ -382,7 +386,7 @@ main() {
 	status) cmd_status ;;
 	ssh) cmd_ssh "${args[@]}" ;;
 	logs) cmd_logs "${args[@]}" ;;
-	snapshot | reset)
+	snapshot | reset | stop | start)
 		# the whole lab: every scenario built so far
 		require_state
 		select_scenarios "$(env_get '.scenarios | join(" ")')"
