@@ -185,6 +185,8 @@ pf_resources() {
 		pf_ok "${available} GiB of memory available, ${need} GiB needed (${detail})"
 	fi
 
+	pf_pool_dir || return 0
+
 	# the VMs' disks, plus their memory, which the snapshots save; what the
 	# lab's pool already holds is used, not needed
 	local disk_need held=0
@@ -203,6 +205,21 @@ pf_resources() {
 	disk_need=$((disk_need > held ? disk_need - held : 0))
 	pf_space "VM disks and snapshots" "$LAB_POOL_DIR" "$disk_need"
 	pf_space "download cache" "$LAB_CACHE_DIR" "$PF_CACHE_GIB"
+}
+
+# pf_pool_dir: fails when the lab's pool already exists in another directory
+# than LAB_POOL_DIR, which up would otherwise ignore without a word (the pool
+# keeps its directory); the space checks are then skipped, since they would
+# measure a directory the lab does not use
+pf_pool_dir() {
+	have virsh || return 0
+	local current
+	current="$(virsh -q -c qemu:///system pool-dumpxml "$LAB_POOL" 2>/dev/null | sed -n 's|.*<path>\(.*\)</path>.*|\1|p' | head -n 1)"
+	[[ -n "$current" ]] || return 0
+	if [[ "$(realpath -m "$current")" != "$(realpath -m "$LAB_POOL_DIR")" ]]; then
+		pf_fail "storage pool $LAB_POOL is in $current, not in LAB_POOL_DIR ($LAB_POOL_DIR): set LAB_POOL_DIR back, or run lab.sh down (it destroys the lab) and up again to move it"
+		return 1
+	fi
 }
 
 # pf_space WHAT PATH GIB
