@@ -224,7 +224,7 @@ stop_instances() {
 		[[ "$(instance_status "$server" "$project" "$name")" == Running ]] || continue
 		info "$server: stopping $project/$name"
 		vm_lxc "$server" stop "$name" --project "$project" --timeout 120 >/dev/null ||
-			die "$server: $project/$name does not stop cleanly; no snapshot taken"
+			die "$server: $project/$name does not stop cleanly"
 	done 3< <(baseline_instances "$server")
 }
 
