@@ -61,3 +61,15 @@ proto: ## regenerate the Go code of the wire protocol (needs protoc; protoc-gen-
 	@tmp="$$(mktemp -d)"; trap 'rm -rf "$$tmp"' EXIT; \
 		go build -o "$$tmp/protoc-gen-go" google.golang.org/protobuf/cmd/protoc-gen-go && \
 		protoc --plugin=protoc-gen-go="$$tmp/protoc-gen-go" --go_out=. --go_opt=paths=source_relative internal/proto/lxd_instance.proto
+
+# FUZZTIME is how long make fuzz runs each fuzz target
+FUZZTIME ?= 30s
+
+.PHONY: fuzz
+fuzz: ## run every fuzz target for FUZZTIME each (default 30s); go test runs their seeds anyway
+	@for pkg in $$(go list ./...); do \
+		for target in $$(go test -list '^Fuzz' "$$pkg" | grep '^Fuzz'); do \
+			echo "$$pkg $$target"; \
+			go test "$$pkg" -run '^$$' -fuzz "^$$target$$" -fuzztime $(FUZZTIME) || exit 1; \
+		done; \
+	done

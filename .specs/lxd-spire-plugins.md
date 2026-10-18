@@ -38,6 +38,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Oct 18, 2026 (later) | FR-S2: names are checked as LXD checks them, instead of the simplified "letters, digits, hyphen" rule, which refused valid project names such as `team.a`: instance names with the SDK's `IsHostname`, project names with LXD's project rule (reimplemented, NFR-03), capped at 63 bytes. |
 | Oct 18, 2026 (selectors) | *Selectors*: values are not escaped, since SPIRE has no escaping rule; a value that is not valid UTF-8, has a control character or exceeds 256 bytes is left out with a WARN instead of truncated, which could make two values collide. |
 | Oct 18, 2026 (network project) | `network` selector: the instance read does not say which project holds a NIC's network (`features.networks`), so the value is `network:<network>` by default, and `network:<project>/<network>` with the new `selectors.network_project`, which reads the project (new optional call and minimal API contract row, project `can_view`, reason `project_unreadable`) and waits on the new gate L16. `secureboot` follows `boot.mode` on 6.x. Server integration and end-to-end tests cover both settings of the option. *Selectors* states which names `selectors.enable` takes, how config and user keys are listed, and which unset keys give their LXD default (`privileged:false`) or no selector. |
+| Oct 18, 2026 (fuzzing) | SEC-11: fuzz seeds live beside their targets, Go's layout, instead of under `test/`; `make fuzz` runs the targets. |
 
 ## Overview
 
@@ -186,7 +187,7 @@ pkg/metadata/                        # build metadata injected at link time
 docs/                                # release documents; docs/validation/ (gate evidence), docs/threat-model.md
 test/fixtures/                       # responses recorded from real LXD (gate L15)
 test/fakelxd/                        # fake LXD API (replays fixtures)
-test/                                # fuzz corpora
+test/lab/                            # the lab and its acceptance tests (lxd-test-environment.md)
 ```
 Build: `make` (development build), `make snapshot` and `make release`, through goreleaser (`.goreleaser.yaml`): `CGO_ENABLED=0`, `-trimpath`, `-buildvcs`; linux/amd64 and linux/arm64; deb and rpm packages, SBOM, signed checksums file; `make checksum` prints the SHA-256 for `plugin_checksum`. From LXD, only the Apache-2.0 SDK packages `github.com/canonical/lxd/client` and `github.com/canonical/lxd/shared/...` are imported (NFR-03).
 
@@ -463,7 +464,7 @@ Recommendations (SEC-16, *Configuration → Operational guidance*):
 | SEC-08 | Credentials (client key, bearer token) come from files with permission checks (0600/0400); inline secrets are rejected unless `dev_mode`. |
 | SEC-09 | Global concurrency cap (default 16), token bucket (default 20/s), per-claim cooldown (5 s after a failure, exponential up to 5 min). |
 | SEC-10 | Failures towards the agent are uniform (`PermissionDenied: attestation failed`); detail only in server log with a correlation ID. |
-| SEC-11 | All untrusted inputs bounded: payload ≤ 4 KiB, strings ≤ 128 bytes, proof file exactly 64 bytes, LXD/devLXD responses ≤ 1 MiB, LXD and devLXD JSON decoded into typed structs that ignore unknown fields and validate required ones (FR-S17). Fuzz targets for every parser. |
+| SEC-11 | All untrusted inputs bounded: payload ≤ 4 KiB, strings ≤ 128 bytes, proof file exactly 64 bytes, LXD/devLXD responses ≤ 1 MiB, LXD and devLXD JSON decoded into typed structs that ignore unknown fields and validate required ones (FR-S17). Fuzz targets for every parser, with their seeds beside them (`f.Add`, and `testdata/fuzz` for any failing input kept), so that `go test` runs them; `make fuzz` runs each target for `FUZZTIME`. |
 | SEC-12 | Documentation MUST recommend agent SVID TTL ≤ 1 h and explain `reattest`. |
 | SEC-13 | Release pipeline: pinned dependencies, `govulncheck`, SBOM, signatures, reproducible flags. |
 | SEC-14 | Documentation MUST state that `insecure_bootstrap` voids the T4 protections. |
