@@ -1,0 +1,94 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sun, 18 Oct 2026 15:50:12 GMT"
+    ],
+    "Etag": [
+      "\"566306b60fff690e4fbe86cda8c5f4cacbc83bfec685593aefe134a86a53a85e\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "config": {
+        "image.architecture": "amd64",
+        "image.description": "Alpine 3.24 (default)",
+        "image.os": "Alpine",
+        "image.release": "3.24",
+        "image.requirements.secureboot": "false",
+        "image.serial": "20261016_0103",
+        "image.type": "squashfs",
+        "image.variant": "default",
+        "volatile.base_image": "cf94d83d4e79e785657843ff716e04d550076b71838273ba58e14c81e2d61e26",
+        "volatile.cloud-init.instance-id": "14ffbffa-3867-46c7-855d-d98b0d0218ef",
+        "volatile.eth0.host_name": "veth4bae0a92",
+        "volatile.eth0.hwaddr": "mac-2",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "f36f7341-5b8d-434c-828c-1ff1373b0a63",
+        "volatile.uuid.generation": "f36f7341-5b8d-434c-828c-1ff1373b0a63"
+      },
+      "created_at": "2026-10-18T15:48:37.150048403Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "image.architecture": "amd64",
+        "image.description": "Alpine 3.24 (default)",
+        "image.os": "Alpine",
+        "image.release": "3.24",
+        "image.requirements.secureboot": "false",
+        "image.serial": "20261016_0103",
+        "image.type": "squashfs",
+        "image.variant": "default",
+        "volatile.base_image": "cf94d83d4e79e785657843ff716e04d550076b71838273ba58e14c81e2d61e26",
+        "volatile.cloud-init.instance-id": "14ffbffa-3867-46c7-855d-d98b0d0218ef",
+        "volatile.eth0.host_name": "veth4bae0a92",
+        "volatile.eth0.hwaddr": "mac-2",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "f36f7341-5b8d-434c-828c-1ff1373b0a63",
+        "volatile.uuid.generation": "f36f7341-5b8d-434c-828c-1ff1373b0a63"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-18T15:48:38.135665801Z",
+      "location": "none",
+      "name": "l17-040",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "container"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

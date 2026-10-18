@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0001",
+  "time": "2026-10-18T15:50:12.095448899Z",
+  "tool_version": "deeaafe",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L17",
+  "cell": "lxd6-limit",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "group l17-limit, project can_view then instance can_view grants one by one: refused #100: Error: Failed verifying that projects are viewable: Failed listing OpenFGA tuples: rpc error: code = InvalidArgument desc = invalid ListObjectsRequest.ContextualTuples: embedded message failed validation | caused by: invalid ContextualTupleKeys.TupleKeys: value must contain no more than 100 item(s)"
+    }
+  ],
+  "raw": null
+}

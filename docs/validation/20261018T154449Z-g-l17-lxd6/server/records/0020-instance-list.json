@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "id": "server/0020",
+  "time": "2026-10-18T15:50:14.060146939Z",
+  "tool_version": "deeaafe",
+  "env": "server",
+  "verb": "instance list",
+  "args": [
+    "--filter",
+    "config.volatile.uuid eq 8dba2a29-1db5-4e72-87e3-b95a48dbba82"
+  ],
+  "gate": "L17",
+  "cell": "lxd6-shard",
+  "outcome": "ok",
+  "duration_ms": 45,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "instance-list"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "list.filter",
+      "value": "config.volatile.uuid eq 8dba2a29-1db5-4e72-87e3-b95a48dbba82"
+    },
+    {
+      "key": "list.http_status",
+      "value": 200
+    },
+    {
+      "key": "instances",
+      "value": [
+        {
+          "location": "none",
+          "name": "l17-120",
+          "status": "Running",
+          "type": "container",
+          "uuid": "8dba2a29-1db5-4e72-87e3-b95a48dbba82"
+        }
+      ]
+    },
+    {
+      "key": "instances.count",
+      "value": 1
+    }
+  ],
+  "raw": [
+    "artifacts/0020-server.json",
+    "artifacts/0020-list.json"
+  ]
+}

@@ -1,0 +1,1315 @@
+{
+  "schema": 1,
+  "id": "server/0001",
+  "time": "2026-10-18T15:50:12.116011447Z",
+  "tool_version": "deeaafe",
+  "env": "server",
+  "verb": "whoami",
+  "args": [],
+  "gate": "L17",
+  "cell": "lxd6-shard",
+  "outcome": "ok",
+  "duration_ms": 21,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "identity-current"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.http_status",
+      "value": 200
+    },
+    {
+      "key": "identity.authentication_method",
+      "value": "tls"
+    },
+    {
+      "key": "identity.type",
+      "value": "Client certificate"
+    },
+    {
+      "key": "identity.id",
+      "value": "f183cd078521357d4a6a145ccd57951e94db20f484fa21c96b42745464b1a526"
+    },
+    {
+      "key": "identity.name",
+      "value": "l17-shard"
+    },
+    {
+      "key": "identity.groups",
+      "value": [
+        "l17-g1",
+        "l17-g2",
+        "l17-g3"
+      ]
+    },
+    {
+      "key": "identity.effective_groups",
+      "value": [
+        "l17-g1",
+        "l17-g2",
+        "l17-g3"
+      ]
+    },
+    {
+      "key": "identity.effective_permissions",
+      "value": [
+        {
+          "entitlement": "can_view",
+          "entity_type": "project",
+          "url": "/1.0/projects/default"
+        },
+        {
+          "entitlement": "can_view_instances",
+          "entity_type": "project",
+          "url": "/1.0/projects/default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-004?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-006?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-007?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-002?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-001?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-003?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-008?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-009?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-012?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-013?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-010?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-005?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-014?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-017?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-011?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-018?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-016?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-015?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-020?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-022?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-019?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-021?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-023?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-026?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-025?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-027?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-031?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-028?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-029?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-024?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-033?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-030?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-035?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-032?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-034?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-036?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-037?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-038?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-039?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-040?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-002?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-001?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-004?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-006?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-007?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-002?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-001?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-003?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-008?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-009?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-012?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-013?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-010?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-005?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-014?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-017?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-011?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-018?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-016?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-015?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-020?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-022?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-019?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-021?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-023?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-026?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-025?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-027?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-031?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-028?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-029?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-024?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-033?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-030?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-035?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-032?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-034?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-036?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-037?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-038?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-039?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-040?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-042?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-043?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-041?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-044?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-047?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-045?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-046?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-050?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-051?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-052?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-053?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-048?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-049?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-054?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-055?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-057?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-058?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-060?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-061?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-062?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-059?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-064?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-065?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-063?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-066?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-056?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-069?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-068?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-070?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-071?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-067?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-072?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-073?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-075?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-076?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-074?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-080?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-077?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-079?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-078?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-042?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-041?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-042?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-043?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-041?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-044?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-047?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-045?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-046?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-050?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-051?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-052?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-053?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-048?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-049?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-054?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-055?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-057?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-058?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-060?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-061?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-062?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-059?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-064?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-065?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-063?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-066?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-056?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-069?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-068?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-070?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-071?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-067?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-072?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-073?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-075?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-076?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-074?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-080?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-077?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-079?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-078?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-081?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-082?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-085?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-086?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-083?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-088?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-089?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-084?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-087?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-090?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-092?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-093?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-094?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-096?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-098?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-091?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-099?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-100?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-101?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-095?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-103?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-104?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-105?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-106?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-108?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-109?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-102?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-110?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-111?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-107?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-115?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-114?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-116?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-113?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-112?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-097?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-117?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-120?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-119?project=default"
+        },
+        {
+          "entitlement": "can_access_files",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-118?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-081?project=default"
+        },
+        {
+          "entitlement": "can_edit",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-082?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-081?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-082?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-085?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-086?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-083?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-088?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-089?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-084?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-087?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-090?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-092?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-093?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-094?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-096?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-098?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-091?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-099?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-100?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-101?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-095?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-103?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-104?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-105?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-106?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-108?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-109?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-102?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-110?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-111?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-107?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-115?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-114?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-116?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-113?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-112?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-097?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-117?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-120?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-119?project=default"
+        },
+        {
+          "entitlement": "can_view",
+          "entity_type": "instance",
+          "url": "/1.0/instances/l17-118?project=default"
+        }
+      ]
+    },
+    {
+      "key": "identity.fine_grained",
+      "value": true
+    }
+  ],
+  "raw": [
+    "artifacts/0001-server.json",
+    "artifacts/0001-identity.json"
+  ]
+}

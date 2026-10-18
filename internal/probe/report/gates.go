@@ -72,6 +72,7 @@ var axes = map[string][]Axis{
 	"L14": {servers, {"instance", []string{"c-unpriv", "v-ubuntu"}}},
 	"L15": {servers},
 	"L16": {servers},
+	"L17": {servers},
 }
 
 // Groups are the known groups of records that are not gates, reported
