@@ -78,7 +78,7 @@ func newRehearsalFake(t *testing.T, config map[string]string) *fakelxd.Server {
 func rehearseFilePull(t *testing.T, fake *fakelxd.Server, act func(*fakelxd.Server) func(rehearse.Challenge) rehearse.Answer, mutate func(*RehearseFilePull)) (*RehearseFilePull, evidence.Record, error) {
 	t.Helper()
 	out := &bytes.Buffer{}
-	cmd := &RehearseFilePull{ServerCommand: options(t, fake), ProofDir: "/run/spire/lxd", stdout: out}
+	cmd := &RehearseFilePull{ServerCommand: options(t, fake), ProofDir: "/run/spire/lxd", stdout: out, stderr: &bytes.Buffer{}}
 	cmd.stdin = &guestSim{t: t, fake: fake, out: out, act: act(fake)}
 	cmd.Args.Name = "c1"
 	if mutate != nil {
@@ -112,8 +112,14 @@ func TestPRS50FilePull(t *testing.T) {
 	if err != nil || c.Instance != "c1" || c.Project != "default" || !strings.HasPrefix(c.ProofPath, "/run/spire/lxd/proof-") {
 		t.Errorf("challenge %+v, %v", c, err)
 	}
-	if !strings.Contains(cmd.stdout.(*bytes.Buffer).String(), "lxd-probe guest rehearse file-pull") {
-		t.Error("the guest command is not printed")
+	if !strings.Contains(cmd.stderr.(*bytes.Buffer).String(), "guest: lxd-probe guest rehearse file-pull") {
+		t.Error("the guest command is not in the trace")
+	}
+	// stdout is JSON only: the challenge line, then the record (--json)
+	for line := range strings.Lines(cmd.stdout.(*bytes.Buffer).String()) {
+		if strings.HasPrefix(line, "step ") || strings.HasPrefix(line, "guest: ") {
+			t.Errorf("trace on stdout: %q", line)
+		}
 	}
 	sn, an, _ := c.Nonces()
 	sum, _ := proof.Compute("default", "c1", sn, an)

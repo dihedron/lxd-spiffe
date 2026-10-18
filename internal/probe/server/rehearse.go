@@ -54,12 +54,14 @@ type RehearseFilePull struct {
 	Args       instanceArgs `positional-args:"yes" required:"yes"`
 
 	stdout io.Writer
+	stderr io.Writer
 	stdin  io.Reader
 }
 
 // rehearsal records the steps of one rehearsal (PRS-52).
 type rehearsal struct {
 	s          *session
+	trace      io.Writer // the trace, on stderr: stdout carries JSON only
 	expectFail string
 	failed     string
 }
@@ -68,12 +70,12 @@ type rehearsal struct {
 func (r *rehearsal) step(name string, err error) bool {
 	if err == nil {
 		r.s.observe("step."+name, "ok")
-		fmt.Fprintf(r.s.stdout, "step %s: ok\n", name) //nolint:errcheck // the trace is best effort
+		fmt.Fprintf(r.trace, "step %s: ok\n", name) //nolint:errcheck // the trace is best effort
 		return true
 	}
 	r.failed = name
 	r.s.observe("step."+name, err.Error())
-	fmt.Fprintf(r.s.stdout, "step %s: FAILED: %v\n", name, err) //nolint:errcheck // the trace is best effort
+	fmt.Fprintf(r.trace, "step %s: FAILED: %v\n", name, err) //nolint:errcheck // the trace is best effort
 	if name == r.expectFail {
 		r.s.observe("rehearsal.result", "failed at "+name+", as expected")
 	} else {
@@ -112,7 +114,7 @@ func (cmd *RehearseFilePull) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	r := &rehearsal{s: s, expectFail: cmd.ExpectFail}
+	r := &rehearsal{s: s, trace: orStderr(cmd.stderr), expectFail: cmd.ExpectFail}
 	err = cmd.run(ctx, r, agentNonce)
 	if err == nil {
 		r.conclude()
@@ -187,7 +189,7 @@ func (cmd *RehearseFilePull) run(ctx context.Context, r *rehearsal, agentNonce [
 	s.observe("rehearse.challenge", c)
 	err = rehearse.WriteChallenge(s.stdout, c)
 	if err == nil {
-		_, err = fmt.Fprintf(s.stdout, "guest: %s\n", rehearse.GuestCommand(c))
+		_, err = fmt.Fprintf(r.trace, "guest: %s\n", rehearse.GuestCommand(c))
 	}
 	if !r.step("challenge", err) {
 		return nil
@@ -404,7 +406,7 @@ func (cmd *RehearseConfigPush) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	r := &rehearsal{s: s, expectFail: cmd.ExpectFail}
+	r := &rehearsal{s: s, trace: orStderr(cmd.stderr), expectFail: cmd.ExpectFail}
 	err = cmd.run(ctx, r, agentNonce)
 	if err == nil {
 		r.conclude()
@@ -491,7 +493,7 @@ func (cmd *RehearseConfigPush) exchange(ctx context.Context, r *rehearsal, inst 
 	s.observe("rehearse.challenge", c)
 	err := rehearse.WriteChallenge(s.stdout, c)
 	if err == nil {
-		_, err = fmt.Fprintf(s.stdout, "guest: %s\n", rehearse.GuestCommand(c))
+		_, err = fmt.Fprintf(r.trace, "guest: %s\n", rehearse.GuestCommand(c))
 	}
 	if !r.step("challenge", err) {
 		return
@@ -548,11 +550,19 @@ func (r *rehearsal) cleanup(err error) bool {
 	}
 	if err == nil {
 		r.s.observe("step.cleanup", "ok")
-		fmt.Fprintln(r.s.stdout, "step cleanup: ok") //nolint:errcheck // the trace is best effort
+		fmt.Fprintln(r.trace, "step cleanup: ok") //nolint:errcheck // the trace is best effort
 	} else {
 		r.s.observe("step.cleanup", err.Error())
 		r.s.finding("cleanup.result", "the key could not be removed: "+err.Error())
-		fmt.Fprintf(r.s.stdout, "step cleanup: FAILED: %v\n", err) //nolint:errcheck // the trace is best effort
+		fmt.Fprintf(r.trace, "step cleanup: FAILED: %v\n", err) //nolint:errcheck // the trace is best effort
 	}
 	return false
+}
+
+// orStderr is w, or os.Stderr when nil.
+func orStderr(w io.Writer) io.Writer {
+	if w == nil {
+		return os.Stderr
+	}
+	return w
 }
