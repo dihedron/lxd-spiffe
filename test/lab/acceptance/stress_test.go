@@ -50,8 +50,8 @@ func loadStressSettings(t *testing.T) stressSettings {
 		t.Fatal("LAB_STRESS_SEED: not a number")
 	}
 	return stressSettings{
-		// the fleet: LXD allows 99 permissions per group, see STR-01
-		fleet:      atoi("LAB_STRESS_FLEET", 35),
+		// the fleet: its grants are sharded over groups, see STR-01
+		fleet:      atoi("LAB_STRESS_FLEET", 100),
 		iterations: atoi("LAB_STRESS_ITERATIONS", 500),
 		workers:    atoi("LAB_STRESS_WORKERS", 10), faultRate: rate, seed: seed,
 	}
@@ -76,20 +76,52 @@ func fleetNames(n int) []string {
 // stressBaseline are the baseline instances that join the fleet (STR-01).
 var stressBaseline = []string{"c-unpriv", "c-priv", "c-iso", "c-raw", "v-ubuntu", "v-debian", "v-alpine"}
 
-// fleetGrants are the lab groups' entitlements on each fleet instance, as
-// lab_grant gives them on the baseline (project can_view is there already).
+// fleetGrants are the lab identities' entitlements on each fleet instance,
+// as lab_grant gives them on the baseline. The identity and its baseline
+// group share the name.
 var fleetGrants = []struct{ group, entitlements string }{
 	{"lab-read", "can_view"}, {"lab-files", "can_view can_access_files"}, {"lab-edit", "can_view can_edit"},
+}
+
+// shardCapacity is the most instance grants a shard group holds: a group
+// holds at most 99 permissions (gate L17), and project can_view is one.
+const shardCapacity = 90
+
+// shardScript gives each lab identity its fleet grants through shard
+// groups <group>-s1, <group>-s2, …: each holds project can_view (first)
+// and at most shardCapacity instance grants, and the identity is added to
+// it, as the attestor's Least privilege prescribes (STR-01, gate L17).
+func shardScript(names []string) string {
+	var b strings.Builder
+	b.WriteString("set -e\n")
+	for _, g := range fleetGrants {
+		ents := strings.Fields(g.entitlements)
+		per := shardCapacity / len(ents)
+		for k := 0; k*per < len(names); k++ {
+			shard := fmt.Sprintf("%s-s%d", g.group, k+1)
+			fmt.Fprintf(&b, "sudo lxc auth group create %s\nsudo lxc auth group permission add %s project default can_view\n", shard, shard)
+			for _, n := range names[k*per : min((k+1)*per, len(names))] {
+				for _, e := range ents {
+					fmt.Fprintf(&b, "sudo lxc auth group permission add %s instance %s %s project=default\n", shard, n, e)
+				}
+			}
+			fmt.Fprintf(&b, "sudo lxc auth identity group add tls/%s %s\n", g.group, shard)
+		}
+	}
+	return b.String()
 }
 
 // fleetSetup builds the fleet on server (STR-01) and deletes it when the
 // test ends, and first if a previous session left one (STR-02). It also
 // lifts the VM's sshd limits, so that concurrent guest halves are not
 // refused by MaxStartups or MaxSessions (gone at the next lab.sh reset).
-func (l *lab) fleetSetup(t *testing.T, server string, names []string) {
+func (l *lab) fleetSetup(t *testing.T, server string, names []string, members ...string) {
 	t.Helper()
 	var td strings.Builder
 	td.WriteString("set +e\n")
+	// the shard groups (their grants and memberships go with them), then
+	// grants an unsharded session of chunk 16 put in the baseline groups
+	td.WriteString(`for g in $(sudo lxc auth group list -f csv | cut -d, -f1 | grep -E '^lab-(read|files|edit)-s[0-9]+$'); do sudo lxc auth group delete "$g"; done` + "\n")
 	for _, n := range names {
 		for _, g := range fleetGrants {
 			for _, e := range strings.Fields(g.entitlements) {
@@ -104,31 +136,47 @@ func (l *lab) fleetSetup(t *testing.T, server string, names []string) {
 	l.ssh(t, server, `printf 'MaxStartups 200:30:400\nMaxSessions 200\n' | sudo tee /etc/ssh/sshd_config.d/90-lab-stress.conf >/dev/null && sudo systemctl reload ssh`)
 
 	start := time.Now()
-	list := strings.Join(names, " ")
 	// eight launches at a time; LXD occasionally fails one under that load
 	// (a zfs clone "bad file descriptor" was seen on 6.9), so every instance
 	// that is not running is launched again alone, up to three times
-	launch := fmt.Sprintf(`printf '%%s\n' %s | xargs -P 8 -I{} sudo lxc launch %s {} -q 2>/dev/null; `+
-		`for n in %s; do for try in 1 2 3; do `+
+	// on a cluster the fleet is spread over the members, round robin
+	var pairs strings.Builder
+	for i, n := range names {
+		target := "-"
+		if len(members) > 0 {
+			target = members[i%len(members)]
+		}
+		fmt.Fprintf(&pairs, "%s %s ", n, target)
+	}
+	launchOne := `n=$1; m=$2; if [ "$m" = - ]; then sudo lxc launch ` + stressImage + ` "$n" -q; else sudo lxc launch ` + stressImage + ` "$n" --target "$m" -q; fi`
+	launch := fmt.Sprintf(`printf '%%s %%s\n' %s | xargs -P 8 -n 2 sh -c '%s' sh 2>/dev/null; `+
+		`set -- %s; while [ $# -gt 0 ]; do n=$1; m=$2; shift 2; for try in 1 2 3; do `+
 		`[ "$(sudo lxc list -c ns -f csv "^$n$")" = "$n,RUNNING" ] && break; `+
-		`echo "relaunching $n (try $try)"; sudo lxc delete --force "$n" 2>/dev/null; sudo lxc launch %s "$n" -q; sleep 2; done; `+
+		`echo "relaunching $n (try $try)"; sudo lxc delete --force "$n" 2>/dev/null; sh -c '%s' sh "$n" "$m"; sleep 2; done; `+
 		`[ "$(sudo lxc list -c ns -f csv "^$n$")" = "$n,RUNNING" ] || { echo "$n does not run" >&2; exit 1; }; done`,
-		list, stressImage, list, stressImage)
+		pairs.String(), launchOne, pairs.String(), launchOne)
 	if out := l.ssh(t, server, launch); strings.TrimSpace(out) != "" {
 		t.Logf("%s: %s", server, strings.TrimSpace(out))
 	}
+	// LXD's file transfer into a container occasionally breaks for one
+	// container of a fresh fleet (a forkfile socket error was seen on 6.9,
+	// lasting across quick retries, not reproducible on demand): each
+	// install is tried again after restarting the container, then after
+	// recreating it
 	var script strings.Builder
-	script.WriteString("set -e\n")
+	script.WriteString("set -e\ninstall() { for try in 1 2 3 4; do " +
+		"sudo lxc file push lxd-probe \"$1\"/usr/local/bin/lxd-probe --uid 0 --gid 0 --mode 0755 && " +
+		"sudo lxc exec \"$1\" -- sh -c 'mkdir -p /var/lib/lxd-probe/evidence && chmod 0700 /var/lib/lxd-probe/evidence' && return 0; " +
+		"case $try in 1|2) echo \"install in $1 failed: restarting it\"; sudo lxc restart --force \"$1\";; " +
+		"3) echo \"install in $1 failed: recreating it\"; sudo lxc delete --force \"$1\"; sudo lxc launch " + stressImage + " \"$1\" -q;; esac; " +
+		"sleep 3; done; return 1; }\n")
 	for _, n := range names {
-		fmt.Fprintf(&script, "sudo lxc file push lxd-probe %s/usr/local/bin/lxd-probe --uid 0 --gid 0 --mode 0755\n", n)
-		fmt.Fprintf(&script, "sudo lxc exec %s -- sh -c 'mkdir -p /var/lib/lxd-probe/evidence && chmod 0700 /var/lib/lxd-probe/evidence'\n", n)
-		for _, g := range fleetGrants {
-			for _, e := range strings.Fields(g.entitlements) {
-				fmt.Fprintf(&script, "sudo lxc auth group permission add %s instance %s %s project=default\n", g.group, n, e)
-			}
-		}
+		fmt.Fprintf(&script, "install %s\n", n)
 	}
-	l.ssh(t, server, script.String())
+	script.WriteString(shardScript(names))
+	if out := strings.TrimSpace(l.ssh(t, server, script.String())); out != "" {
+		t.Logf("%s: %s", server, out) // the installs that needed a restart or a new container
+	}
 	t.Logf("%s: fleet of %d built in %s", server, len(names), time.Since(start).Round(time.Second))
 }
 
