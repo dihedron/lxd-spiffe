@@ -45,6 +45,7 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 18, 2026 (chunk 15) | Stage 3 made concrete: the server rehearsals run the attestor's packages step by step (PRS-50, PRS-51), exchange challenge and answer over standard streams (PRS-53), and take `--expect-fail` for negative rehearsals (PRS-52); the guest side is `guest rehearse` (PRF-24, PRF-25), with `--tamper`. `config_push` rehearses one conditional `PATCH`: FR-S14's retries are the attestor's. `server project show` (PRS-13) and the runbook of the new gate L16, which also asks whether project `can_view` is needed for instance grants at all. |
 | Oct 18, 2026 (chunk 16) | PRS-54: rehearsal steps record their durations, for the stress tests (`lxd-stress.md`). |
 | Oct 18, 2026 (chunk 17) | PRE-07: record numbers are reserved on their own (a concurrency fix found by the stress sessions), and the entries of a killed probe (an empty record, a reservation) are aborted: reported and left out, not fatal. | The runbook of gate L17 (permissions per group, sharding over groups).
+| Oct 18, 2026 (chunk 18) | `--auth bearer` refuses an unsigned token (`alg` `none`, or no signature) as a usage error: the probe presents the token and never verifies it, LXD does, and LXD never issues one without a signature. |
 | Oct 18, 2026 | Status after attestor spec v0.7: stages 0–2 implemented, every gate closed, stage 3 waits for `internal/proof` (attestor delivery step (a)). The open questions ledger records where each answer went; Q1, Q2 and Q4 got no decision and block nothing. No requirement changes. |
 
 ## Overview
