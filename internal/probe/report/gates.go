@@ -76,11 +76,16 @@ var axes = map[string][]Axis{
 
 // Groups are the known groups of records that are not gates, reported
 // after the gates: R, the stage 3 rehearsals (sessions R-1 and R-2, probe
-// spec PRS-50 to PRS-53), whose records name gate R.
+// spec PRS-50 to PRS-53), and S, the stress sessions (stress spec
+// STR-43), whose records name gate R or S.
 var Groups = []Gate{{
 	ID: "R", Title: "Rehearsals of the real proofs (stage 3)", Group: true,
 	Question: "Do the attestor's proofs pass end to end in every instance class, and does a tampered run fail at the step it breaks?",
 	Axes:     []Axis{servers, {"instance", instances}},
+}, {
+	ID: "S", Title: "Stress, soak and chaos", Group: true,
+	Question: "Does attestation stay correct and recover under sustained load and injected faults?",
+	Axes:     []Axis{servers},
 }}
 
 var (
