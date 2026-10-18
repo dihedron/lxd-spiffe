@@ -42,6 +42,7 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 15, 2026 | `server instance list` records each instance's `volatile.uuid` and takes `--filter` (PRS-12), to learn whether LXD filters instances by `volatile.uuid` for the attestor's uniqueness check (gate L6); `util overlap` also rejects a disk below the proof directory, as the L12 decision tightens the attestor's isolation check (PRU-04); the body of a files-API error response is kept in records, artifacts and fixtures, since it is an LXD error envelope, not content (PRS-35). |
 | Oct 15, 2026 (chunk 12) | The lab matrix has a cluster per series, 5.21 LTS and 6.x; the L11 runbook is concrete: forwarding through each member, the filtered list across members, a cold move and an evacuation under `instance watch`, `volatile.cluster.group`, cluster fixtures. |
 | Oct 16, 2026 (chunk 12) | A record through a cluster names the member that answered (PRE-02). |
+| Oct 18, 2026 (chunk 15) | Stage 3 made concrete: the server rehearsals run the attestor's packages step by step (PRS-50, PRS-51), exchange challenge and answer over standard streams (PRS-53), and take `--expect-fail` for negative rehearsals (PRS-52); the guest side is `guest rehearse` (PRF-24, PRF-25), with `--tamper`. `config_push` rehearses one conditional `PATCH`: FR-S14's retries are the attestor's. `server project show` (PRS-13) and the runbook of the new gate L16, which also asks whether project `can_view` is needed for instance grants at all. |
 | Oct 18, 2026 | Status after attestor spec v0.7: stages 0–2 implemented, every gate closed, stage 3 waits for `internal/proof` (attestor delivery step (a)). The open questions ledger records where each answer went; Q1, Q2 and Q4 got no decision and block nothing. No requirement changes. |
 
 ## Overview
@@ -91,7 +92,7 @@ Working runs write to `--evidence-dir` (default `./evidence`). Sanitized evidenc
 
 | ID | Requirement |
 |---|---|
-| PRE-01 | Every record contains: `schema` (integer), `id`, `time` (UTC RFC3339), `tool_version`, `env`, `verb`, `args` (sanitized), `gate`, `cell`, `outcome` (`ok`, `unexpected`, `error`), `duration_ms`, `observations` (structured key/values), and `raw` (reference to artifact). |
+| PRE-01 | Every record contains: `schema` (integer), `id`, `time` (UTC RFC3339), `tool_version`, `env`, `verb`, `args` (sanitized), `gate` (a gate ID, or `R` for the stage 3 rehearsals, a group that expects no decision), `cell`, `outcome` (`ok`, `unexpected`, `error`), `duration_ms`, `observations` (structured key/values), and `raw` (reference to artifact). |
 | PRE-02 | The `server` records include the LXD `version` and `api_extensions` hash, so that a record can always be attributed to a server version, and, on a cluster (`environment.server_clustered`), the `member` that answered (`environment.server_name`), since any member answers for the whole cluster (L11). |
 | PRE-03 | **Sanitization (mandatory, applied at write time, not afterwards):** remove `Authorization` and cookie headers; remove client certificates/keys and any bearer tokens; redact the values of `cloud-init.*`, `user.*` (except `user.lxd-probe.*` and `user.spire.challenge.*`) and `environment.*` config keys; replace MAC addresses and, when `--redact-names` is set, instance and project names with stable aliases (PRE-09). The host name in `run.json` is `redacted` unless `--record-host` is given. Apart from the alias map of PRE-09, the unsanitized data is never persisted. |
 | PRE-04 | `outcome: unexpected` is assigned whenever the status code, a header, or a body shape differs from the tool's built-in expectation table (PRE-06). This is a finding, not an error: the exit code is still 0 unless `--strict` is given (exit 8). |
@@ -218,6 +219,7 @@ Negative privilege tests (for example, "a client with only `can_view` receives 4
 | PRS-10 | `server instance show NAME` calls `GET /1.0/instances/NAME?project=P` (recursion 1 and 0, both stored) and records the **raw ETag header**, `config` (volatile keys included), `devices`, `expanded_devices`, `location`, `status`, `type`, `architecture`. Supports L1, L3, L6, L9. |
 | PRS-11 | `server instance watch NAME [--for DUR] [--interval DUR]` polls the instance (every second by default) and prints/records a change log of `volatile.uuid`, `volatile.uuid.generation`, `volatile.cloud-init.instance-id`, `volatile.idmap.*`, `location`, `status`, and ETag, each change with its UTC time; an instance that disappears or reappears is a change too. Used during copy/move/restore experiments (L6, L11). |
 | PRS-12 | `server instance list` records name, type, status, location and `volatile.uuid` of each instance of the project, and their count (used to confirm the uniqueness checks of FR-S3 and SEC-05). With `--filter EXPR` it passes `EXPR` to LXD as the `filter` parameter (API extension `api_filtering`), for example `config.volatile.uuid eq <uuid>`, and records it; what LXD makes of a filter is evidence, not something the probe checks (gate L6). |
+| PRS-13 | `server project show NAME` calls `GET /1.0/projects/NAME` and records the raw ETag header, `name` and `config`, with `features.networks` as its own observation (`true`, `false`, or unset). Gate L16 (attestor `selectors.network_project`). |
 
 ### Config writes (gate L2, L14)
 
@@ -253,9 +255,12 @@ The write verbs of this subsection (`set`, `unset`, `race`) require `--allow-wri
 
 | ID | Requirement |
 |---|---|
-| PRS-50 | `server rehearse file-pull` implements, using `internal/proof`, the server side of the `file_pull` flow of attestor spec *Trust model → Proof of co-location → Mode `file_pull`* against a lab instance, **together with** a cooperating `guest file put` in the instance, and prints a step-by-step trace (instance resolve, owner rule, nonce-derived path, read, compare). |
-| PRS-51 | `server rehearse config-push` does the same for `config_push` (attestor spec *Proof of co-location → Mode `config_push`*), including the devLXD read in the guest through `guest devlxd watch`. |
-| PRS-52 | Rehearsals produce a pass/fail with the failing step, but never alter the attestor logic: they call the same packages and print their errors. |
+| PRS-50 | `server rehearse file-pull NAME` runs the server side of the `file_pull` flow (attestor spec *Trust model → Proof of co-location → Mode `file_pull`*) with the attestor's packages: one instance read (the call of PRS-10) and `policy.Check` for `file_pull`, which gives the expected owner, with a policy made of the session's project as the allow-list and the flags `--allow-privileged` and `--deny-config-key`; the server nonce, and the agent nonce unless `--agent-nonce` gives it (the agent's part), from `internal/proof`; the proof path derived under `--proof-dir`; the challenge (PRS-53); then the read of the file through the files API, retried while a VM's `lxd-agent` is not ready (500, then 404; backoff 250 ms capped at 2 s, within `--timeout`); type `file`, the expected owner, mode 0600 and 64 bytes required; a constant-time comparison with the proof recomputed from the instance's project and name; and a second instance read compared with the first on `volatile.uuid`, its generation, project, name and `location` (FR-S10). Each step is a line of the trace and an observation. |
+| PRS-51 | `server rehearse config-push NAME` does the same for `config_push` (attestor spec *Proof of co-location → Mode `config_push`*): instance read and `policy.Check` for `config_push`; nonces; the key `user.spire.challenge.<id>` from `internal/proof`, written with one `PATCH` carrying the read's ETag in `If-Match` (a 412 fails the step: the retries of FR-S14 belong to the attestor's step (d), not to the rehearsal); the challenge (PRS-53); a constant-time comparison of the guest's echo with `hex(server_nonce)`; the key removed with a `PATCH` to `null`, also after a failure or a timeout, and its removal recorded; the second instance read. It needs `--allow-write --lab --allow-spire-keys` (PRN-02). |
+| PRS-52 | Rehearsals never alter the attestor logic: they call the same packages and print their errors. A failed step is recorded with outcome `unexpected`, so `--strict` exits 8. `--expect-fail STEP` names the step a negative rehearsal must fail at: failing there is outcome `ok`, passing or failing elsewhere `unexpected`. |
+| PRS-53 | The challenge and the answer travel over the command's standard streams, in place of the SPIRE stream: the server rehearsal writes the challenge as one JSON line on stdout (mode, project, instance, both nonces in hex, proof path or key, timeout) followed by the guest command that answers it, and reads one JSON line from stdin, the guest's answer; the global `--timeout` bounds the whole rehearsal, the wait for the answer and the file included. The trace of the steps and the guest command go to stderr, so that stdout carries JSON only: the challenge or answer line, then the record. A test harness pipes the two; an operator can paste them. Nonces are lab values, recorded like any other observation. |
+| PRF-24 | `guest rehearse file-pull --challenge JSON` is the agent side of `file_pull` for rehearsals: it computes the proof from the challenge's project, instance and nonces with `internal/proof` and writes its 64 hex characters at the challenge's path through `guest file put` (PRF-20: `O_CREAT\|O_EXCL`, mode 0600, the marker under `/run/spire/lxd/`, which needs `--allow-write --lab --allow-spire-paths`), then prints the answer line. `--tamper` writes the proof of another instance name instead, for the negative rehearsal. `guest file rm` removes the file afterwards. |
+| PRF-25 | `guest rehearse config-push --challenge JSON` reads the challenge's key through devLXD (`GET /1.0/config/<key>`, the client of PRF-14), requires 64 lowercase hex characters, and prints them as the answer line; `--tamper` changes one character, for the negative rehearsal. It writes nothing. |
 
 ## Util environment
 
@@ -359,6 +364,16 @@ Each verb also accepts the global flags and the flags of its environment. Positi
 | | `--retries` | integer, 3 | retry budget per writer on 412 |
 | | `--expect-instance-uuid` | UUID | PRS-24 |
 | `server file stat NAME PATH` | `--wait` | duration, 0 | retry while the call fails, up to this long (PRS-30) |
+| `server rehearse file-pull NAME` | `--proof-dir` | path, `/run/spire/lxd` | the agent's proof directory (PRS-50) |
+| | `--agent-nonce` | 64 hex characters | use this agent nonce instead of a generated one |
+| | `--expect-fail` | step name | the step a negative rehearsal must fail at (PRS-52) |
+| | `--allow-privileged` | bool | the attestor's `policy.allow_privileged` (PRS-50) |
+| | `--deny-config-key` | key, repeatable; none | the attestor's `policy.deny_config_keys` |
+| `server rehearse config-push NAME` | `--agent-nonce`, `--expect-fail`, `--allow-privileged`, `--deny-config-key` | as above | PRS-51 |
+| `guest rehearse file-pull` | `--challenge` | JSON, required | the server rehearsal's challenge line (PRF-24) |
+| | `--tamper` | bool | write a wrong proof |
+| `guest rehearse config-push` | `--challenge` | JSON, required | PRF-25 |
+| | `--tamper` | bool | echo a wrong value |
 | `server file get NAME PATH` | `--max-bytes` | size, 1 MiB | read limit (PRS-31) |
 | `server bearer check` | `--wait-expiry` | bool | keep calling until the token expires and record the first failure (PRS-41) |
 | | `--max-wait` | duration, 1h | upper bound for `--wait-expiry` |
@@ -537,6 +552,12 @@ $S config race NAME user.lxd-probe.r --writers 8
 
 **Procedure:** run the commands above with `--record test/fixtures/<lxd-version>/`; add the provocations of 403 (identity without permission), 404 (unknown instance/file), 412 (stale ETag). **Commands:** `util sanitize`, `util sanitize --check`, `util fixtures verify`. **Decision:** the committed fixtures become the contract of the fake LXD API (PRT-10); any decode failure results in a client struct fix.
 
+#### L16 — Project entitlements and the network project
+
+**Question:** Does an instance grant work for an identity whose group has no project `can_view`, so that the attestor's least-privilege table (project `can_view_instances` plus instance entitlements) is complete as written? Which entitlement lets the identity read `GET /1.0/projects/{name}` with its `config`, and so `features.networks`, which `selectors.network_project` needs?
+
+**Cells:** `lxd5` and `lxd6`; projects `default` and two made for the session, `l16-on` (`features.networks=true`) and `l16-off` (`features.networks=false`); groups and identities made for the session and deleted at its end: `l16-min`, a group without project `can_view`; `l16-view`, with project `can_view` on the three projects, then project `can_view_instances` and instance `can_view` and `can_access_files` on `c-unpriv` (in that order: LXD checks the project grant at each grant); `l16-project`, with project `can_view` on the three projects only; `outsider` for the hidden project; the clusters `c5` and `c6` for the project read only. **Procedure:** for `l16-min`, each grant of the minimal set (project `can_view_instances`, instance `can_view`, instance `can_access_files`), with LXD's answer recorded by `util note`; as `l16-view` and `l16-project`: `$S instance show c-unpriv`, `$S file stat c-unpriv /etc/hostname`, `$S instance list --filter "config.volatile.uuid eq <uuid>"`, and `$S project show` of `default`, `l16-on` and `l16-off`; `$S project show` of a missing project (404), as `outsider` of `restricted` (`--expect-hidden`) and with an untrusted certificate (`--expect-denied`); on each cluster, `$S project show default` through each member. With `--record test/fixtures/<lxd-version>/projects/`. **Decision:** (1) if the minimal set needs project `can_view` (LXD refuses its grants without it, or the reads fail), project `can_view` joins every mode of the attestor's *Least privilege* table, and `selectors.network_project` needs no further entitlement; otherwise the table stands and the option adds project `can_view`. (2) The entitlement that shows a project's `config` to the identity; if only a server-level grant does, `selectors.network_project` is withdrawn. The project fixtures become the contract of the project read.
+
 ### Delivery plan (with lab checkpoints)
 
 | Stage | Scope | Exit criterion |
@@ -544,7 +565,7 @@ $S config race NAME user.lxd-probe.r --writers 8
 | 0 | Skeleton, command tree, `internal/lxd` client with pin/TLS, evidence writer and sanitizer, `server info`, `server whoami`, `server instance show`, `--record`, `guest preflight`, `guest devlxd get/dump` | First real fixtures from LXD 5.21 and 6.x committed; PRT-02/PRT-11 green |
 | 1 | `server file stat/get/head/dir`, `server config get/set/unset/race`, `guest file put/stat/rm/layout`, `guest idmap show`, `guest devlxd watch/access`, `util idmap`, `util diff`, `util sanitize` | Evidence for L1, L2, L4, L14. **Spec-amendment checkpoint:** attestor spec revised (v0.5) before stage 2 |
 | 2 | `server instance watch`, `server permissions`, `server bearer check`, `util overlap`, `util fixtures verify`, `util report`; tooling for L6, L7, L8, L9, L11, L12, L13 | All gates have either evidence or a recorded "cannot be tested here" reason |
-| 3 | `server rehearse file-pull`, `server rehearse config-push` | One end-to-end rehearsal per mode passes in the lab |
+| 3 | `server rehearse file-pull`, `server rehearse config-push`, `guest rehearse file-pull`, `guest rehearse config-push`; `server project show` for L16 | One rehearsal per mode passes, and each negative rehearsal fails at its step, on each instance class of the lab; L16 has evidence and a decision |
 
 Each stage ends with: run the relevant runbooks, commit sanitized evidence to `docs/validation/`, write the findings list, and amend the attestor spec before starting plugin code that depends on the findings.
 

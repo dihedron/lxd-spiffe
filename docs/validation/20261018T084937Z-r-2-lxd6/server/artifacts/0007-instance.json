@@ -1,0 +1,98 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sun, 18 Oct 2026 08:49:46 GMT"
+    ],
+    "Etag": [
+      "\"9639739253363fcdd62909b1b03db9c38d596b18c3f1ee058c9ca081aa59870b\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS (release)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "raw.idmap": "both 1000 1000",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "14b2c183-57a3-45a5-aec5-2ffe288495a6",
+        "volatile.eth0.host_name": "veth6515f2d9",
+        "volatile.eth0.hwaddr": "mac-4",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999}]",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "2f3c1522-d0a3-4bed-9047-10f596af2b83",
+        "volatile.uuid.generation": "2f3c1522-d0a3-4bed-9047-10f596af2b83"
+      },
+      "created_at": "2026-10-17T20:04:47.21290628Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "ubuntu 24.04 LTS (release)",
+        "image.label": "release",
+        "image.os": "ubuntu",
+        "image.release": "noble",
+        "image.serial": "20260926",
+        "image.type": "squashfs",
+        "image.version": "24.04",
+        "raw.idmap": "both 1000 1000",
+        "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
+        "volatile.cloud-init.instance-id": "14b2c183-57a3-45a5-aec5-2ffe288495a6",
+        "volatile.eth0.host_name": "veth6515f2d9",
+        "volatile.eth0.hwaddr": "mac-4",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999}]",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "2f3c1522-d0a3-4bed-9047-10f596af2b83",
+        "volatile.uuid.generation": "2f3c1522-d0a3-4bed-9047-10f596af2b83"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-18T08:32:40.362838016Z",
+      "location": "none",
+      "name": "c-raw",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "container"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

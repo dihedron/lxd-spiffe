@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "id": "server/0001",
+  "time": "0001-01-01T00:00:00Z",
+  "tool_version": "",
+  "env": "server",
+  "verb": "project show",
+  "args": [
+    "l16-on"
+  ],
+  "gate": "",
+  "cell": "",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "server": {
+    "version": "6.5",
+    "api_extensions_hash": "sha256:c213b7b67b753a2ca7ba8e013fdfe3e95d115d2fe6fd13a96f11ec23f201530c"
+  },
+  "expectations": [
+    "project"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "project.http_status",
+      "value": 200
+    },
+    {
+      "key": "project.etag",
+      "value": "7d1866bc0e1c5460"
+    },
+    {
+      "key": "project.name",
+      "value": "l16-on"
+    },
+    {
+      "key": "project.config",
+      "value": {
+        "features.networks": "true",
+        "user.secret": "[redacted]"
+      }
+    },
+    {
+      "key": "project.features.networks",
+      "value": "true"
+    }
+  ],
+  "raw": [
+    "artifacts/0001-server.json",
+    "artifacts/0001-project.json"
+  ]
+}

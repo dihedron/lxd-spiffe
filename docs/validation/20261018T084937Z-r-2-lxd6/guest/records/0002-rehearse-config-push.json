@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "id": "guest/0002",
+  "time": "2026-10-18T08:49:49.49975716Z",
+  "tool_version": "b7ad157",
+  "env": "guest",
+  "verb": "rehearse config-push",
+  "args": [
+    "user.spire.challenge.47a47a14b5e8b257",
+    "--tamper"
+  ],
+  "gate": "R",
+  "cell": "lxd6-c-unpriv-tamper",
+  "outcome": "ok",
+  "duration_ms": 2,
+  "expectations": [
+    "devlxd-config-key"
+  ],
+  "observations": [
+    {
+      "key": "rehearse.challenge",
+      "value": {
+        "agent_nonce": "b8fbc0db5a44263b8271067344d91adadc8cf7fd96c89b2ceb7f29c943f0e993",
+        "instance": "c-unpriv",
+        "mode": "config_push",
+        "project": "default",
+        "proof_key": "user.spire.challenge.47a47a14b5e8b257",
+        "server_nonce": "68ec9e83b71de28712dc372560d4f30b5607250c248cd25be4d29dc322e3319c",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "key": "devlxd-config-key.http_status",
+      "value": 200
+    },
+    {
+      "key": "devlxd-config-key.format",
+      "value": "plain"
+    },
+    {
+      "key": "devlxd-config-key.latency_ms",
+      "value": 2
+    },
+    {
+      "key": "rehearse.answer",
+      "value": {
+        "done": true,
+        "echo": "68ec9e83b71de28712dc372560d4f30b5607250c248cd25be4d29dc322e33190",
+        "mode": "config_push"
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0002-devlxd-config-key.json"
+  ]
+}

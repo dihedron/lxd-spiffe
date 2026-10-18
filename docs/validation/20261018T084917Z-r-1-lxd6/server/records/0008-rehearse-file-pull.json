@@ -1,0 +1,124 @@
+{
+  "schema": 1,
+  "id": "server/0008",
+  "time": "2026-10-18T08:49:34.158964667Z",
+  "tool_version": "b7ad157",
+  "env": "server",
+  "verb": "rehearse file-pull",
+  "args": [
+    "c-unpriv",
+    "--expect-fail",
+    "compare",
+    "--allow-privileged"
+  ],
+  "gate": "R",
+  "cell": "lxd6-c-unpriv-tamper",
+  "outcome": "ok",
+  "duration_ms": 430,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "instance",
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "step.resolve",
+      "value": "ok"
+    },
+    {
+      "key": "step.policy",
+      "value": "ok"
+    },
+    {
+      "key": "policy.expected_owner",
+      "value": 0
+    },
+    {
+      "key": "rehearse.challenge",
+      "value": {
+        "agent_nonce": "110e10449316c4de7ce5f156bffc0b20c48c2a8a34d90e12ee028e06b02af47d",
+        "instance": "c-unpriv",
+        "mode": "file_pull",
+        "project": "default",
+        "proof_path": "/run/spire/lxd/proof-e5a74ce62b8bcebb",
+        "server_nonce": "40075d8868540d99e3dd27acb0d3151520de6ebc286461f9fb1e36c65d3e950f",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "key": "step.challenge",
+      "value": "ok"
+    },
+    {
+      "key": "rehearse.answer",
+      "value": {
+        "done": true,
+        "mode": "file_pull"
+      }
+    },
+    {
+      "key": "step.answer",
+      "value": "ok"
+    },
+    {
+      "key": "read.attempts",
+      "value": 1
+    },
+    {
+      "key": "proof-file.http_status",
+      "value": 200
+    },
+    {
+      "key": "proof-file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0600"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-18 08:49:34 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "step.read",
+      "value": "ok"
+    },
+    {
+      "key": "step.file",
+      "value": "ok"
+    },
+    {
+      "key": "step.compare",
+      "value": "the file does not hold the proof"
+    },
+    {
+      "key": "rehearsal.result",
+      "value": "failed at compare, as expected"
+    }
+  ],
+  "raw": [
+    "artifacts/0008-server.json",
+    "artifacts/0008-instance.json",
+    "artifacts/0008-proof-file.json"
+  ]
+}

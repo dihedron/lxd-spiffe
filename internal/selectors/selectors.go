@@ -27,8 +27,9 @@ var Names = []string{"server", "uuid", "project", "type", "arch", "privileged", 
 // DefaultEnable is the default of selectors.enable.
 var DefaultEnable = []string{"server", "uuid", "project", "type", "privileged", "profile", "network"}
 
-// ErrNoNetworkProject: network_project is on but the caller gave no project.
-var ErrNoNetworkProject = errors.New("network_project is set but the network's project is unknown")
+// ErrNoNetworkProject: the instance has a managed NIC, the network selector
+// is enabled, and the caller gave no network project.
+var ErrNoNetworkProject = errors.New("the network selector needs the project that holds the instance's networks")
 
 // Config is the selectors block of the server configuration.
 type Config struct {
@@ -39,9 +40,6 @@ type Config struct {
 	ConfigKeys []string
 	// UserKeys are user keys without their "user." prefix, for user selectors.
 	UserKeys []string
-	// NetworkProject emits network:<project>/<network> instead of
-	// network:<network> (Selectors → Network project, gate L16).
-	NetworkProject bool
 }
 
 // Validate checks the configuration at Configure.
@@ -56,9 +54,6 @@ func (c Config) Validate() error {
 			return fmt.Errorf("selectors.enable: %q listed twice", n)
 		}
 		seen[n] = true
-	}
-	if c.NetworkProject && !seen["network"] {
-		return errors.New("selectors.network_project needs the network selector enabled")
 	}
 	if err := validKeys("selectors.config_keys", c.ConfigKeys); err != nil {
 		return err
@@ -109,8 +104,10 @@ func (c Config) enabled() []string {
 type Input struct {
 	ServerID string
 	Instance *api.Instance
-	// NetworkProject is the project that holds the instance's networks,
-	// read by the server only when Config.NetworkProject is set.
+	// NetworkProject is the project that holds the instance's networks: the
+	// instance's project when it has features.networks=true, default
+	// otherwise (Selectors → Network project). The server reads it only when
+	// NeedsNetworkProject says so.
 	NetworkProject string
 }
 
@@ -128,7 +125,7 @@ func Build(cfg Config, in Input) ([]string, []Omitted, error) {
 	ec := inst.ExpandedConfig
 	enabled := cfg.enabled()
 	on := func(name string) bool { return slices.Contains(enabled, name) }
-	if cfg.NetworkProject && on("network") && in.NetworkProject == "" {
+	if NeedsNetworkProject(cfg, inst) && in.NetworkProject == "" {
 		return nil, nil, ErrNoNetworkProject
 	}
 	b := builder{}
@@ -160,10 +157,8 @@ func Build(cfg Config, in Input) ([]string, []Omitted, error) {
 			d := inst.ExpandedDevices[name]
 			switch {
 			case d["type"] != "nic":
-			case d["network"] != "" && cfg.NetworkProject:
-				b.add("network", "network", in.NetworkProject+"/"+d["network"])
 			case d["network"] != "":
-				b.add("network", "network", d["network"])
+				b.add("network", "network", in.NetworkProject+"/"+d["network"])
 			case d["parent"] != "":
 				b.add("network", "nic-parent", d["parent"])
 			}
@@ -198,6 +193,22 @@ func Build(cfg Config, in Input) ([]string, []Omitted, error) {
 		b.add("name", "name", inst.Name)
 	}
 	return b.values, b.omitted, nil
+}
+
+// NeedsNetworkProject reports whether Build needs the project that holds
+// the instance's networks: the network selector is enabled and the
+// instance has a NIC with a managed network. Only then does the server
+// read the project.
+func NeedsNetworkProject(cfg Config, inst *api.Instance) bool {
+	if !slices.Contains(cfg.enabled(), "network") {
+		return false
+	}
+	for _, d := range inst.ExpandedDevices {
+		if d["type"] == "nic" && d["network"] != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // secureBoot derives the VM's secure boot state: boot.mode on LXD 6.x,

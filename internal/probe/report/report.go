@@ -104,6 +104,7 @@ const (
 	StatusWithdrawn  Status = "withdrawn"
 	StatusDecided    Status = "decided"
 	StatusUndecided  Status = "evidence, no decision"
+	StatusEvidence   Status = "evidence" // a group: no decision expected
 	StatusNoEvidence Status = "no evidence"
 )
 
@@ -160,7 +161,7 @@ func Build(ev *Evidence, gates []Gate) []GateReport {
 	}
 	var out []GateReport
 	known := map[string]bool{}
-	for _, g := range gates {
+	for _, g := range append(slices.Clone(gates), Groups...) {
 		known[g.ID] = true
 		out = append(out, build(g, true, byGate[g.ID], ev))
 	}
@@ -213,6 +214,8 @@ func build(g Gate, known bool, records []Entry, ev *Evidence) GateReport {
 	switch {
 	case g.Withdrawn:
 		r.Status = StatusWithdrawn
+	case g.Group && len(records) > 0:
+		r.Status = StatusEvidence
 	case len(r.Decisions) > 0:
 		r.Status = StatusDecided
 	case len(records) > 0:
@@ -260,7 +263,7 @@ func openItems(r GateReport) []string {
 	case StatusWithdrawn:
 		return nil
 	case StatusNoEvidence:
-		if r.Known {
+		if r.Known && !r.Gate.Group {
 			open = append(open, "No evidence and no decision.")
 		}
 	case StatusUndecided:

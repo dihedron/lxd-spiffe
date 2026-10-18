@@ -247,7 +247,16 @@ func (l *lab) lxdProbe(t *testing.T, s session, args []string) *run {
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()
-	r := &run{stdout: stdout.String(), stderr: stderr.String()}
+	return l.parseRun(t, args, err, stdout.String(), stderr.String())
+}
+
+// parseRun turns a finished lab.sh invocation into a run: its exit code and
+// the records lxd-probe printed with --json. JSON objects that are not
+// records, such as a rehearsal's challenge or answer line (PRS-53), are
+// skipped. It fails the test when the probe itself failed.
+func (l *lab) parseRun(t *testing.T, args []string, err error, stdout, stderr string) *run {
+	t.Helper()
+	r := &run{stdout: stdout, stderr: stderr}
 	var ee *exec.ExitError
 	switch {
 	case err == nil:
@@ -256,13 +265,15 @@ func (l *lab) lxdProbe(t *testing.T, s session, args []string) *run {
 	default:
 		t.Fatalf("lab.sh %s: %v", strings.Join(args, " "), err)
 	}
-	dec := json.NewDecoder(bytes.NewReader(stdout.Bytes()))
+	dec := json.NewDecoder(strings.NewReader(stdout))
 	for dec.More() {
 		var rec evidence.Record
-		if dec.Decode(&rec) != nil || rec.ID == "" {
+		if dec.Decode(&rec) != nil {
 			break
 		}
-		r.recs = append(r.recs, &rec)
+		if rec.ID != "" {
+			r.recs = append(r.recs, &rec)
+		}
 	}
 	if len(r.recs) > 0 {
 		r.rec = r.recs[0]
@@ -360,13 +371,20 @@ func (l *lab) ssh(t *testing.T, vm, command string) string {
 // trusts, and returns its certificate and key files.
 func untrustedCert(t *testing.T) (certFile, keyFile string) {
 	t.Helper()
+	return clientCert(t, "lxd-lab-untrusted")
+}
+
+// clientCert writes a new self-signed client certificate with common name
+// cn, and returns its certificate and key files.
+func clientCert(t *testing.T, cn string) (certFile, keyFile string) {
+	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
 	tmpl := &x509.Certificate{
 		SerialNumber: big.NewInt(time.Now().UnixNano()),
-		Subject:      pkix.Name{CommonName: "lxd-lab-untrusted"},
+		Subject:      pkix.Name{CommonName: cn},
 		NotBefore:    time.Now().Add(-time.Hour),
 		NotAfter:     time.Now().Add(24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
@@ -381,7 +399,7 @@ func untrustedCert(t *testing.T) (certFile, keyFile string) {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
-	certFile, keyFile = filepath.Join(dir, "untrusted.crt"), filepath.Join(dir, "untrusted.key")
+	certFile, keyFile = filepath.Join(dir, cn+".crt"), filepath.Join(dir, cn+".key")
 	if err := os.WriteFile(certFile, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o600); err != nil {
 		t.Fatal(err)
 	}

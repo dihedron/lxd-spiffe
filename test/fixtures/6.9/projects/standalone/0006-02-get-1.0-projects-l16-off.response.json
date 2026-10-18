@@ -1,0 +1,38 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "331"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sun, 18 Oct 2026 08:42:04 GMT"
+    ],
+    "Etag": [
+      "\"a5407f25a55c2ef7f93b59a6e1a3cf28a3dc618a0e0a39c0e280c79582061bc2\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "config": {
+        "features.images": "true",
+        "features.networks": "false",
+        "features.profiles": "true",
+        "features.storage.buckets": "true",
+        "features.storage.volumes": "true"
+      },
+      "description": "",
+      "name": "l16-off",
+      "replica_mode": "",
+      "used_by": []
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

@@ -9,6 +9,7 @@ type Commands struct {
 	Devlxd    Devlxd    `command:"devlxd" description:"Query the devLXD socket."`
 	File      File      `command:"file" description:"Create and inspect files in the lab directory."`
 	Idmap     Idmap     `command:"idmap" description:"Inspect the guest's uid/gid maps."`
+	Rehearse  Rehearse  `command:"rehearse" description:"Answer a server rehearsal's challenge as the agent would."`
 }
 
 // Devlxd groups the devLXD verbs.
@@ -31,4 +32,10 @@ type File struct {
 // Idmap groups the idmap verbs.
 type Idmap struct {
 	Show IdmapShow `command:"show" description:"Record the parsed /proc/self/uid_map and gid_map (PRF-30)."`
+}
+
+// Rehearse groups the agent sides of the rehearsals.
+type Rehearse struct {
+	FilePull   RehearseFilePull   `command:"file-pull" description:"Write the file_pull proof of a challenge (PRF-24)."`
+	ConfigPush RehearseConfigPush `command:"config-push" description:"Read and echo the config_push key of a challenge (PRF-25)."`
 }

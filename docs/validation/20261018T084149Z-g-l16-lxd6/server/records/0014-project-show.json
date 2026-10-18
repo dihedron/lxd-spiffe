@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "id": "server/0014",
+  "time": "2026-10-18T08:42:04.395934298Z",
+  "tool_version": "b7ad157",
+  "env": "server",
+  "verb": "project show",
+  "args": [
+    "restricted",
+    "--expect-hidden"
+  ],
+  "gate": "L16",
+  "cell": "lxd6-outsider",
+  "outcome": "ok",
+  "duration_ms": 18,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "project+hidden"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "project.http_status",
+      "value": 404
+    },
+    {
+      "key": "project.etag",
+      "value": ""
+    },
+    {
+      "key": "project.error",
+      "value": "Not Found"
+    }
+  ],
+  "raw": [
+    "artifacts/0014-server.json",
+    "artifacts/0014-project.json"
+  ]
+}

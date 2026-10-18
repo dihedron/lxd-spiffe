@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "id": "server/0005",
+  "time": "2026-10-18T08:49:46.266283699Z",
+  "tool_version": "b7ad157",
+  "env": "server",
+  "verb": "rehearse config-push",
+  "args": [
+    "c-iso",
+    "--allow-privileged"
+  ],
+  "gate": "R",
+  "cell": "lxd6-c-iso",
+  "outcome": "ok",
+  "duration_ms": 469,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "instance",
+    "instance-patch",
+    "instance",
+    "instance-patch",
+    "instance"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "step.resolve",
+      "value": "ok"
+    },
+    {
+      "key": "step.policy",
+      "value": "ok"
+    },
+    {
+      "key": "challenge-write.http_status",
+      "value": 200
+    },
+    {
+      "key": "challenge-write.duration_ms",
+      "value": 14
+    },
+    {
+      "key": "challenge-write.completed_at",
+      "value": "2026-10-18T08:49:46.302571996Z"
+    },
+    {
+      "key": "step.write",
+      "value": "ok"
+    },
+    {
+      "key": "rehearse.challenge",
+      "value": {
+        "agent_nonce": "53e2d63cba5c4ff925cd93014e0a455a3821fdd147ab0a33017ba0a82e12ae2d",
+        "instance": "c-iso",
+        "mode": "config_push",
+        "project": "default",
+        "proof_key": "user.spire.challenge.595fcc9da76e894e",
+        "server_nonce": "d445ca37f316d0b94caa123a79d25d07068968e9e74da0578271d355b9c5bd6a",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "key": "step.challenge",
+      "value": "ok"
+    },
+    {
+      "key": "rehearse.answer",
+      "value": {
+        "done": true,
+        "echo": "d445ca37f316d0b94caa123a79d25d07068968e9e74da0578271d355b9c5bd6a",
+        "mode": "config_push"
+      }
+    },
+    {
+      "key": "step.answer",
+      "value": "ok"
+    },
+    {
+      "key": "step.compare",
+      "value": "ok"
+    },
+    {
+      "key": "before-cleanup.http_status",
+      "value": 200
+    },
+    {
+      "key": "cleanup.http_status",
+      "value": 200
+    },
+    {
+      "key": "cleanup.duration_ms",
+      "value": 18
+    },
+    {
+      "key": "cleanup.completed_at",
+      "value": "2026-10-18T08:49:46.72585635Z"
+    },
+    {
+      "key": "step.cleanup",
+      "value": "ok"
+    },
+    {
+      "key": "instance-recheck.http_status",
+      "value": 200
+    },
+    {
+      "key": "step.recheck",
+      "value": "ok"
+    },
+    {
+      "key": "rehearsal.result",
+      "value": "passed"
+    }
+  ],
+  "raw": [
+    "artifacts/0005-server.json",
+    "artifacts/0005-instance.json",
+    "artifacts/0005-challenge-write.json",
+    "artifacts/0005-before-cleanup.json",
+    "artifacts/0005-cleanup.json",
+    "artifacts/0005-instance-recheck.json"
+  ]
+}

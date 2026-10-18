@@ -44,16 +44,16 @@ func TestFRS8Defaults(t *testing.T) {
 	}{
 		"unprivileged container": {cUnpriv, []string{
 			"server:lxd-prod", "uuid:fbf73246-b07c-4291-afd9-12ae2be70828", "project:default", "type:container",
-			"privileged:false", "profile:default", "network:lxdbr0"}},
+			"privileged:false", "profile:default", "network:default/lxdbr0"}},
 		"privileged container": {cPriv, []string{
 			"server:lxd-prod", "uuid:" + fixture(t, cPriv).ExpandedConfig["volatile.uuid"], "project:default", "type:container",
-			"privileged:true", "profile:default", "network:lxdbr0"}},
+			"privileged:true", "profile:default", "network:default/lxdbr0"}},
 		"VM on 6.9: no privileged selector": {vUbuntu6, []string{
 			"server:lxd-prod", "uuid:" + fixture(t, vUbuntu6).ExpandedConfig["volatile.uuid"], "project:default", "type:virtual-machine",
-			"profile:default", "network:lxdbr0"}},
+			"profile:default", "network:default/lxdbr0"}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			got, omitted, err := Build(Config{}, Input{ServerID: "lxd-prod", Instance: fixture(t, tt.fixture)})
+			got, omitted, err := Build(Config{}, Input{ServerID: "lxd-prod", Instance: fixture(t, tt.fixture), NetworkProject: "default"})
 			if err != nil || len(omitted) > 0 {
 				t.Fatalf("omitted %v, error %v", omitted, err)
 			}
@@ -70,13 +70,13 @@ func TestFRS8AllEnabled(t *testing.T) {
 	inst.ExpandedConfig["user.team"] = "payments"
 	inst.ExpandedConfig["limits.cpu"] = "2"
 	cfg := Config{Enable: Names, ConfigKeys: []string{"limits.cpu", "limits.memory"}, UserKeys: []string{"team", "absent"}}
-	got, omitted, err := Build(cfg, Input{ServerID: "lxd-prod", Instance: inst})
+	got, omitted, err := Build(cfg, Input{ServerID: "lxd-prod", Instance: inst, NetworkProject: "default"})
 	if err != nil || len(omitted) > 0 {
 		t.Fatalf("omitted %v, error %v", omitted, err)
 	}
 	want := []string{
 		"server:lxd-prod", "uuid:fbf73246-b07c-4291-afd9-12ae2be70828", "project:default", "type:container",
-		"arch:x86_64", "privileged:false", "profile:default", "network:lxdbr0",
+		"arch:x86_64", "privileged:false", "profile:default", "network:default/lxdbr0",
 		"base-image:ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e", "image:ubuntu/noble",
 		"config:limits.cpu:2", "user:team:payments",
 		"generation:fbf73246-b07c-4291-afd9-12ae2be70828", "name:c-unpriv",
@@ -130,8 +130,8 @@ func TestSecureBoot(t *testing.T) {
 	}
 }
 
-// TestNetwork: one selector per NIC, in device name order; network names
-// with or without their project (Selectors → Network project).
+// TestNetwork: one selector per NIC, in device name order, with the
+// project that holds the networks (Selectors → Network project, L16).
 func TestNetwork(t *testing.T) {
 	inst := fixture(t, cUnpriv)
 	inst.ExpandedDevices["eth1"] = map[string]string{"type": "nic", "nictype": "macvlan", "parent": "enp5s0"}
@@ -139,15 +139,31 @@ func TestNetwork(t *testing.T) {
 	inst.ExpandedDevices["e9"] = map[string]string{"type": "nic"}
 	inst.ExpandedDevices["data"] = map[string]string{"type": "disk", "source": "/srv", "path": "/srv"}
 	cfg := Config{Enable: []string{"network"}}
-	if got, _, _ := Build(cfg, Input{Instance: inst}); !slices.Equal(got, []string{"network:ovn-a", "network:lxdbr0", "nic-parent:enp5s0"}) {
-		t.Errorf("default: %q", got)
+	if !NeedsNetworkProject(cfg, inst) {
+		t.Error("a managed NIC needs the network project")
 	}
-	cfg.NetworkProject = true
 	if got, _, _ := Build(cfg, Input{Instance: inst, NetworkProject: "team.a"}); !slices.Equal(got, []string{"network:team.a/ovn-a", "network:team.a/lxdbr0", "nic-parent:enp5s0"}) {
-		t.Errorf("with network_project: %q", got)
+		t.Errorf("selectors %q", got)
 	}
 	if _, _, err := Build(cfg, Input{Instance: inst}); !errors.Is(err, ErrNoNetworkProject) {
-		t.Errorf("network_project without a project: %v", err)
+		t.Errorf("without the network project: %v", err)
+	}
+}
+
+// TestNoNetworkProjectRead: no project read when the network selector is
+// disabled or the instance has no managed NIC.
+func TestNoNetworkProjectRead(t *testing.T) {
+	inst := fixture(t, cUnpriv)
+	if NeedsNetworkProject(Config{Enable: []string{"uuid"}}, inst) {
+		t.Error("network selector disabled")
+	}
+	inst.ExpandedDevices = map[string]map[string]string{"eth0": {"type": "nic", "nictype": "macvlan", "parent": "enp5s0"}}
+	cfg := Config{Enable: []string{"network"}}
+	if NeedsNetworkProject(cfg, inst) {
+		t.Error("unmanaged NIC only")
+	}
+	if got, _, err := Build(cfg, Input{Instance: inst}); err != nil || !slices.Equal(got, []string{"nic-parent:enp5s0"}) {
+		t.Errorf("selectors %q, %v", got, err)
 	}
 }
 
@@ -183,20 +199,19 @@ func TestConfigValidate(t *testing.T) {
 	if err := (Config{}).Validate(); err != nil {
 		t.Errorf("default: %v", err)
 	}
-	if err := (Config{Enable: Names, ConfigKeys: []string{"limits.cpu", "volatile.eth0.hwaddr"}, UserKeys: []string{"team"}, NetworkProject: true}).Validate(); err != nil {
+	if err := (Config{Enable: Names, ConfigKeys: []string{"limits.cpu", "volatile.eth0.hwaddr"}, UserKeys: []string{"team"}}).Validate(); err != nil {
 		t.Errorf("all: %v", err)
 	}
 	for name, cfg := range map[string]Config{
-		"unknown name":                    {Enable: []string{"hostname"}},
-		"config is not an enable name":    {Enable: []string{"config"}},
-		"duplicate name":                  {Enable: []string{"uuid", "uuid"}},
-		"user key among config keys":      {ConfigKeys: []string{"user.team"}},
-		"empty config key":                {ConfigKeys: []string{""}},
-		"config key with a colon":         {ConfigKeys: []string{"a:b"}},
-		"user key with its prefix":        {UserKeys: []string{"user.team"}},
-		"user key with a space":           {UserKeys: []string{"te am"}},
-		"duplicate user key":              {UserKeys: []string{"team", "team"}},
-		"network_project without network": {Enable: []string{"uuid"}, NetworkProject: true},
+		"unknown name":                 {Enable: []string{"hostname"}},
+		"config is not an enable name": {Enable: []string{"config"}},
+		"duplicate name":               {Enable: []string{"uuid", "uuid"}},
+		"user key among config keys":   {ConfigKeys: []string{"user.team"}},
+		"empty config key":             {ConfigKeys: []string{""}},
+		"config key with a colon":      {ConfigKeys: []string{"a:b"}},
+		"user key with its prefix":     {UserKeys: []string{"user.team"}},
+		"user key with a space":        {UserKeys: []string{"te am"}},
+		"duplicate user key":           {UserKeys: []string{"team", "team"}},
 	} {
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("%s: accepted", name)

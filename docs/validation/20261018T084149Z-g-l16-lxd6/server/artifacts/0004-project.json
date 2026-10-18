@@ -1,0 +1,49 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "604"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sun, 18 Oct 2026 08:42:03 GMT"
+    ],
+    "Etag": [
+      "\"027bc39ae7301d8b518263602835425b68773a1735a9faf8e821036064b4d979\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "config": {
+        "features.images": "true",
+        "features.networks": "true",
+        "features.networks.zones": "true",
+        "features.profiles": "true",
+        "features.storage.buckets": "true",
+        "features.storage.volumes": "true"
+      },
+      "description": "Default LXD project",
+      "name": "default",
+      "replica_mode": "",
+      "used_by": [
+        "/1.0/instances/c-unpriv",
+        "/1.0/instances/c-priv",
+        "/1.0/instances/v-debian",
+        "/1.0/instances/v-rocky",
+        "/1.0/instances/v-alma",
+        "/1.0/instances/c-iso",
+        "/1.0/instances/c-raw",
+        "/1.0/instances/v-ubuntu",
+        "/1.0/instances/v-alpine"
+      ]
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

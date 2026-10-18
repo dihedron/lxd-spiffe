@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0003",
+  "time": "2026-10-18T08:42:03.367798459Z",
+  "tool_version": "b7ad157",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L16",
+  "cell": "lxd6-l16-min",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "without project can_view, lxc auth group permission add l16-min instance c-unpriv can_access_files project=default: refused: Error: Entitlement \"can_access_files\" on entity type \"instance\" references project \"default\", but the project cannot be viewed by the group"
+    }
+  ],
+  "raw": null
+}
