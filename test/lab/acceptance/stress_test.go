@@ -102,7 +102,18 @@ func (l *lab) fleetSetup(t *testing.T, server string, names []string) {
 
 	start := time.Now()
 	list := strings.Join(names, " ")
-	l.ssh(t, server, fmt.Sprintf(`set -e; printf '%%s\n' %s | xargs -P 8 -I{} sudo lxc launch %s {} -q`, list, stressImage))
+	// eight launches at a time; LXD occasionally fails one under that load
+	// (a zfs clone "bad file descriptor" was seen on 6.9), so every instance
+	// that is not running is launched again alone, up to three times
+	launch := fmt.Sprintf(`printf '%%s\n' %s | xargs -P 8 -I{} sudo lxc launch %s {} -q 2>/dev/null; `+
+		`for n in %s; do for try in 1 2 3; do `+
+		`[ "$(sudo lxc list -c ns -f csv "^$n$")" = "$n,RUNNING" ] && break; `+
+		`echo "relaunching $n (try $try)"; sudo lxc delete --force "$n" 2>/dev/null; sudo lxc launch %s "$n" -q; sleep 2; done; `+
+		`[ "$(sudo lxc list -c ns -f csv "^$n$")" = "$n,RUNNING" ] || { echo "$n does not run" >&2; exit 1; }; done`,
+		list, stressImage, list, stressImage)
+	if out := l.ssh(t, server, launch); strings.TrimSpace(out) != "" {
+		t.Logf("%s: %s", server, strings.TrimSpace(out))
+	}
 	var script strings.Builder
 	script.WriteString("set -e\n")
 	for _, n := range names {
