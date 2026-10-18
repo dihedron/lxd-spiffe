@@ -75,17 +75,6 @@ type pathArgs struct {
 	Path string `positional-arg-name:"PATH" description:"Path inside the instance."`
 }
 
-// RehearseFilePull is server rehearse file-pull NAME.
-type RehearseFilePull struct {
-	probe.ServerCommand
-	Args instanceArgs `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *RehearseFilePull) Execute(args []string) error {
-	return probe.NotImplemented("server rehearse file-pull")
-}
-
 // RehearseConfigPush is server rehearse config-push NAME.
 type RehearseConfigPush struct {
 	probe.ServerCommand
