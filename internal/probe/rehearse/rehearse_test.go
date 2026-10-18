@@ -3,8 +3,10 @@ package rehearse
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
+	"os/exec"
 	"strings"
 	"testing"
 	"time"
@@ -102,5 +104,21 @@ func TestGuestCommand(t *testing.T) {
 	c.Mode, c.ProofPath, c.ProofKey = ConfigPush, "", "user.spire.challenge.0123456789abcdef"
 	if got := GuestCommand(c); !strings.HasPrefix(got, "lxd-probe guest rehearse config-push --challenge '{") {
 		t.Errorf("%s", got)
+	}
+}
+
+// TestGuestCommandQuoting: the printed command survives a shell whatever
+// the challenge holds, single quotes included (validation would refuse
+// them, but the command must not rely on it).
+func TestGuestCommandQuoting(t *testing.T) {
+	c := validChallenge()
+	c.Instance = `it's "odd" $(touch /tmp/x) \`
+	data, _ := json.Marshal(c)
+	out, err := exec.Command("sh", "-c", `eval "set -- $1"; for a; do last=$a; done; printf '%s' "$last"`, "sh", GuestCommand(c)).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != string(data) {
+		t.Errorf("the shell saw\n%s\nnot\n%s", out, data)
 	}
 }
