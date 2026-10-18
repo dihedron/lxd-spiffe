@@ -34,6 +34,9 @@ type TreeReport struct {
 	// AliasMaps lists the alias maps found; in place they are kept, with a
 	// copy they are left out.
 	AliasMaps []string
+	// Aborted lists what killed probes left (an empty record, a number
+	// reservation): a copy leaves them out, a check ignores them.
+	Aborted []string
 }
 
 // OK reports whether the tree is sanitized: nothing would change and
@@ -78,6 +81,9 @@ func SanitizeTree(src, out string, check bool) (*TreeReport, error) {
 		case d.Type()&fs.ModeSymlink != 0, !d.Type().IsRegular():
 			report.Forbidden = append(report.Forbidden, rel)
 			return nil
+		case isAbortedEntry(rel, d):
+			report.Aborted = append(report.Aborted, rel)
+			return nil
 		case d.Name() == aliasesFile:
 			report.AliasMaps = append(report.AliasMaps, rel)
 			if check {
@@ -118,7 +124,14 @@ func SanitizeTree(src, out string, check bool) (*TreeReport, error) {
 	slices.Sort(report.Changed)
 	slices.Sort(report.Forbidden)
 	slices.Sort(report.AliasMaps)
+	slices.Sort(report.Aborted)
 	return report, nil
+}
+
+// isAbortedEntry is IsAborted for a directory entry.
+func isAbortedEntry(rel string, d fs.DirEntry) bool {
+	info, err := d.Info()
+	return err == nil && IsAborted(rel, info.Size())
 }
 
 // checkOut refuses an output directory that is inside src or not empty.

@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "run_id": "20261018T152645Z-decisions",
+  "env": "util",
+  "created": "2026-10-18T15:26:45.549918085Z",
+  "tool_version": "deeaafe",
+  "git_commit": "deeaafe5b714db1f158b661e27215a36a3e7cf9b",
+  "host": "redacted"
+}

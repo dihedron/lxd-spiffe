@@ -166,18 +166,6 @@ func check(s *probe.Session, inst, pre *evidence.Record) error {
 	return nil
 }
 
-func readRecord(path string) (*evidence.Record, error) {
-	data, err := os.ReadFile(path) //nolint:gosec // G304: an evidence record the operator names
-	if err != nil {
-		return nil, err
-	}
-	var rec evidence.Record
-	if err := json.Unmarshal(data, &rec); err != nil {
-		return nil, fmt.Errorf("%s: %w", filepath.Base(path), err)
-	}
-	return &rec, nil
-}
-
 // observationAs decodes the record's first observation key into v.
 func observationAs(rec *evidence.Record, key string, v any) error {
 	for _, o := range rec.Observations {
@@ -191,3 +179,7 @@ func observationAs(rec *evidence.Record, key string, v any) error {
 	}
 	return fmt.Errorf("record %s has no observation %s", rec.ID, key)
 }
+
+// readRecord reads an evidence record the operator names; an empty one is
+// evidence.ErrAborted.
+func readRecord(path string) (*evidence.Record, error) { return evidence.ReadRecord(path) }

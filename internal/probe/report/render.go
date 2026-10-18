@@ -33,6 +33,16 @@ func RenderIndex(w io.Writer, ev *Evidence, reports []GateReport, links bool) er
 	for _, run := range ev.Runs {
 		fmt.Fprintf(b, "- `%s`\n", run)
 	}
+	if n := len(ev.Aborted); n > 0 {
+		verb := "records were"
+		if n == 1 {
+			verb = "record was"
+		}
+		fmt.Fprintf(b, "\n%d %s aborted (a probe killed before writing them) and left out:\n\n", n, verb)
+		for _, a := range ev.Aborted {
+			fmt.Fprintf(b, "- `%s`\n", a)
+		}
+	}
 	_, err := io.WriteString(w, b.String())
 	return err
 }

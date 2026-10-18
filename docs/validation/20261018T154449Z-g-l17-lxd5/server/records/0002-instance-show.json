@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "id": "server/0002",
+  "time": "2026-10-18T15:46:37.358279777Z",
+  "tool_version": "deeaafe",
+  "env": "server",
+  "verb": "instance show",
+  "args": [
+    "l17-001"
+  ],
+  "gate": "L17",
+  "cell": "lxd5-g1",
+  "outcome": "ok",
+  "duration_ms": 42,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "instance",
+    "instance-full"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance-full.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.etag",
+      "value": "\"0cb16845a7e269ba0ba2fe6aa30e53c86e6dd5c15a8941c85efb31b5e5926b4f\""
+    },
+    {
+      "key": "instance-full.etag",
+      "value": "\"0cb16845a7e269ba0ba2fe6aa30e53c86e6dd5c15a8941c85efb31b5e5926b4f\""
+    },
+    {
+      "key": "etag.equal",
+      "value": true
+    },
+    {
+      "key": "instance.type",
+      "value": "container"
+    },
+    {
+      "key": "instance.status",
+      "value": "Running"
+    },
+    {
+      "key": "instance.location",
+      "value": "none"
+    },
+    {
+      "key": "instance.architecture",
+      "value": "x86_64"
+    },
+    {
+      "key": "instance.config",
+      "value": {
+        "image.architecture": "amd64",
+        "image.description": "Alpine 3.24 amd64 (20261016_0103)",
+        "image.os": "Alpine",
+        "image.release": "3.24",
+        "image.requirements.secureboot": "false",
+        "image.serial": "20261016_0103",
+        "image.type": "squashfs",
+        "image.variant": "default",
+        "volatile.base_image": "cf94d83d4e79e785657843ff716e04d550076b71838273ba58e14c81e2d61e26",
+        "volatile.cloud-init.instance-id": "f67b857d-6832-478b-ba0f-1ceab3002e87",
+        "volatile.eth0.host_name": "veth64d5d03b",
+        "volatile.eth0.hwaddr": "mac-1",
+        "volatile.idmap.base": "0",
+        "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+        "volatile.last_state.idmap": "[]",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "b01cf6f0-8597-42b5-9038-5510747b43f5",
+        "volatile.uuid.generation": "b01cf6f0-8597-42b5-9038-5510747b43f5"
+      }
+    },
+    {
+      "key": "instance.devices",
+      "value": {}
+    },
+    {
+      "key": "instance.expanded_devices",
+      "value": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      }
+    }
+  ],
+  "raw": [
+    "artifacts/0002-server.json",
+    "artifacts/0002-instance.json",
+    "artifacts/0002-instance-full.json"
+  ]
+}

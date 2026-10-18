@@ -139,6 +139,23 @@ func TestLoad(t *testing.T) {
 		t.Errorf("environments merged by time: %v", refs)
 	}
 
+	// a record left empty by a killed probe is skipped and listed (PRE-07)
+	run := filepath.Join(t.TempDir(), "20261018T112032Z-st-3")
+	if err := os.MkdirAll(filepath.Join(run, "server", "records"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src, _ := os.ReadFile(filepath.Join(testEvidence(t)[0], "server", "records", firstRecord(t, testEvidence(t)[0])))
+	_ = os.WriteFile(filepath.Join(run, "server", "records", "0001-instance-show.json"), src, 0o600)
+	_ = os.WriteFile(filepath.Join(run, "server", "records", "0002-rehearse-file-pull.json"), nil, 0o600)
+	if ev, err := Load([]string{run}); err != nil || len(ev.Records) != 1 || len(ev.Aborted) != 1 {
+		t.Errorf("a run with an aborted record: %v, %+v", err, ev)
+	}
+	var md bytes.Buffer
+	ev, _ = Load([]string{run})
+	if err := Render(&md, ev, Build(ev, nil)); err != nil || !strings.Contains(md.String(), "1 record was aborted") {
+		t.Errorf("render: %v\n%s", err, md.String())
+	}
+
 	dir := t.TempDir()
 	if _, err := Load([]string{dir}); !errors.Is(err, ErrNotRun) {
 		t.Errorf("empty directory: %v", err)
@@ -343,4 +360,14 @@ func TestCommittedEvidence(t *testing.T) {
 	if err := Render(&bytes.Buffer{}, ev, reports); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// firstRecord is the name of a run's first server record.
+func firstRecord(t *testing.T, run string) string {
+	t.Helper()
+	m, _ := filepath.Glob(filepath.Join(run, "server", "records", "*.json"))
+	if len(m) == 0 {
+		t.Fatal("no server record in the test evidence")
+	}
+	return filepath.Base(m[0])
 }

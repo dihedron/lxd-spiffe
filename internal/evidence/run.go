@@ -306,3 +306,38 @@ func createFile(path string, data []byte) error {
 	}
 	return f.Close()
 }
+
+// ErrAborted marks a record a killed probe left empty: its number was
+// reserved and its file created, but nothing was written (PRE-07).
+var ErrAborted = errors.New("record aborted: the probe was killed before writing it")
+
+// ReadRecord reads a record file; an empty one is ErrAborted.
+func ReadRecord(path string) (*Record, error) {
+	data, err := os.ReadFile(path) //nolint:gosec // G304: a record of a run the operator names
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, fmt.Errorf("%s: %w", filepath.Base(path), ErrAborted)
+	}
+	var rec Record
+	if err := json.Unmarshal(data, &rec); err != nil {
+		return nil, fmt.Errorf("%s: %w", filepath.Base(path), err)
+	}
+	return &rec, nil
+}
+
+// IsAborted reports whether rel, a path in a run directory of size bytes,
+// is what an aborted entry leaves: an empty records/NNNN-<verb>.json, or
+// the reservation records/NNNN.
+func IsAborted(rel string, size int64) bool {
+	dir, name := filepath.Split(filepath.ToSlash(rel))
+	if filepath.Base(filepath.Clean(dir)) != "records" || size != 0 {
+		return false
+	}
+	number, rest, _ := strings.Cut(name, "-")
+	if _, err := strconv.Atoi(number); err != nil {
+		return false
+	}
+	return rest == "" && !strings.Contains(name, ".") || strings.HasSuffix(name, ".json") && rest != ""
+}

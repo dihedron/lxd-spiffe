@@ -60,7 +60,7 @@ func TestGates(t *testing.T) {
 		ids = append(ids, g.ID)
 		byID[g.ID] = g
 	}
-	if got := strings.Join(ids, " "); got != "L1 L2 L3 L4 L5 L6 L7 L8 L9 L10 L11 L12 L13 L14 L15 L16" {
+	if got := strings.Join(ids, " "); got != "L1 L2 L3 L4 L5 L6 L7 L8 L9 L10 L11 L12 L13 L14 L15 L16 L17" {
 		t.Fatalf("gates %s", got)
 	}
 	l1 := byID["L1"]

@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "server/0011",
+  "time": "2026-10-18T15:46:37.961285358Z",
+  "tool_version": "deeaafe",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "l17-080",
+    "/etc/hostname"
+  ],
+  "gate": "L17",
+  "cell": "lxd5-g2",
+  "outcome": "ok",
+  "duration_ms": 48,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0644"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-18 15:45:23 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "file.size",
+      "value": 8
+    },
+    {
+      "key": "file.sha256",
+      "value": "6b01598e109ebc01387ae48d5339eb86ccbce8ff5e4a447847289592fdcbc273"
+    }
+  ],
+  "raw": [
+    "artifacts/0011-server.json",
+    "artifacts/0011-file.json"
+  ]
+}

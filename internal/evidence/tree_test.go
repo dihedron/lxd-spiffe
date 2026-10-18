@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -152,5 +153,48 @@ func TestSanitizeTreeForbidden(t *testing.T) {
 		if !slices.Contains(report.Forbidden, want) {
 			t.Errorf("forbidden = %v; want %s", report.Forbidden, want)
 		}
+	}
+}
+
+// TestAbortedEntries: a probe killed mid-session leaves an empty record and
+// its number reservation; --out leaves both out, --check ignores them, and
+// the report lists them (PRE-07).
+func TestAbortedEntries(t *testing.T) {
+	root, runDir := makeTree(t)
+	records := filepath.Join(runDir, "server", "records")
+	for _, f := range []string{"0007-rehearse-file-pull.json", "0007"} {
+		if err := os.WriteFile(filepath.Join(records, f), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out := filepath.Join(root, "docs", "validation", "run1")
+	report, err := SanitizeTree(runDir, out, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Aborted) != 2 {
+		t.Errorf("aborted %v", report.Aborted)
+	}
+	for _, f := range []string{"0007-rehearse-file-pull.json", "0007"} {
+		if _, err := os.Stat(filepath.Join(out, "server", "records", f)); !os.IsNotExist(err) {
+			t.Errorf("%s copied: %v", f, err)
+		}
+	}
+	if check, err := SanitizeTree(runDir, "", true); err != nil || slices.Contains(check.Forbidden, "server/records/0007") {
+		t.Errorf("check: %v %+v", err, check)
+	}
+	if _, err := ReadRecord(filepath.Join(records, "0007-rehearse-file-pull.json")); !errors.Is(err, ErrAborted) {
+		t.Errorf("ReadRecord of an empty record: %v", err)
+	}
+	for rel, want := range map[string]bool{
+		"server/records/0007-x.json": true, "server/records/0007": true, "server/records/12": true,
+		"server/records/0007-x.json+": false, "server/artifacts/0007-x.json": false, "server/records/abc": false,
+	} {
+		if got := IsAborted(rel, 0); got != want {
+			t.Errorf("IsAborted(%q) = %v", rel, got)
+		}
+	}
+	if IsAborted("server/records/0007-x.json", 12) {
+		t.Error("a record with content is not aborted")
 	}
 }

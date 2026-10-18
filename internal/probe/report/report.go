@@ -1,7 +1,6 @@
 package report
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -35,6 +34,8 @@ type Evidence struct {
 	// Records are sorted by run, then time, then id: within a run the
 	// environments are merged by record time.
 	Records []Entry
+	// Aborted are the records killed probes left empty, as run/env/file.
+	Aborted []string
 }
 
 // ErrNotRun marks a directory that holds no environment of a run.
@@ -71,7 +72,11 @@ func Load(dirs []string) (*Evidence, error) {
 				found = true
 			}
 			for _, path := range paths {
-				rec, err := readRecord(path)
+				rec, err := evidence.ReadRecord(path)
+				if errors.Is(err, evidence.ErrAborted) {
+					ev.Aborted = append(ev.Aborted, filepath.Join(run, env, filepath.Base(path)))
+					continue
+				}
 				if err != nil {
 					return nil, fmt.Errorf("run %s: %w", run, err)
 				}
@@ -97,18 +102,6 @@ func Load(dirs []string) (*Evidence, error) {
 		return strings.Compare(a.ID, b.ID)
 	})
 	return ev, nil
-}
-
-func readRecord(path string) (*evidence.Record, error) {
-	data, err := os.ReadFile(path) //nolint:gosec // G304: a record of a run the operator names
-	if err != nil {
-		return nil, err
-	}
-	var rec evidence.Record
-	if err := json.Unmarshal(data, &rec); err != nil {
-		return nil, fmt.Errorf("%s: %w", filepath.Base(path), err)
-	}
-	return &rec, nil
 }
 
 // Status of a gate in the report.
