@@ -68,6 +68,7 @@ var axes = map[string][]Axis{
 	"L13": {servers},
 	"L14": {servers, {"instance", []string{"c-unpriv", "v-ubuntu"}}},
 	"L15": {servers},
+	"L16": {servers},
 }
 
 var (
