@@ -1,0 +1,100 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sun, 18 Oct 2026 08:49:22 GMT"
+    ],
+    "Etag": [
+      "\"2ca8f141dc8175da9bcf43a32431b72f66707a3cfa6dc389fc939cd3921b634e\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "Alpine 3.24 amd64 (20261016_0103)",
+        "image.os": "Alpine",
+        "image.release": "3.24",
+        "image.requirements.secureboot": "false",
+        "image.serial": "20261016_0103",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "security.secureboot": "false",
+        "volatile.base_image": "6c9b1ae770a02712ce7d08b37a4fc65065d2d0fcbd761d5ab539dc91768d13c7",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "1b9b13f3-ccfb-49b0-9c61-98ed1be75a2e",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tapb78d5321",
+        "volatile.eth0.hwaddr": "mac-7",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "874dbb83-0c73-47ac-8788-9482cfdb063b",
+        "volatile.uuid.generation": "874dbb83-0c73-47ac-8788-9482cfdb063b",
+        "volatile.vsock_id": "4003979947"
+      },
+      "created_at": "2026-10-17T20:01:49.282160457Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "Alpine 3.24 amd64 (20261016_0103)",
+        "image.os": "Alpine",
+        "image.release": "3.24",
+        "image.requirements.secureboot": "false",
+        "image.serial": "20261016_0103",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "security.secureboot": "false",
+        "volatile.base_image": "6c9b1ae770a02712ce7d08b37a4fc65065d2d0fcbd761d5ab539dc91768d13c7",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "1b9b13f3-ccfb-49b0-9c61-98ed1be75a2e",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tapb78d5321",
+        "volatile.eth0.hwaddr": "mac-7",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "874dbb83-0c73-47ac-8788-9482cfdb063b",
+        "volatile.uuid.generation": "874dbb83-0c73-47ac-8788-9482cfdb063b",
+        "volatile.vsock_id": "4003979947"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-18T08:31:36.549320006Z",
+      "location": "none",
+      "name": "v-alpine",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "virtual-machine"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

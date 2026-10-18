@@ -12,6 +12,8 @@ import (
 )
 
 // rehearsalInstances are the baseline instances the rehearsals run in.
+// Every record of R-1 and R-2 names gate R, the report's group of the
+// stage 3 rehearsals (probe spec PRE-01).
 var rehearsalInstances = []string{"c-unpriv", "c-priv", "c-iso", "c-raw", "v-ubuntu", "v-debian", "v-alpine"}
 
 // spireWrite are the guest flags that allow writes under /run/spire/lxd.
@@ -44,7 +46,7 @@ func TestR1RehearseFilePull(t *testing.T) {
 			cases = append(cases, rcase{instance: "c-unpriv", negative: true,
 				serverX: []string{"--expect-fail", "compare"}, guestX: []string{"--tamper"}, want: "failed at compare, as expected"})
 			for _, c := range cases {
-				cell := []string{"--cell", server + "-" + c.instance}
+				cell := []string{"--cell", server + "-" + c.instance, "--gate", "R"}
 				if c.negative {
 					cell[1] += "-tamper"
 				}
@@ -98,7 +100,7 @@ func TestR2RehearseConfigPush(t *testing.T) {
 			cases = append(cases, rcase{instance: "c-unpriv", negative: true,
 				serverX: []string{"--expect-fail", "compare"}, guestX: []string{"--tamper"}, want: "failed at compare, as expected"})
 			for _, c := range cases {
-				cell := []string{"--cell", server + "-" + c.instance}
+				cell := []string{"--cell", server + "-" + c.instance, "--gate", "R"}
 				if c.negative {
 					cell[1] += "-tamper"
 				}

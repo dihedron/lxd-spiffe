@@ -34,6 +34,9 @@ type Gate struct {
 	Rules string
 	// Withdrawn marks a gate kept only for reference stability.
 	Withdrawn bool
+	// Group marks a known group of records that is not a gate: evidence
+	// only, with no decision expected (the stage 3 rehearsals).
+	Group bool
 	// Axes are the lab-matrix axis values the gate needs at least one real
 	// cell for (Operational guidance → Lab matrix → Cells).
 	Axes []Axis
@@ -70,6 +73,15 @@ var axes = map[string][]Axis{
 	"L15": {servers},
 	"L16": {servers},
 }
+
+// Groups are the known groups of records that are not gates, reported
+// after the gates: R, the stage 3 rehearsals (sessions R-1 and R-2, probe
+// spec PRS-50 to PRS-53), whose records name gate R.
+var Groups = []Gate{{
+	ID: "R", Title: "Rehearsals of the real proofs (stage 3)", Group: true,
+	Question: "Do the attestor's proofs pass end to end in every instance class, and does a tampered run fail at the step it breaks?",
+	Axes:     []Axis{servers, {"instance", instances}},
+}}
 
 var (
 	headingRE  = regexp.MustCompile(`(?m)^#### (L\d+) — (.+)$`)

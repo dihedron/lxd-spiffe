@@ -1,0 +1,50 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "1020"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sun, 18 Oct 2026 08:42:05 GMT"
+    ],
+    "Etag": [
+      "\"027bc39ae7301d8b518263602835425b68773a1735a9faf8e821036064b4d979\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "config": {
+        "features.images": "true",
+        "features.networks": "true",
+        "features.networks.zones": "true",
+        "features.profiles": "true",
+        "features.storage.buckets": "true",
+        "features.storage.volumes": "true"
+      },
+      "description": "Default LXD project",
+      "name": "default",
+      "replica_mode": "",
+      "used_by": [
+        "/1.0/instances/c-unpriv",
+        "/1.0/instances/v-ubuntu",
+        "/1.0/storage-pools/default/volumes/image/12a0de07e1683f41b169af0612897eae462efdeb84322281e91724c97e32fe0d?target=c6n1",
+        "/1.0/storage-pools/default/volumes/container/c-unpriv?target=c6n1",
+        "/1.0/storage-pools/default/volumes/virtual-machine/v-ubuntu?target=c6n2",
+        "/1.0/storage-pools/default/volumes/image/d4ff18198fb2ed8c88d408421e610c143cf1f5c1c0178e57178fb586880c3e56?target=c6n2",
+        "/1.0/networks/lxdbr0",
+        "/1.0/profiles/default",
+        "/1.0/images/12a0de07e1683f41b169af0612897eae462efdeb84322281e91724c97e32fe0d",
+        "/1.0/images/a80e9c9fd0d484dec024da3e9e264bbad4ce159b5312d6e149ef6ad532e18e43"
+      ]
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

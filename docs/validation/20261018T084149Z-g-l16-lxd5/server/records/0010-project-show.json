@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "id": "server/0010",
+  "time": "2026-10-18T08:41:56.144738795Z",
+  "tool_version": "b7ad157",
+  "env": "server",
+  "verb": "project show",
+  "args": [
+    "default"
+  ],
+  "gate": "L16",
+  "cell": "lxd5-l16-project",
+  "outcome": "ok",
+  "duration_ms": 20,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "project"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "project.http_status",
+      "value": 200
+    },
+    {
+      "key": "project.etag",
+      "value": "\"027bc39ae7301d8b518263602835425b68773a1735a9faf8e821036064b4d979\""
+    },
+    {
+      "key": "project.name",
+      "value": "default"
+    },
+    {
+      "key": "project.config",
+      "value": {
+        "features.images": "true",
+        "features.networks": "true",
+        "features.networks.zones": "true",
+        "features.profiles": "true",
+        "features.storage.buckets": "true",
+        "features.storage.volumes": "true"
+      }
+    },
+    {
+      "key": "project.features.networks",
+      "value": "true"
+    }
+  ],
+  "raw": [
+    "artifacts/0010-server.json",
+    "artifacts/0010-project.json"
+  ]
+}

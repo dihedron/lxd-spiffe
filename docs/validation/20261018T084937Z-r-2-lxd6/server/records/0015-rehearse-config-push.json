@@ -1,0 +1,125 @@
+{
+  "schema": 1,
+  "id": "server/0015",
+  "time": "2026-10-18T08:49:49.08136751Z",
+  "tool_version": "b7ad157",
+  "env": "server",
+  "verb": "rehearse config-push",
+  "args": [
+    "c-unpriv",
+    "--expect-fail",
+    "compare",
+    "--allow-privileged"
+  ],
+  "gate": "R",
+  "cell": "lxd6-c-unpriv-tamper",
+  "outcome": "ok",
+  "duration_ms": 455,
+  "server": {
+    "version": "6.9",
+    "api_extensions_hash": "sha256:4a6121b81a432a31570b77d9aae7c4e70cbc6ed4198ba3057b625ff94743d175"
+  },
+  "expectations": [
+    "instance",
+    "instance-patch",
+    "instance",
+    "instance-patch"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "step.resolve",
+      "value": "ok"
+    },
+    {
+      "key": "step.policy",
+      "value": "ok"
+    },
+    {
+      "key": "challenge-write.http_status",
+      "value": 200
+    },
+    {
+      "key": "challenge-write.duration_ms",
+      "value": 22
+    },
+    {
+      "key": "challenge-write.completed_at",
+      "value": "2026-10-18T08:49:49.128966371Z"
+    },
+    {
+      "key": "step.write",
+      "value": "ok"
+    },
+    {
+      "key": "rehearse.challenge",
+      "value": {
+        "agent_nonce": "b8fbc0db5a44263b8271067344d91adadc8cf7fd96c89b2ceb7f29c943f0e993",
+        "instance": "c-unpriv",
+        "mode": "config_push",
+        "project": "default",
+        "proof_key": "user.spire.challenge.47a47a14b5e8b257",
+        "server_nonce": "68ec9e83b71de28712dc372560d4f30b5607250c248cd25be4d29dc322e3319c",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "key": "step.challenge",
+      "value": "ok"
+    },
+    {
+      "key": "rehearse.answer",
+      "value": {
+        "done": true,
+        "echo": "68ec9e83b71de28712dc372560d4f30b5607250c248cd25be4d29dc322e33190",
+        "mode": "config_push"
+      }
+    },
+    {
+      "key": "step.answer",
+      "value": "ok"
+    },
+    {
+      "key": "step.compare",
+      "value": "the echo is not the challenge value"
+    },
+    {
+      "key": "rehearsal.result",
+      "value": "failed at compare, as expected"
+    },
+    {
+      "key": "before-cleanup.http_status",
+      "value": 200
+    },
+    {
+      "key": "cleanup.http_status",
+      "value": 200
+    },
+    {
+      "key": "cleanup.duration_ms",
+      "value": 19
+    },
+    {
+      "key": "cleanup.completed_at",
+      "value": "2026-10-18T08:49:49.53636702Z"
+    },
+    {
+      "key": "step.cleanup",
+      "value": "ok"
+    }
+  ],
+  "raw": [
+    "artifacts/0015-server.json",
+    "artifacts/0015-instance.json",
+    "artifacts/0015-challenge-write.json",
+    "artifacts/0015-before-cleanup.json",
+    "artifacts/0015-cleanup.json"
+  ]
+}

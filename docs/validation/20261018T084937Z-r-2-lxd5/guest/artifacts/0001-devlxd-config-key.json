@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "64"
+    ],
+    "Content-Type": [
+      "application/octet-stream"
+    ],
+    "Date": [
+      "Sun, 18 Oct 2026 08:49:41 GMT"
+    ]
+  },
+  "body_text": "ba7367a36fb9cedc48c84d9d0fea6df1cdacba3e293916888dde80c553cb0bbe"
+}

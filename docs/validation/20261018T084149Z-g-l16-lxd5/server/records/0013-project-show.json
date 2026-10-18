@@ -1,0 +1,86 @@
+{
+  "schema": 1,
+  "id": "server/0013",
+  "time": "2026-10-18T08:41:56.27232459Z",
+  "tool_version": "b7ad157",
+  "env": "server",
+  "verb": "project show",
+  "args": [
+    "l16-missing"
+  ],
+  "gate": "L16",
+  "cell": "lxd5-full",
+  "outcome": "unexpected",
+  "duration_ms": 17,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "project"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "project.http_status",
+      "value": 404
+    },
+    {
+      "key": "expectation.status",
+      "value": {
+        "expectation": "project",
+        "got": 404,
+        "want": [
+          200
+        ]
+      }
+    },
+    {
+      "key": "expectation.header.ETag",
+      "value": {
+        "expectation": "project",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.type",
+      "value": {
+        "expectation": "project",
+        "got": "error",
+        "want": "sync"
+      }
+    },
+    {
+      "key": "expectation.body.name",
+      "value": {
+        "expectation": "project",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "expectation.body.config",
+      "value": {
+        "expectation": "project",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "project.etag",
+      "value": ""
+    },
+    {
+      "key": "project.error",
+      "value": "Project not found"
+    }
+  ],
+  "raw": [
+    "artifacts/0013-server.json",
+    "artifacts/0013-project.json"
+  ]
+}

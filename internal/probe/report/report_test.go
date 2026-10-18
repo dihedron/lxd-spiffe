@@ -171,7 +171,7 @@ func TestBuild(t *testing.T) {
 	for _, r := range reports {
 		ids = append(ids, r.Gate.ID)
 	}
-	if strings.Join(ids, " ") != "L1 L5 L10 L13 (none) S0" {
+	if strings.Join(ids, " ") != "L1 L5 L10 L13 R (none) S0" { // R: the rehearsals, a known group
 		t.Fatalf("gates %v", ids)
 	}
 
@@ -277,7 +277,7 @@ func TestWriteDir(t *testing.T) {
 	for _, e := range entries {
 		names = append(names, e.Name())
 	}
-	if strings.Join(names, " ") != "L1.md L10.md L13.md L5.md S0.md ___evil.md index.md no-gate.md" {
+	if strings.Join(names, " ") != "L1.md L10.md L13.md L5.md R.md S0.md ___evil.md index.md no-gate.md" {
 		t.Errorf("files %v", names)
 	}
 	index, err := os.ReadFile(filepath.Join(dir, "index.md"))
@@ -316,16 +316,13 @@ func TestCommittedEvidence(t *testing.T) {
 			t.Logf("%s decided without a real cell for %v", r.Gate.ID, r.Missing)
 		}
 	}
-	// awaitingEvidence: calls whose gate is open, by path, with the gate.
-	awaitingEvidence := map[string]string{"/1.0/projects/{name}": "L16"}
 	for _, c := range find(t, reports, "L10").Calls {
-		gate, open := awaitingEvidence[c.Path]
-		switch {
-		case c.Records == 0 && !open:
+		if c.Records == 0 {
 			t.Errorf("no record reached the API usage call %+v", c.Call)
-		case c.Records > 0 && open:
-			t.Errorf("records reach %+v: gate %s has evidence, drop it from awaitingEvidence", c.Call, gate)
 		}
+	}
+	if r := find(t, reports, "R"); r.Status != StatusEvidence {
+		t.Errorf("the rehearsals: status %q", r.Status)
 	}
 	if err := Render(&bytes.Buffer{}, ev, reports); err != nil {
 		t.Fatal(err)
