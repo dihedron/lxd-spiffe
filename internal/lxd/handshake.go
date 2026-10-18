@@ -58,7 +58,7 @@ func ProbeTLS(ctx context.Context, endpoint, pin string, min, max uint16) (*Hand
 		MinVersion: min,
 		MaxVersion: max,
 		// the pin is compared below, after the handshake
-		InsecureSkipVerify: true, //nolint:gosec // NOSONAR: pinned, see PinMatch; this handshake only observes which TLS versions LXD accepts and sends nothing
+		InsecureSkipVerify: true, //nolint:gosec // pinned: see PinMatch
 	})
 	if err := tc.HandshakeContext(ctx); err != nil {
 		if ctx.Err() != nil {

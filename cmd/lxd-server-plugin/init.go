@@ -154,8 +154,7 @@ func cleanup() {
 	}
 	if memprof != nil {
 		runtime.GC() // get up-to-date statistics
-		// opt-in profiling, off unless the operator sets the _MEM_PROFILE variable
-		if err := pprof.WriteHeapProfile(memprof); err != nil { // NOSONAR: opt-in, off by default
+		if err := pprof.WriteHeapProfile(memprof); err != nil {
 			slog.Error("could not write memory profile", "error", err)
 		}
 		closeProfile(memprof)

@@ -112,8 +112,7 @@ func (cmd *BearerCheck) run(ctx context.Context, s *session, token string) error
 // gets here.
 func observeToken(s *session, token string) time.Time {
 	claims := jwt.MapClaims{}
-	// unverified on purpose: the probe records the claims, LXD verifies the token
-	parsed, _, err := jwt.NewParser().ParseUnverified(token, claims) // NOSONAR: claims are recorded, never trusted
+	parsed, _, err := jwt.NewParser().ParseUnverified(token, claims)
 	if err != nil {
 		s.finding("token.format", "not a JWT: "+err.Error())
 		return time.Time{}
