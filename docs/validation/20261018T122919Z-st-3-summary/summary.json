@@ -1,0 +1,265 @@
+{
+  "settings": {
+    "fault_rate": "0.2",
+    "faults": "C1,C2,C3,C4,C5,C6,C9,C10",
+    "fleet": "35",
+    "iterations": "500",
+    "seed": "1792326421037194997",
+    "session": "ST-3",
+    "workers": "10"
+  },
+  "outcomes": {
+    "config_push": {
+      "C1": {
+        "error": 1,
+        "fail at answer": 29,
+        "fail at connect": 1,
+        "fail at timeout": 2
+      },
+      "C10": {
+        "fail at answer": 1,
+        "fail at compare": 21,
+        "fail at connect": 3,
+        "fail at policy": 5,
+        "fail at timeout": 1
+      },
+      "C3": {
+        "fail at answer": 19,
+        "fail at connect": 3,
+        "fail at policy": 1,
+        "fail at timeout": 1,
+        "pass": 3
+      },
+      "C4": {
+        "fail at killed": 32
+      },
+      "C5": {
+        "fail at answer": 31,
+        "fail at connect": 4,
+        "fail at policy": 6
+      },
+      "C6": {
+        "fail at policy": 2,
+        "fail at timeout": 12,
+        "pass": 11
+      },
+      "C9": {
+        "fail at connect": 1,
+        "fail at policy": 3,
+        "fail at timeout": 1,
+        "fail at write": 1,
+        "pass": 14
+      },
+      "none": {
+        "error": 1,
+        "fail at answer": 28,
+        "fail at connect": 68,
+        "fail at policy": 79,
+        "fail at timeout": 30,
+        "pass": 585
+      }
+    },
+    "file_pull": {
+      "C1": {
+        "fail at answer": 24,
+        "fail at connect": 4,
+        "fail at policy": 2
+      },
+      "C10": {
+        "fail at answer": 2,
+        "fail at compare": 20,
+        "fail at connect": 2,
+        "fail at policy": 2
+      },
+      "C2": {
+        "fail at connect": 9,
+        "fail at policy": 7,
+        "fail at read": 10,
+        "fail at timeout": 3
+      },
+      "C3": {
+        "fail at answer": 22,
+        "fail at connect": 2,
+        "fail at policy": 3,
+        "pass": 1
+      },
+      "C4": {
+        "fail at killed": 30
+      },
+      "C5": {
+        "fail at answer": 26,
+        "fail at connect": 1,
+        "fail at policy": 4
+      },
+      "C6": {
+        "fail at answer": 1,
+        "fail at connect": 3,
+        "fail at policy": 4,
+        "fail at read": 1,
+        "fail at timeout": 10,
+        "pass": 11
+      },
+      "none": {
+        "error": 3,
+        "fail at answer": 15,
+        "fail at connect": 67,
+        "fail at policy": 93,
+        "fail at timeout": 34,
+        "pass": 584
+      }
+    }
+  },
+  "load": [
+    {
+      "label": "chaos",
+      "mode": "config_push",
+      "attestor": {
+        "count": 526,
+        "p50_ms": 109,
+        "p95_ms": 741,
+        "p99_ms": 6365,
+        "max_ms": 12133
+      },
+      "steps": {
+        "answer": {
+          "count": 526,
+          "p50_ms": 484,
+          "p95_ms": 689,
+          "p99_ms": 844,
+          "max_ms": 1256
+        },
+        "challenge": {
+          "count": 526,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "cleanup": {
+          "count": 526,
+          "p50_ms": 48,
+          "p95_ms": 154,
+          "p99_ms": 237,
+          "max_ms": 293
+        },
+        "compare": {
+          "count": 526,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "policy": {
+          "count": 526,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "recheck": {
+          "count": 526,
+          "p50_ms": 11,
+          "p95_ms": 35,
+          "p99_ms": 63,
+          "max_ms": 96
+        },
+        "resolve": {
+          "count": 526,
+          "p50_ms": 12,
+          "p95_ms": 36,
+          "p99_ms": 59,
+          "max_ms": 138
+        },
+        "write": {
+          "count": 526,
+          "p50_ms": 31,
+          "p95_ms": 665,
+          "p99_ms": 6237,
+          "max_ms": 11928
+        }
+      },
+      "iterations": 1000,
+      "per_second": 0.8210493631982069
+    },
+    {
+      "label": "chaos",
+      "mode": "file_pull",
+      "attestor": {
+        "count": 496,
+        "p50_ms": 76,
+        "p95_ms": 175,
+        "p99_ms": 243,
+        "max_ms": 363
+      },
+      "steps": {
+        "answer": {
+          "count": 496,
+          "p50_ms": 460,
+          "p95_ms": 682,
+          "p99_ms": 1135,
+          "max_ms": 1407
+        },
+        "challenge": {
+          "count": 496,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "compare": {
+          "count": 496,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "file": {
+          "count": 496,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "policy": {
+          "count": 496,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "read": {
+          "count": 496,
+          "p50_ms": 50,
+          "p95_ms": 112,
+          "p99_ms": 148,
+          "max_ms": 300
+        },
+        "recheck": {
+          "count": 496,
+          "p50_ms": 12,
+          "p95_ms": 40,
+          "p99_ms": 67,
+          "max_ms": 73
+        },
+        "resolve": {
+          "count": 496,
+          "p50_ms": 11,
+          "p95_ms": 35,
+          "p99_ms": 56,
+          "max_ms": 77
+        }
+      },
+      "iterations": 1000,
+      "per_second": 0.8246547229393356
+    }
+  ],
+  "violations": [],
+  "orphans": {
+    "C3": 65,
+    "C4": 44,
+    "C6": 56
+  },
+  "recoveries": 702,
+  "windows": 413,
+  "swept": 121
+}

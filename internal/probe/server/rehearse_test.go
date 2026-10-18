@@ -107,6 +107,10 @@ func TestPRS50FilePull(t *testing.T) {
 		if got := observation(t, rec, "step."+step); got != "ok" {
 			t.Errorf("step %s: %v", step, got)
 		}
+		// PRS-54: every step records its duration
+		if ms, ok := observation(t, rec, "step."+step+".ms").(float64); !ok || ms < 0 {
+			t.Errorf("step %s duration: %v", step, observation(t, rec, "step."+step+".ms"))
+		}
 	}
 	c, err := rehearse.FindChallenge(cmd.stdout.(*bytes.Buffer).String())
 	if err != nil || c.Instance != "c1" || c.Project != "default" || !strings.HasPrefix(c.ProofPath, "/run/spire/lxd/proof-") {
@@ -297,6 +301,9 @@ func TestPRS51ConfigPush(t *testing.T) {
 	}
 	if keys := challengeKeys(fake); len(keys) != 0 {
 		t.Errorf("keys left: %v", keys)
+	}
+	if _, ok := observation(t, rec, "step.cleanup.ms").(float64); !ok {
+		t.Errorf("cleanup duration: %v", rec.Observations)
 	}
 	// the write carried the read's ETag
 	var patches int

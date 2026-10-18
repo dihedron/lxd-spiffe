@@ -40,6 +40,18 @@ type Evidence struct {
 // ErrNotRun marks a directory that holds no environment of a run.
 var ErrNotRun = errors.New("not a run directory")
 
+// isStressSummary reports whether dir is a stress session's collected
+// summary (summary.json and results.jsonl, no environment): Load skips it,
+// since its records stay in the working evidence.
+func isStressSummary(dir string) bool {
+	for _, f := range []string{"summary.json", "results.jsonl"} {
+		if info, err := os.Stat(filepath.Join(dir, f)); err != nil || !info.Mode().IsRegular() {
+			return false
+		}
+	}
+	return true
+}
+
 // Load reads the records of the run directories (evidence/<run_id>, or a
 // committed docs/validation/<run_id>). It only reads.
 func Load(dirs []string) (*Evidence, error) {
@@ -65,6 +77,9 @@ func Load(dirs []string) (*Evidence, error) {
 				}
 				ev.Records = append(ev.Records, Entry{Run: run, Record: *rec})
 			}
+		}
+		if !found && isStressSummary(dir) {
+			continue // a stress session's summary sits beside the runs (stress spec STR-42)
 		}
 		if !found {
 			return nil, fmt.Errorf("%s: %w", run, ErrNotRun)

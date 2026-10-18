@@ -143,6 +143,19 @@ func TestLoad(t *testing.T) {
 	if _, err := Load([]string{dir}); !errors.Is(err, ErrNotRun) {
 		t.Errorf("empty directory: %v", err)
 	}
+	// a stress summary is skipped, not refused (STR-42)
+	summary := filepath.Join(t.TempDir(), "20261018T100153Z-st-1-summary")
+	if err := os.MkdirAll(summary, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"summary.json", "results.jsonl", "summary.md"} {
+		if err := os.WriteFile(filepath.Join(summary, f), []byte("{}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if ev, err := Load([]string{summary}); err != nil || len(ev.Runs) != 0 {
+		t.Errorf("a stress summary: %v, runs %v", err, ev)
+	}
 	runs := testEvidence(t)
 	if _, err := Load([]string{runs[0], runs[0]}); err == nil {
 		t.Error("a run given twice: no error")
@@ -171,7 +184,7 @@ func TestBuild(t *testing.T) {
 	for _, r := range reports {
 		ids = append(ids, r.Gate.ID)
 	}
-	if strings.Join(ids, " ") != "L1 L5 L10 L13 R (none) S0" { // R: the rehearsals, a known group
+	if strings.Join(ids, " ") != "L1 L5 L10 L13 R S (none) S0" { // R, S: the rehearsals and the stress sessions, known groups
 		t.Fatalf("gates %v", ids)
 	}
 
@@ -277,7 +290,7 @@ func TestWriteDir(t *testing.T) {
 	for _, e := range entries {
 		names = append(names, e.Name())
 	}
-	if strings.Join(names, " ") != "L1.md L10.md L13.md L5.md R.md S0.md ___evil.md index.md no-gate.md" {
+	if strings.Join(names, " ") != "L1.md L10.md L13.md L5.md R.md S.md S0.md ___evil.md index.md no-gate.md" {
 		t.Errorf("files %v", names)
 	}
 	index, err := os.ReadFile(filepath.Join(dir, "index.md"))
@@ -323,6 +336,9 @@ func TestCommittedEvidence(t *testing.T) {
 	}
 	if r := find(t, reports, "R"); r.Status != StatusEvidence {
 		t.Errorf("the rehearsals: status %q", r.Status)
+	}
+	if r := find(t, reports, "S"); !r.Known || !r.Gate.Group {
+		t.Errorf("the stress group: %+v", r.Gate)
 	}
 	if err := Render(&bytes.Buffer{}, ev, reports); err != nil {
 		t.Fatal(err)

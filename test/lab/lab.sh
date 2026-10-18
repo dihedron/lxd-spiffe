@@ -340,7 +340,8 @@ cmd_test() {
 	[[ -n "$(env_get '.probe.sha256 // empty')" ]] || die "lxd-probe is not deployed: run lab.sh deploy"
 	export LAB_DIR REPO_DIR LAB_STATE_DIR LAB_EVIDENCE_DIR LAB_GUEST_VM_VCPUS LAB_GUEST_VM_RAM_GIB LAB_CLUSTER
 	export LAB_COLLECT="$collect"
-	local args=(-tags lab -count=1 -v -timeout 60m)
+	# LAB_TEST_TIMEOUT: go test's timeout; a full stress soak (ST-3) may need more than the default
+	local args=(-tags lab -count=1 -v -timeout "${LAB_TEST_TIMEOUT:-60m}")
 	[[ -z "$run" ]] || args+=(-run "$run")
 	(cd "$REPO_DIR" && go test "${args[@]}" ./test/lab/acceptance)
 }

@@ -64,10 +64,24 @@ type rehearsal struct {
 	trace      io.Writer // the trace, on stderr: stdout carries JSON only
 	expectFail string
 	failed     string
+	// since is when the current step began (PRS-54)
+	since time.Time
+}
+
+// begin starts the clock of the first step.
+func (r *rehearsal) begin() { r.since = time.Now() }
+
+// timed records the duration of the step that ends now and starts the
+// next one's clock (PRS-54).
+func (r *rehearsal) timed(name string) {
+	now := time.Now()
+	r.s.observe("step."+name+".ms", now.Sub(r.since).Milliseconds())
+	r.since = now
 }
 
 // step records the result of a step and reports whether to go on.
 func (r *rehearsal) step(name string, err error) bool {
+	r.timed(name)
 	if err == nil {
 		r.s.observe("step."+name, "ok")
 		fmt.Fprintf(r.trace, "step %s: ok\n", name) //nolint:errcheck // the trace is best effort
@@ -156,6 +170,7 @@ func (cmd *RehearseFilePull) run(ctx context.Context, r *rehearsal, agentNonce [
 	if _, err := s.readServer(ctx, nil); err != nil {
 		return err
 	}
+	r.begin()
 	first, err := rehearseRead(ctx, s, cmd.Args.Name, "instance")
 	if err != nil {
 		return err
@@ -421,6 +436,7 @@ func (cmd *RehearseConfigPush) run(ctx context.Context, r *rehearsal, agentNonce
 	if _, err := s.readServer(ctx, nil); err != nil {
 		return err
 	}
+	r.begin()
 	first, err := rehearseRead(ctx, s, cmd.Args.Name, "instance")
 	if err != nil {
 		return err
@@ -548,6 +564,7 @@ func (r *rehearsal) cleanup(err error) bool {
 	if r.failed == "" {
 		return r.step("cleanup", err)
 	}
+	r.timed("cleanup")
 	if err == nil {
 		r.s.observe("step.cleanup", "ok")
 		fmt.Fprintln(r.trace, "step cleanup: ok") //nolint:errcheck // the trace is best effort
