@@ -19,6 +19,7 @@ Oct 18, 2026 · @Andrea Funtò
 |---|---|
 | v0.1 (Oct 18, 2026) | Initial draft: Phase A (rehearsals under load, soak and chaos), Phase B (real attestation and workloads under chaos). |
 | Oct 18, 2026 (findings) | C2 is `file_pull` only and C9 a race; C3 kills the daemon (`snap restart lxd` stops every instance); INV-1 judges must-fail faults only, INV-3 measures recovery from a quiet server; STR-52 adds the re-attestation wave after a daemon crash, which ST-3 showed restarts every container. |
+| Oct 18, 2026 (chunk 18) | The fleet shards its grants over groups (gate L17) and defaults to 100 instances; ST-4 made concrete: the cluster fleet and the faults C7a/C7b (a member powered off, forwarding or holding) and C8a/C8b (a move, an evacuation). |
 
 ## Overview
 
@@ -44,9 +45,9 @@ Every iteration ends in one of: **pass**, **fail** (a step failed, with its step
 
 | ID | Requirement |
 |---|---|
-| STR-01 | The session creates a fleet of `LAB_STRESS_FLEET` (default 35) Alpine containers per standalone server, `s-001`… in project `default`, from the image the lab already uses, with `lxd-probe` installed as in the baseline (`LAB_GUEST_PROBE`) and the lab identities' grants (`files`: `can_access_files`; `edit`: `can_edit`; project `can_view` first). The baseline instances (containers and VMs) join the fleet, so that every instance class is stressed. The setup lifts the server VM's sshd limits (`MaxStartups`, `MaxSessions`), so that concurrent guest halves are not refused by SSH itself; the change is gone at the next `lab.sh reset`. The default of 35 keeps each lab group under LXD's limit of 99 permissions per group (two per fleet instance on top of the baseline's 22), measured on 5.21.8 and 6.9 while building this session; larger fleets wait for gate L17 (permissions spread over several groups). |
+| STR-01 | The session creates a fleet of `LAB_STRESS_FLEET` (default 100) Alpine containers per standalone server, `s-001`… in project `default`, from the image the lab already uses, with `lxd-probe` installed as in the baseline (`LAB_GUEST_PROBE`) and the lab identities' grants (`files`: `can_access_files`; `edit`: `can_edit`; project `can_view` first). The baseline instances (containers and VMs) join the fleet, so that every instance class is stressed. The setup lifts the server VM's sshd limits (`MaxStartups`, `MaxSessions`), so that concurrent guest halves are not refused by SSH itself; the change is gone at the next `lab.sh reset`. The fleet's grants are sharded as the attestor's *Least privilege* prescribes (gate L17): for each lab identity, session groups (`lab-files-s1`, `lab-files-s2`, …) each hold project `can_view` and at most 90 instance grants, and the identity is added to them, then removed and the groups deleted at the end. A group holds at most 99 permissions on LXD 5.21.8 and 6.9, which capped the first sessions at 35 instances. |
 | STR-02 | The fleet is deleted at the end of the session, whatever happened, and at its start if a previous session left one (a teardown that runs on both ends, as G-L12's). |
-| STR-03 | With a cluster running (`LAB_CLUSTER`), the session MAY also create a smaller fleet on it (default 9, three per member) for the cluster faults (C7, C8). |
+| STR-03 | **Cluster fleet** (ST-4): on the running cluster (`LAB_CLUSTER`, one at a time), `LAB_STRESS_CLUSTER_FLEET` (default 9) Alpine containers placed evenly over the members (`--target`), plus the cluster's baseline `c-unpriv` and `v-ubuntu`; the probe reaches the cluster through its first member, the `url` an operator would configure. The faults that cut a member (C3, C6, C7) act on the other members, so that the entry point stays up, as a load balancer in front of the members would (attestor spec FR-S11). |
 
 ### Load profile
 
@@ -68,8 +69,10 @@ Each fault has an **injection point** (when, relative to the iteration's steps),
 | C4 | Server half killed (`SIGKILL`) | `config_push`: after `write`, before `cleanup`; `file_pull`: after `challenge` | harness records the kill; the challenge key (or proof file) is **left behind** | counted; removed by the session's sweep (STR-30) |
 | C5 | Guest half killed, or never answers | after the challenge | fail at `answer` within `--timeout`; `config_push` still runs `cleanup` | none |
 | C6 | Network partition between the lab host and an LXD server (`iptables` drop of 8443 on the VM) for 5–20 s | anywhere | fail at the step in flight within `--timeout`, never pass across the partition unless `recheck` succeeded after it | rule removed by the VM's own timer |
-| C7 | Cluster member stopped (one that holds the instance, or one that only forwards) | anywhere | fail or pass as forwarding allows; never pass with a changed instance | member started again |
-| C8 | Instance moved or its member evacuated (cluster) | between `challenge` and `recheck` | fail at `recheck` (`location` changed, FR-S10); a VM may fail at `read` first | instance moved back, member restored |
+| C7a | Cluster member powered off (`virsh destroy`), one that neither holds the instance nor is the entry member | after the challenge | **pass**: forwarding to the holding member is unaffected (a failure is a finding, not a violation) | VM started, member back ONLINE |
+| C7b | Cluster member powered off, the one holding the instance | after the challenge | fail (the instance cannot be reached); never pass | VM started, member ONLINE, instance running |
+| C8a | Instance moved (cluster): stopped, `lxc move --target` another member, started | after the challenge | fail at `recheck` (`location` changed, FR-S10) | moved back |
+| C8b | The instance's member evacuated (`lxc cluster evacuate`, `--force` on 5.21, `--yes` on 6.x) | after the challenge | fail at `recheck`, or at `read` for a VM whose agent restarts | `lxc cluster restore` |
 | C9 | Concurrent writer on the instance's config (another key, in a loop) | from the start of the iteration to the challenge (`config_push`) | fail at `write` with 412 when the writer lands between the read and the write (the rehearsal does one `PATCH`; FR-S14's retries are the plugin's); the race is not deterministic from outside the probe, so a pass after the writer stopped is allowed | the writer's key removed |
 | C10 | Proof tampered or swapped (`--tamper`, or a proof for another instance written at the path) | the guest's step | fail at `compare` | proof file removed |
 
@@ -79,7 +82,7 @@ The injector picks the fault and its moment from the seeded generator; each reco
 
 | ID | Invariant |
 |---|---|
-| INV-1 | **No false pass.** An iteration hit by C1, C2, C4, C5, C8 or C10 MUST NOT pass. Under C3, C6, C7 or C9 a pass is legitimate: it ends with a fresh read compared with the first (`recheck`), and none of these faults changes an instance's identity. (The first soak judged such passes by the fault's window instead; windows observed over SSH are only known to about a second, which made the rule both fragile and redundant.) |
+| INV-1 | **No false pass.** An iteration hit by C1, C2, C4, C5, C7b, C8a, C8b or C10 MUST NOT pass. Under C3, C6, C7a or C9 a pass is legitimate: it ends with a fresh read compared with the first (`recheck`), and none of these faults changes an instance's identity. (The first soak judged such passes by the fault's window instead; windows observed over SSH are only known to about a second, which made the rule both fragile and redundant.) |
 | INV-2 | **Bounded time.** Every iteration ends within `--timeout` + 10 s, the margin for the harness's own processes; a hung iteration is a violation and is killed. |
 | INV-3 | **Recovery.** After each fault's clean-up, the next iteration on the same instance (and, for C3, C6, C7, on the same server) passes within 60 s of the server becoming quiet: while further server-wide faults on it start within 60 s, the deadline moves to their end. The harness retries every 5 s for up to 5 minutes. (An LXD crash restarts every container on the server, so an instance cannot recover while crashes go on.) |
 | INV-4 | **No leftovers.** After an iteration that ran to its end, no `user.spire.challenge.*` key is set on its instance and no proof file is left in its proof directory (the guest's `file rm` runs as part of the iteration). Leftovers after C4 are counted as **orphans**, not violations: they measure what a crash leaves behind. |
@@ -107,7 +110,7 @@ The injector picks the fault and its moment from the seeded generator; each reco
 | ST-1 | Fleet | STR-01, STR-02: the fleet is built, every instance answers one rehearsal per mode, and is deleted at the end |
 | ST-2 | Stepped load | STR-10 on both servers, both modes; no faults; INV-2, INV-4, INV-5 |
 | ST-3 | Soak with chaos | STR-11 with faults C1–C6, C9, C10 on the standalone servers; all invariants; the sweep (STR-30) |
-| ST-4 | Cluster chaos | With a cluster up: STR-11 on its fleet with C3, C6, C7, C8 added; all invariants |
+| ST-4 | Cluster chaos | On each cluster in turn: STR-11 over the cluster fleet (`LAB_STRESS_ITERATIONS` per mode, default 200 here, fault rate 0.25) with C3, C6, C7a, C7b, C8a, C8b, C9 and C10; all invariants; the sweep |
 | ST-5 | Burst | STR-12; INV-2, INV-4 |
 
 ## Phase B — real attestation and workloads under chaos
