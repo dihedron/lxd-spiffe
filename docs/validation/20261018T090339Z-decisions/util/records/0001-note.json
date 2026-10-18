@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0001",
+  "time": "2026-10-18T09:03:39.665681107Z",
+  "tool_version": "b7ad157",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L16",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 18, 2026): (1) Project can_view is part of the minimal set in every mode. On LXD 5.21.8 and 6.9, LXD refuses to add project can_view_instances, instance can_view or instance can_access_files to a group that cannot view the project (\"Entitlement ... references project \\\"default\\\", but the project cannot be viewed by the group\"); the attestor's least-privilege table gains project can_view on each allowed project in every mode. (2) Project can_view alone (identity l16-project) reads GET /1.0/projects/{name} with its config, features.networks included, standalone and through every member of three-member clusters of both versions, and sees no instance (404 on the instance read and the files API, the uuid filter finds none). The network selector therefore needs no option: selectors.network_project is removed, and the selector is always network:\u003cproject\u003e/\u003cnetwork\u003e, with the project that holds the network (the instance's project when it has features.networks=true, default otherwise); the server reads the project only when the network selector is enabled and the instance has a managed NIC. A missing project and one hidden from the identity both answer 404, an untrusted client 403; the project fixtures are the contract of the project read. Evidence: runs 20261018T084149Z-g-l16-*, 20261018T084500Z-g-l16-c5; fixtures test/fixtures/{5.21.8,6.9}/projects/."
+    }
+  ],
+  "raw": null
+}
