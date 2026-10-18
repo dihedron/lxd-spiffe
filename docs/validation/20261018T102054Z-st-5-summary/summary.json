@@ -1,0 +1,171 @@
+{
+  "settings": {
+    "fault_rate": "0.2",
+    "fleet": "35",
+    "iterations": "0",
+    "offered": "20/s for 60 s, 16 in flight",
+    "seed": "1792318711947789959",
+    "session": "ST-5",
+    "workers": "10"
+  },
+  "outcomes": {
+    "config_push": {
+      "none": {
+        "pass": 363
+      }
+    },
+    "file_pull": {
+      "none": {
+        "pass": 364
+      }
+    }
+  },
+  "load": [
+    {
+      "label": "burst 20/s",
+      "mode": "config_push",
+      "attestor": {
+        "count": 363,
+        "p50_ms": 234,
+        "p95_ms": 635,
+        "p99_ms": 877,
+        "max_ms": 992
+      },
+      "steps": {
+        "answer": {
+          "count": 363,
+          "p50_ms": 701,
+          "p95_ms": 972,
+          "p99_ms": 1364,
+          "max_ms": 1516
+        },
+        "challenge": {
+          "count": 363,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "cleanup": {
+          "count": 363,
+          "p50_ms": 107,
+          "p95_ms": 340,
+          "p99_ms": 463,
+          "max_ms": 555
+        },
+        "compare": {
+          "count": 363,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "policy": {
+          "count": 363,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "recheck": {
+          "count": 363,
+          "p50_ms": 24,
+          "p95_ms": 79,
+          "p99_ms": 110,
+          "max_ms": 185
+        },
+        "resolve": {
+          "count": 363,
+          "p50_ms": 21,
+          "p95_ms": 69,
+          "p99_ms": 119,
+          "max_ms": 153
+        },
+        "write": {
+          "count": 363,
+          "p50_ms": 63,
+          "p95_ms": 253,
+          "p99_ms": 342,
+          "max_ms": 454
+        }
+      },
+      "iterations": 363,
+      "per_second": 5.9928675585622555
+    },
+    {
+      "label": "burst 20/s",
+      "mode": "file_pull",
+      "attestor": {
+        "count": 364,
+        "p50_ms": 135,
+        "p95_ms": 307,
+        "p99_ms": 461,
+        "max_ms": 535
+      },
+      "steps": {
+        "answer": {
+          "count": 364,
+          "p50_ms": 671,
+          "p95_ms": 902,
+          "p99_ms": 1084,
+          "max_ms": 1394
+        },
+        "challenge": {
+          "count": 364,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "compare": {
+          "count": 364,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "file": {
+          "count": 364,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "policy": {
+          "count": 364,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "read": {
+          "count": 364,
+          "p50_ms": 75,
+          "p95_ms": 183,
+          "p99_ms": 269,
+          "max_ms": 329
+        },
+        "recheck": {
+          "count": 364,
+          "p50_ms": 25,
+          "p95_ms": 82,
+          "p99_ms": 130,
+          "max_ms": 197
+        },
+        "resolve": {
+          "count": 364,
+          "p50_ms": 23,
+          "p95_ms": 90,
+          "p99_ms": 121,
+          "max_ms": 139
+        }
+      },
+      "iterations": 364,
+      "per_second": 5.9635433628031675
+    }
+  ],
+  "violations": [],
+  "orphans": {},
+  "recoveries": 0,
+  "windows": 0
+}

@@ -252,7 +252,9 @@ func (l *lab) writeSummary(t *testing.T, name string, sum stress.Summary, result
 	write("results.jsonl", func(f *os.File) error { return stress.WriteResults(f, results) })
 	md, _ := os.ReadFile(filepath.Join(dir, "summary.md"))
 	t.Logf("summary in %s:\n%s", dir, md)
-	if os.Getenv("LAB_COLLECT") == "yes" && !t.Failed() {
+	// a run that broke an invariant is not collected: it stays in the
+	// working evidence for analysis
+	if os.Getenv("LAB_COLLECT") == "yes" && !t.Failed() && sum.OK() {
 		dst := filepath.Join(l.repo, "docs", "validation", name)
 		if err := copyTree(dir, dst, nil); err != nil {
 			t.Fatalf("collecting the summary: %v", err)
@@ -341,16 +343,22 @@ func TestST5Burst(t *testing.T) {
 	plan := stress.Plan{Seed: set.seed, Iterations: 20 * 60, Modes: []string{rehearse.FilePull, rehearse.ConfigPush}, Targets: l.stressTargets(names)}
 	tick := time.NewTicker(time.Second / 20)
 	defer tick.Stop()
-	paced := func(ctx context.Context, it stress.Item) stress.Result {
+	// the 60 s window only bounds the dispatch: an iteration that started
+	// runs to its end, cleanup included, under its own timeout, so that the
+	// end of the burst kills nothing halfway (a killed iteration left a
+	// proof file in the first run)
+	window, stop := context.WithTimeout(context.Background(), 60*time.Second)
+	defer stop()
+	paced := func(_ context.Context, it stress.Item) stress.Result {
 		select {
 		case <-tick.C:
-		case <-ctx.Done():
+		case <-window.Done():
 		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
 		return sr.iterate(ctx, it)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
-	defer cancel()
-	results := stress.Run(ctx, plan.Items(), 16, paced)
+	results := stress.Run(window, plan.Items(), 16, paced)
 	settings := set.record()
 	settings["session"], settings["offered"] = "ST-5", "20/s for 60 s, 16 in flight"
 	sum := stress.Summarize(results, settings, stressBounds)
