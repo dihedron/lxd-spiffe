@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0001",
+  "time": "2026-10-18T15:26:45.550092248Z",
+  "tool_version": "deeaafe",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L11",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 17, 2026; recorded Oct 18): on three-member clusters of LXD 5.21.8 and 6.9 every member forwards every call the plugin makes (instance read, files API, PATCH with If-Match, the filtered list), with no redirect, so a cluster is one servers entry with no cluster logic in the client (FR-S11; T21's redirect retry dropped). location is correct within 1 s after a cold move, an evacuation and a restore, and is compared between reads (FR-S10, FR-S14; new reason instance_moved); volatile.uuid, its generation, the cloud-init id and the idmap survive moves and evacuations. Instance reads never failed during a move; a VM's files API answered 500 for 25-30 s after an evacuation, handled as VM start-up. volatile.cluster.group records a placement request, not membership, and is withdrawn as a claim. Live migration is untested. Evidence: runs 20261016T182319Z-g-l11-c5-*, 20261016T194304Z-g-l11-c6-*."
+    }
+  ],
+  "raw": null
+}
