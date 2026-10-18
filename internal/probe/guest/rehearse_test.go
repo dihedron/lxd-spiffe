@@ -11,6 +11,7 @@ import (
 	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
 	"github.com/dihedron/lxd-spiffe/internal/probe/rehearse"
 	"github.com/dihedron/lxd-spiffe/internal/proof"
+	"github.com/dihedron/lxd-spiffe/test/fakelxd"
 )
 
 func fileChallenge(t *testing.T) (rehearse.Challenge, []byte, []byte) {
@@ -104,5 +105,61 @@ func TestTamperName(t *testing.T) {
 		if got == name || len(got) != len(name) || got[len(got)-1] == '-' {
 			t.Errorf("tamperName(%q) = %q", name, got)
 		}
+	}
+}
+
+func pushChallenge() rehearse.Challenge {
+	return rehearse.Challenge{
+		Mode: rehearse.ConfigPush, Project: "default", Instance: "v-ubuntu",
+		ServerNonce: strings.Repeat("0a", 32), AgentNonce: strings.Repeat("0b", 32),
+		ProofKey: "user.spire.challenge.0123456789abcdef", TimeoutMS: 30000,
+	}
+}
+
+// TestPRF25RehearseConfigPush: the guest reads the challenge key through
+// devLXD and echoes it; --tamper changes one character.
+func TestPRF25RehearseConfigPush(t *testing.T) {
+	fake := fakelxd.NewDevLXD(t)
+	value := strings.Repeat("0a", 32)
+	fake.SetConfig("user.spire.challenge.0123456789abcdef", value)
+	for _, tamper := range []bool{false, true} {
+		out := &bytes.Buffer{}
+		cmd := &RehearseConfigPush{GuestCommand: guestOptions(t, fake.Socket), Challenge: challengeLine(t, pushChallenge()), Tamper: tamper, stdout: out}
+		if err := cmd.Execute(nil); err != nil {
+			t.Fatal(err)
+		}
+		a, err := rehearse.ReadAnswer(context.Background(), bytes.NewReader(out.Bytes()))
+		if err != nil || !a.Done || a.Mode != rehearse.ConfigPush || (a.Echo == value) == tamper || !proof.IsHexProof([]byte(a.Echo)) {
+			t.Errorf("tamper %v: answer %+v, %v", tamper, a, err)
+		}
+	}
+}
+
+func TestRehearseConfigPushFailures(t *testing.T) {
+	fake := fakelxd.NewDevLXD(t)
+	fake.SetConfig("user.spire.challenge.0123456789abcdef", "not a proof")
+	for name, tt := range map[string]struct {
+		challenge rehearse.Challenge
+		reason    string
+	}{
+		"value is not a hex proof": {pushChallenge(), "not 64 lowercase hex"},
+		"key absent": {func() rehearse.Challenge {
+			c := pushChallenge()
+			c.ProofKey = "user.spire.challenge.ffffffffffffffff"
+			return c
+		}(), "status 404"},
+	} {
+		out := &bytes.Buffer{}
+		cmd := &RehearseConfigPush{GuestCommand: guestOptions(t, fake.Socket), Challenge: challengeLine(t, tt.challenge), stdout: out}
+		_ = cmd.Execute(nil)
+		a, err := rehearse.ReadAnswer(context.Background(), bytes.NewReader(out.Bytes()))
+		if err != nil || a.Done || !strings.Contains(a.Error, tt.reason) {
+			t.Errorf("%s: answer %+v, %v", name, a, err)
+		}
+	}
+	c, _, _ := fileChallenge(t)
+	cmd := &RehearseConfigPush{GuestCommand: guestOptions(t, fake.Socket), Challenge: challengeLine(t, c), stdout: &bytes.Buffer{}}
+	if err := cmd.Execute(nil); exit.Code(err) != exit.Usage {
+		t.Errorf("a file_pull challenge: exit %d (%v)", exit.Code(err), err)
 	}
 }

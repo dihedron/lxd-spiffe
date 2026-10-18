@@ -2,10 +2,6 @@
 // talk to the LXD REST API (spec: Server environment).
 package server
 
-import (
-	"github.com/dihedron/lxd-spiffe/internal/probe"
-)
-
 // Commands is the command tree of the server environment.
 type Commands struct {
 	Info        Info        `command:"info" description:"Record the server's version, API extensions and TLS parameters (PRS-01)."`
@@ -73,15 +69,4 @@ type keyArgs struct {
 type pathArgs struct {
 	Name string `positional-arg-name:"NAME" description:"Instance name."`
 	Path string `positional-arg-name:"PATH" description:"Path inside the instance."`
-}
-
-// RehearseConfigPush is server rehearse config-push NAME.
-type RehearseConfigPush struct {
-	probe.ServerCommand
-	Args instanceArgs `positional-args:"yes" required:"yes"`
-}
-
-// Execute runs the command.
-func (cmd *RehearseConfigPush) Execute(args []string) error {
-	return probe.NotImplemented("server rehearse config-push")
 }

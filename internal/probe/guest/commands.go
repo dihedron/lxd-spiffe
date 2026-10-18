@@ -36,5 +36,6 @@ type Idmap struct {
 
 // Rehearse groups the agent sides of the rehearsals.
 type Rehearse struct {
-	FilePull RehearseFilePull `command:"file-pull" description:"Write the file_pull proof of a challenge (PRF-24)."`
+	FilePull   RehearseFilePull   `command:"file-pull" description:"Write the file_pull proof of a challenge (PRF-24)."`
+	ConfigPush RehearseConfigPush `command:"config-push" description:"Read and echo the config_push key of a challenge (PRF-25)."`
 }

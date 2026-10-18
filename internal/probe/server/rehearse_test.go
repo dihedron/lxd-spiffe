@@ -229,3 +229,145 @@ func assertNotInDir(t *testing.T, dir, secret string) {
 		return nil
 	})
 }
+
+// echoKey is the honest guest of config_push: it echoes the key's value
+// as devLXD would show it (with tamper, one character changed).
+func echoKey(fake *fakelxd.Server, tamper bool) func(rehearse.Challenge) rehearse.Answer {
+	return func(c rehearse.Challenge) rehearse.Answer {
+		config, _ := fake.Config(c.Project, c.Instance)
+		v := config[c.ProofKey]
+		if tamper {
+			v = v[:len(v)-1] + map[bool]string{true: "1", false: "0"}[strings.HasSuffix(v, "0")]
+		}
+		return rehearse.Answer{Mode: rehearse.ConfigPush, Done: true, Echo: v}
+	}
+}
+
+func rehearseConfigPush(t *testing.T, fake *fakelxd.Server, act func(rehearse.Challenge) rehearse.Answer, mutate func(*RehearseConfigPush)) (*RehearseConfigPush, evidence.Record, error) {
+	t.Helper()
+	out := &bytes.Buffer{}
+	opts := options(t, fake)
+	opts.AllowWrite, opts.Lab, opts.AllowSpireKeys = true, true, true
+	cmd := &RehearseConfigPush{ServerCommand: opts, stdout: out, stderr: &bytes.Buffer{}}
+	cmd.stdin = &guestSim{t: t, fake: fake, out: out, act: act}
+	cmd.Args.Name = "c1"
+	if mutate != nil {
+		mutate(cmd)
+	}
+	err := cmd.Execute(nil)
+	if err != nil && exit.Code(err) != exit.Strict {
+		return cmd, evidence.Record{}, err
+	}
+	return cmd, record(t, cmd.ServerCommand, 1), err
+}
+
+// challengeKeys lists the challenge keys left on the instance.
+func challengeKeys(fake *fakelxd.Server) []string {
+	config, _ := fake.Config("default", "c1")
+	var keys []string
+	for k := range config {
+		if strings.HasPrefix(k, proof.KeyPrefix) {
+			keys = append(keys, k)
+		}
+	}
+	return keys
+}
+
+// TestPRS51ConfigPush: every step passes with an honest guest, and the key
+// is gone afterwards.
+func TestPRS51ConfigPush(t *testing.T) {
+	fake := newRehearsalFake(t, nil)
+	_, rec, err := rehearseConfigPush(t, fake, echoKey(fake, false), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rec.Outcome != evidence.OutcomeOK || observation(t, rec, "rehearsal.result") != "passed" {
+		t.Fatalf("outcome %q, observations %v", rec.Outcome, rec.Observations)
+	}
+	for _, step := range []string{"resolve", "policy", "write", "challenge", "answer", "compare", "cleanup", "recheck"} {
+		if got := observation(t, rec, "step."+step); got != "ok" {
+			t.Errorf("step %s: %v", step, got)
+		}
+	}
+	if keys := challengeKeys(fake); len(keys) != 0 {
+		t.Errorf("keys left: %v", keys)
+	}
+	// the write carried the read's ETag
+	var patches int
+	for _, r := range fake.Requests() {
+		if r.Method == "PATCH" {
+			patches++
+			if r.Header.Get("If-Match") == "" {
+				t.Errorf("PATCH without If-Match: %s", r.Body)
+			}
+		}
+	}
+	if patches != 2 {
+		t.Errorf("%d PATCHes, want the write and the cleanup", patches)
+	}
+}
+
+func TestPRS52ConfigPushFailures(t *testing.T) {
+	for name, tt := range map[string]struct {
+		prepare  func(*fakelxd.Server)
+		act      func(*fakelxd.Server) func(rehearse.Challenge) rehearse.Answer
+		mutate   func(*RehearseConfigPush)
+		failedAt string
+		outcome  evidence.Outcome
+	}{
+		"tampered echo, expected": {nil, func(f *fakelxd.Server) func(rehearse.Challenge) rehearse.Answer { return echoKey(f, true) },
+			func(c *RehearseConfigPush) { c.ExpectFail = "compare" }, "compare", evidence.OutcomeOK},
+		"tampered echo, unexpected": {nil, func(f *fakelxd.Server) func(rehearse.Challenge) rehearse.Answer { return echoKey(f, true) },
+			nil, "compare", evidence.OutcomeUnexpected},
+		"the guest failed": {nil, func(*fakelxd.Server) func(rehearse.Challenge) rehearse.Answer {
+			return func(rehearse.Challenge) rehearse.Answer {
+				return rehearse.Answer{Mode: rehearse.ConfigPush, Error: "devLXD answered status 404"}
+			}
+		}, nil, "answer", evidence.OutcomeUnexpected},
+		"stale ETag on the write": {func(f *fakelxd.Server) { f.StaleAfterNextRead("default", "c1") },
+			func(f *fakelxd.Server) func(rehearse.Challenge) rehearse.Answer { return echoKey(f, false) }, nil, "write", evidence.OutcomeUnexpected},
+		"devLXD off": {func(f *fakelxd.Server) { f.SetInstanceConfig("default", "c1", "security.devlxd", "false") },
+			func(f *fakelxd.Server) func(rehearse.Challenge) rehearse.Answer { return echoKey(f, false) }, nil, "policy", evidence.OutcomeUnexpected},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fake := newRehearsalFake(t, nil)
+			if tt.prepare != nil {
+				tt.prepare(fake)
+			}
+			_, rec, err := rehearseConfigPush(t, fake, tt.act(fake), tt.mutate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if rec.Outcome != tt.outcome {
+				t.Errorf("outcome %q, observations %v", rec.Outcome, rec.Observations)
+			}
+			if got := observation(t, rec, "step."+tt.failedAt); got == "ok" || got == nil {
+				t.Errorf("step %s: %v", tt.failedAt, got)
+			}
+			// the key is removed after any failure past the write
+			if keys := challengeKeys(fake); len(keys) != 0 {
+				t.Errorf("keys left: %v", keys)
+			}
+		})
+	}
+}
+
+func TestConfigPushRefusals(t *testing.T) {
+	fake := newRehearsalFake(t, nil)
+	for name, tt := range map[string]struct {
+		mutate func(*RehearseConfigPush)
+		code   int
+	}{
+		"no --allow-spire-keys": {func(c *RehearseConfigPush) { c.AllowSpireKeys = false }, exit.Refused},
+		"no --allow-write":      {func(c *RehearseConfigPush) { c.AllowWrite = false }, exit.Refused},
+		"unknown step":          {func(c *RehearseConfigPush) { c.ExpectFail = "read" }, exit.Usage},
+	} {
+		_, _, err := rehearseConfigPush(t, fake, echoKey(fake, false), tt.mutate)
+		if exit.Code(err) != tt.code {
+			t.Errorf("%s: exit %d (%v), want %d", name, exit.Code(err), err, tt.code)
+		}
+	}
+	if keys := challengeKeys(fake); len(keys) != 0 {
+		t.Errorf("keys written despite the refusals: %v", keys)
+	}
+}

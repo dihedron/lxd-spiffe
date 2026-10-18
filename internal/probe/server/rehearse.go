@@ -23,6 +23,7 @@ import (
 	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
 	"github.com/dihedron/lxd-spiffe/internal/probe/expect"
 	"github.com/dihedron/lxd-spiffe/internal/probe/rehearse"
+	"github.com/dihedron/lxd-spiffe/internal/probe/safety"
 	"github.com/dihedron/lxd-spiffe/internal/proof"
 )
 
@@ -361,4 +362,197 @@ func checkProofFile(resp *lxd.RawResponse, owner uint32) error {
 		return fmt.Errorf("%d bytes, not %d", len(resp.Body), limits.HexProofSize)
 	}
 	return nil
+}
+
+// configPushSteps are the steps of the config_push rehearsal, in order
+// (PRS-51).
+var configPushSteps = []string{"resolve", "policy", "write", "challenge", "answer", "compare", "cleanup", "recheck"}
+
+// RehearseConfigPush is server rehearse config-push NAME (PRS-51).
+type RehearseConfigPush struct {
+	probe.ServerCommand
+	rehearsalPolicy
+	AgentNonce string       `long:"agent-nonce" description:"Use this agent nonce (64 hex characters) instead of a generated one."`
+	ExpectFail string       `long:"expect-fail" description:"The step a negative rehearsal must fail at (PRS-52)."`
+	Args       instanceArgs `positional-args:"yes" required:"yes"`
+
+	stdout io.Writer
+	stderr io.Writer
+	stdin  io.Reader
+}
+
+// Execute runs the command.
+func (cmd *RehearseConfigPush) Execute(args []string) error {
+	if cmd.ExpectFail != "" && !slices.Contains(configPushSteps, cmd.ExpectFail) {
+		return exit.New(exit.Usage, fmt.Errorf("server rehearse config-push: --expect-fail %q: not one of %v", cmd.ExpectFail, configPushSteps))
+	}
+	if err := safety.Write(cmd.AllowWrite, cmd.Lab); err != nil {
+		return err
+	}
+	// every challenge key is under this prefix: checked before any request
+	if err := safety.Key(proof.KeyPrefix+"0000000000000000", cmd.AllowSpireKeys); err != nil {
+		return err
+	}
+	agentNonce, err := agentNonceFlag(cmd.AgentNonce)
+	if err != nil {
+		return exit.New(exit.Usage, fmt.Errorf("server rehearse config-push: %w", err))
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
+	defer cancel()
+	name := cmd.Args.Name
+	s, err := newSession(ctx, &cmd.ServerCommand, cmd.stdout, "rehearse config-push", rehearsalArgs(name, cmd.ExpectFail, cmd.rehearsalPolicy), name)
+	if err != nil {
+		return err
+	}
+	r := &rehearsal{s: s, expectFail: cmd.ExpectFail}
+	err = cmd.run(ctx, r, agentNonce)
+	if err == nil {
+		r.conclude()
+	}
+	return s.finish(err)
+}
+
+// run is the config_push flow. Once the key is written, it is removed
+// whatever happens next.
+func (cmd *RehearseConfigPush) run(ctx context.Context, r *rehearsal, agentNonce []byte) error {
+	s := r.s
+	if _, err := s.readServer(ctx, nil); err != nil {
+		return err
+	}
+	first, err := rehearseRead(ctx, s, cmd.Args.Name, "instance")
+	if err != nil {
+		return err
+	}
+	if !r.step("resolve", first.err) {
+		return nil
+	}
+	inst := first.inst
+	_, err = policy.Check(inst, policy.Policy{
+		Projects: []string{cmd.Project}, AllowPrivileged: cmd.AllowPrivileged, DenyConfigKeys: cmd.DenyConfigKeys,
+	}, policy.ConfigPush, "")
+	if !r.step("policy", err) {
+		return nil
+	}
+
+	serverNonce, err := proof.NewNonce()
+	if err != nil {
+		return err
+	}
+	key, err := proof.Key(agentNonce)
+	if err != nil {
+		return err
+	}
+	value := hex.EncodeToString(serverNonce)
+	exp := writeExpectation(http.MethodPatch, cmd.ExpectFail == "write")
+	resp, err := write(ctx, s, cmd.stderr, "challenge-write", http.MethodPatch, cmd.Args.Name, patchBody(key, &value), first.etag, false, exp)
+	if err != nil {
+		return err
+	}
+	if resp.Status != http.StatusOK {
+		r.step("write", fmt.Errorf("status %d: %s", resp.Status, errorMessage(resp)))
+		return nil
+	}
+	r.step("write", nil)
+
+	cmd.exchange(ctx, r, inst, key, value, agentNonce)
+
+	cleanupErr, err := cmd.cleanup(ctx, s, key)
+	if err != nil {
+		return err
+	}
+	if !r.cleanup(cleanupErr) {
+		return nil
+	}
+	second, err := rehearseRead(ctx, s, cmd.Args.Name, "instance-recheck")
+	if err != nil {
+		return err
+	}
+	if second.err == nil {
+		second.err = sameInstance(inst, second.inst)
+	}
+	if second.err == nil {
+		if _, left := second.inst.ExpandedConfig[key]; left {
+			second.err = fmt.Errorf("%s is still set", key)
+		}
+	}
+	r.step("recheck", second.err)
+	return nil
+}
+
+// exchange runs the steps between the write and the cleanup: the
+// challenge, the guest's echo and the comparison.
+func (cmd *RehearseConfigPush) exchange(ctx context.Context, r *rehearsal, inst *api.Instance, key, value string, agentNonce []byte) {
+	s := r.s
+	c := rehearse.Challenge{
+		Mode: rehearse.ConfigPush, Project: inst.Project, Instance: inst.Name,
+		ServerNonce: value, AgentNonce: hex.EncodeToString(agentNonce),
+		ProofKey: key, TimeoutMS: cmd.Timeout.Milliseconds(),
+	}
+	s.observe("rehearse.challenge", c)
+	err := rehearse.WriteChallenge(s.stdout, c)
+	if err == nil {
+		_, err = fmt.Fprintf(s.stdout, "guest: %s\n", rehearse.GuestCommand(c))
+	}
+	if !r.step("challenge", err) {
+		return
+	}
+	stdin := cmd.stdin
+	if stdin == nil {
+		stdin = os.Stdin
+	}
+	answer, err := rehearse.ReadAnswer(ctx, stdin)
+	if err == nil {
+		s.observe("rehearse.answer", answer)
+		switch {
+		case answer.Mode != rehearse.ConfigPush:
+			err = fmt.Errorf("answer for mode %q", answer.Mode)
+		case !answer.Done:
+			err = fmt.Errorf("the guest step failed: %s", answer.Error)
+		}
+	}
+	if !r.step("answer", err) {
+		return
+	}
+	err = nil
+	if !proof.Equal([]byte(answer.Echo), []byte(value)) {
+		err = errors.New("the echo is not the challenge value")
+	}
+	r.step("compare", err)
+}
+
+// cleanup removes key with a PATCH to null carrying the ETag of a fresh
+// read. It returns the failure of the removal, or an error of the probe.
+func (cmd *RehearseConfigPush) cleanup(ctx context.Context, s *session, key string) (stepErr, probeErr error) {
+	before, err := rehearseRead(ctx, s, cmd.Args.Name, "before-cleanup")
+	if err != nil {
+		return nil, err
+	}
+	if before.err != nil {
+		return before.err, nil
+	}
+	resp, err := write(ctx, s, cmd.stderr, "cleanup", http.MethodPatch, cmd.Args.Name, patchBody(key, nil), before.etag, false, writeExpectation(http.MethodPatch, false))
+	if err != nil {
+		return nil, err
+	}
+	if resp.Status != http.StatusOK {
+		return fmt.Errorf("status %d: %s", resp.Status, errorMessage(resp)), nil
+	}
+	return nil, nil
+}
+
+// cleanup records the cleanup step: as any step while the rehearsal holds,
+// and after a failure as a record of its own, a finding if it fails too.
+func (r *rehearsal) cleanup(err error) bool {
+	if r.failed == "" {
+		return r.step("cleanup", err)
+	}
+	if err == nil {
+		r.s.observe("step.cleanup", "ok")
+		fmt.Fprintln(r.s.stdout, "step cleanup: ok") //nolint:errcheck // the trace is best effort
+	} else {
+		r.s.observe("step.cleanup", err.Error())
+		r.s.finding("cleanup.result", "the key could not be removed: "+err.Error())
+		fmt.Fprintf(r.s.stdout, "step cleanup: FAILED: %v\n", err) //nolint:errcheck // the trace is best effort
+	}
+	return false
 }

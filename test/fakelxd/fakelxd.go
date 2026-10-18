@@ -92,6 +92,9 @@ type instance struct {
 	Status  string
 	Config  map[string]string
 	etagSeq int
+	// staleAfterRead changes the ETag right after the next GET, as a
+	// concurrent writer would.
+	staleAfterRead bool
 }
 
 func (i *instance) etag() string {
@@ -265,6 +268,16 @@ func (s *Server) Config(project, name string) (map[string]string, bool) {
 	return maps.Clone(i.Config), true
 }
 
+// StaleAfterNextRead changes the instance's ETag right after the next GET
+// of it, so that a write with that GET's ETag gets 412.
+func (s *Server) StaleAfterNextRead(project, name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i, ok := s.instances[project+"/"+name]; ok {
+		i.staleAfterRead = true
+	}
+}
+
 // BumpETag changes an instance's ETag without changing its config, as an
 // LXD-internal volatile update would.
 func (s *Server) BumpETag(project, name string) {
@@ -433,6 +446,10 @@ func (s *Server) instance(w http.ResponseWriter, r *http.Request, project, name 
 			metadata["backups"] = nil
 		}
 		writeSync(w, metadata, i.etag())
+		if i.staleAfterRead {
+			i.staleAfterRead = false
+			i.etagSeq++
+		}
 	case http.MethodPatch, http.MethodPut:
 		if match := r.Header.Get("If-Match"); match != "" && match != i.etag() {
 			writeError(w, http.StatusPreconditionFailed, "ETag doesn't match")
