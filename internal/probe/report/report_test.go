@@ -143,6 +143,19 @@ func TestLoad(t *testing.T) {
 	if _, err := Load([]string{dir}); !errors.Is(err, ErrNotRun) {
 		t.Errorf("empty directory: %v", err)
 	}
+	// a stress summary is skipped, not refused (STR-42)
+	summary := filepath.Join(t.TempDir(), "20261018T100153Z-st-1-summary")
+	if err := os.MkdirAll(summary, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range []string{"summary.json", "results.jsonl", "summary.md"} {
+		if err := os.WriteFile(filepath.Join(summary, f), []byte("{}\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if ev, err := Load([]string{summary}); err != nil || len(ev.Runs) != 0 {
+		t.Errorf("a stress summary: %v, runs %v", err, ev)
+	}
 	runs := testEvidence(t)
 	if _, err := Load([]string{runs[0], runs[0]}); err == nil {
 		t.Error("a run given twice: no error")

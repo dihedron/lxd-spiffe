@@ -113,10 +113,16 @@ type Entry struct {
 	run       *Run
 	file      *os.File
 	artifacts []string
+	// reservation is records/NNNN, removed when the entry ends
+	reservation string
 }
 
-// Begin reserves the next record number for verb by creating
-// records/NNNN-<verb>.json with O_EXCL, retrying on collision (PRE-07).
+// Begin reserves the next record number by creating records/NNNN with
+// O_EXCL, retrying on collision, then creates records/NNNN-<verb>.json
+// (PRE-07). The number is reserved on its own: a reservation through the
+// record's name would let two processes with different verbs share a
+// number, and so the names of their artifacts. The reservation is removed
+// when the entry ends; one left by a crashed process only skips a number.
 func (r *Run) Begin(verb string) (*Entry, error) {
 	records := filepath.Join(r.Dir, "records")
 	n, err := nextNumber(records)
@@ -124,16 +130,30 @@ func (r *Run) Begin(verb string) (*Entry, error) {
 		return nil, err
 	}
 	name := fileName(verb)
-	for {
-		//nolint:gosec // G304: a new record in the run's records directory, created with O_EXCL
-		f, err := os.OpenFile(filepath.Join(records, fmt.Sprintf("%04d-%s.json", n, name)), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-		if err == nil {
-			return &Entry{Number: n, run: r, file: f}, nil
-		}
-		if !errors.Is(err, fs.ErrExist) {
+	for ; ; n++ {
+		reservation := filepath.Join(records, fmt.Sprintf("%04d", n))
+		if err := createFile(reservation, nil); err != nil {
+			if errors.Is(err, fs.ErrExist) {
+				continue
+			}
 			return nil, fmt.Errorf("reserving record: %w", err)
 		}
-		n++
+		// a process that held this number removes its reservation only
+		// once its record exists, so a record here means the number is taken
+		if taken, _ := filepath.Glob(filepath.Join(records, fmt.Sprintf("%04d-*.json", n))); len(taken) > 0 {
+			os.Remove(reservation) //nolint:errcheck // best effort
+			continue
+		}
+		//nolint:gosec // G304: a new record in the run's records directory, created with O_EXCL
+		f, err := os.OpenFile(filepath.Join(records, fmt.Sprintf("%04d-%s.json", n, name)), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if err != nil {
+			os.Remove(reservation) //nolint:errcheck // best effort
+			if errors.Is(err, fs.ErrExist) {
+				continue // a record of an older probe, which reserved by name
+			}
+			return nil, fmt.Errorf("reserving record: %w", err)
+		}
+		return &Entry{Number: n, run: r, file: f, reservation: reservation}, nil
 	}
 }
 
@@ -244,6 +264,9 @@ func (e *Entry) Commit(rec *Record) (err error) {
 	if _, err := e.file.Write(append(data, '\n')); err != nil {
 		return fmt.Errorf("writing record: %w", err)
 	}
+	if e.reservation != "" {
+		os.Remove(e.reservation) //nolint:errcheck // the record holds the number now
+	}
 	return e.file.Close()
 }
 
@@ -256,6 +279,9 @@ func (e *Entry) Path() string {
 func (e *Entry) Abort() {
 	e.file.Close()           //nolint:errcheck // best effort
 	os.Remove(e.file.Name()) //nolint:errcheck // best effort
+	if e.reservation != "" {
+		os.Remove(e.reservation) //nolint:errcheck // best effort
+	}
 }
 
 // roundTrip turns any value into its generic JSON form, so that the

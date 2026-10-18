@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -293,5 +294,58 @@ func readJSON(t *testing.T, path string, v any) {
 	}
 	if err := json.Unmarshal(data, v); err != nil {
 		t.Fatalf("%s: %v", path, err)
+	}
+}
+
+// TestPRE07NumbersUniqueAcrossVerbs: concurrent processes writing to one
+// run directory with different verbs never share a record number, so their
+// artifacts never collide (found by the stress sessions, where file-pull
+// and config-push rehearsals ran side by side).
+func TestPRE07NumbersUniqueAcrossVerbs(t *testing.T) {
+	root := t.TempDir()
+	const writers = 16
+	numbers := make(chan int, writers*10)
+	var wg sync.WaitGroup
+	for w := range writers {
+		wg.Go(func() {
+			run, err := Open(root, "run1", "server", RunInfo{})
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			for range 10 {
+				e, err := run.Begin(fmt.Sprintf("verb-%d", w%4))
+				if err != nil {
+					t.Error(err)
+					return
+				}
+				if _, err := e.ArtifactText("server", "x"); err != nil {
+					t.Errorf("artifact of %04d: %v", e.Number, err)
+				}
+				numbers <- e.Number
+				if err := e.Commit(&Record{Verb: "v"}); err != nil {
+					t.Error(err)
+				}
+			}
+		})
+	}
+	wg.Wait()
+	close(numbers)
+	seen := map[int]bool{}
+	for n := range numbers {
+		if seen[n] {
+			t.Errorf("record number %04d given twice", n)
+		}
+		seen[n] = true
+	}
+	if len(seen) != writers*10 {
+		t.Errorf("%d numbers for %d records", len(seen), writers*10)
+	}
+	// the reservations are gone once the records are written
+	entries, _ := os.ReadDir(filepath.Join(root, "run1", "server", "records"))
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), ".json") {
+			t.Errorf("left in records: %s", e.Name())
+		}
 	}
 }
