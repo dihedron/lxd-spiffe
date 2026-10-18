@@ -9,6 +9,7 @@ package acceptance
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -242,20 +243,29 @@ func (l *lab) probeMember(t *testing.T, s session, server, member, identity stri
 // record lxd-probe prints with --json.
 func (l *lab) lxdProbe(t *testing.T, s session, args []string) *run {
 	t.Helper()
-	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), args...)
+	r, err := l.lxdProbeE(context.Background(), s, args)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r
+}
+
+// lxdProbeE is lxdProbe returning its failure, for goroutines that may not
+// fail the test (the stress workers); ctx kills the command.
+func (l *lab) lxdProbeE(ctx context.Context, s session, args []string) (*run, error) {
+	cmd := exec.CommandContext(ctx, filepath.Join(l.dir, "lab.sh"), args...)
 	cmd.Env = append(os.Environ(), "LXD_PROBE_RUN_ID="+s.runID)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()
-	return l.parseRun(t, args, err, stdout.String(), stderr.String())
+	return parseRunE(args, err, stdout.String(), stderr.String())
 }
 
-// parseRun turns a finished lab.sh invocation into a run: its exit code and
-// the records lxd-probe printed with --json. JSON objects that are not
+// parseRunE turns a finished lab.sh invocation into a run: its exit code
+// and the records lxd-probe printed with --json. JSON objects that are not
 // records, such as a rehearsal's challenge or answer line (PRS-53), are
-// skipped. It fails the test when the probe itself failed.
-func (l *lab) parseRun(t *testing.T, args []string, err error, stdout, stderr string) *run {
-	t.Helper()
+// skipped. It returns an error when the probe itself failed.
+func parseRunE(args []string, err error, stdout, stderr string) (*run, error) {
 	r := &run{stdout: stdout, stderr: stderr}
 	var ee *exec.ExitError
 	switch {
@@ -263,7 +273,7 @@ func (l *lab) parseRun(t *testing.T, args []string, err error, stdout, stderr st
 	case errors.As(err, &ee):
 		r.code = ee.ExitCode()
 	default:
-		t.Fatalf("lab.sh %s: %v", strings.Join(args, " "), err)
+		return nil, fmt.Errorf("lab.sh %s: %w", strings.Join(args, " "), err)
 	}
 	dec := json.NewDecoder(strings.NewReader(stdout))
 	for dec.More() {
@@ -279,17 +289,26 @@ func (l *lab) parseRun(t *testing.T, args []string, err error, stdout, stderr st
 		r.rec = r.recs[0]
 	}
 	if probeFailure(r.code) || r.rec == nil {
-		t.Fatalf("lab.sh %s: the probe failed: %s", strings.Join(args, " "), r)
+		return r, fmt.Errorf("lab.sh %s: the probe failed: %s", strings.Join(args, " "), r)
 	}
-	return r
+	return r, nil
 }
 
 // guest runs "lab.sh guest SERVER INSTANCE --project P -- ARGS --json" as
 // root; the guest writes its evidence in the instance (lab.sh pull).
 func (l *lab) guest(t *testing.T, s session, server, project, instance string, args ...string) *run {
 	t.Helper()
+	r, err := l.guestE(context.Background(), s, server, project, instance, args...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return r
+}
+
+// guestE is guest returning its failure.
+func (l *lab) guestE(ctx context.Context, s session, server, project, instance string, args ...string) (*run, error) {
 	full := append([]string{"guest", server, instance, "--project", project, "--"}, args...)
-	return l.lxdProbe(t, s, append(full, "--json"))
+	return l.lxdProbeE(ctx, s, append(full, "--json"))
 }
 
 // pull copies a guest run into the evidence directory (lab.sh pull).

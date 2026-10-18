@@ -43,7 +43,7 @@ Every iteration ends in one of: **pass**, **fail** (a step failed, with its step
 
 | ID | Requirement |
 |---|---|
-| STR-01 | The session creates a fleet of `LAB_STRESS_FLEET` (default 50) Alpine containers per standalone server, `s-001`… in project `default`, from the image the lab already uses, with `lxd-probe` installed as in the baseline (`LAB_GUEST_PROBE`) and the lab identities' grants (`files`: `can_access_files`; `edit`: `can_edit`; project `can_view` first). The baseline instances (containers and VMs) join the fleet, so that every instance class is stressed. |
+| STR-01 | The session creates a fleet of `LAB_STRESS_FLEET` (default 35) Alpine containers per standalone server, `s-001`… in project `default`, from the image the lab already uses, with `lxd-probe` installed as in the baseline (`LAB_GUEST_PROBE`) and the lab identities' grants (`files`: `can_access_files`; `edit`: `can_edit`; project `can_view` first). The baseline instances (containers and VMs) join the fleet, so that every instance class is stressed. The setup lifts the server VM's sshd limits (`MaxStartups`, `MaxSessions`), so that concurrent guest halves are not refused by SSH itself; the change is gone at the next `lab.sh reset`. The default of 35 keeps each lab group under LXD's limit of 99 permissions per group (two per fleet instance on top of the baseline's 22), measured on 5.21.8 and 6.9 while building this session; larger fleets wait for gate L17 (permissions spread over several groups). |
 | STR-02 | The fleet is deleted at the end of the session, whatever happened, and at its start if a previous session left one (a teardown that runs on both ends, as G-L12's). |
 | STR-03 | With a cluster running (`LAB_CLUSTER`), the session MAY also create a smaller fleet on it (default 9, three per member) for the cluster faults (C7, C8). |
 
@@ -96,7 +96,7 @@ The injector picks the fault and its moment from the seeded generator; each reco
 |---|---|
 | STR-40 | **Step timing.** The server rehearsal records each step's duration as `step.<name>.ms` (probe spec amendment, PRS-54), so that the attestor's own latency is the sum of its LXD-facing steps, without the time the guest half takes through `lab.sh guest` (SSH and `lxc exec`), which the real agent does not pay. |
 | STR-41 | **Summary.** Each run writes `summary.md` and `summary.json`: the seed and settings; per mode, step and fault, the counts of pass, fail (by failing step) and harness errors; latency percentiles (p50, p95, p99, max) of the attestor's steps, per step and in total, per concurrency level; throughput; the invariant results with every violation's iteration; orphans per fault; the drift samples. |
-| STR-42 | **Evidence size.** Per-iteration records stay in the working run (`LAB_EVIDENCE_DIR`); a run collected to `docs/validation/<run_id>-stress/` keeps the summary, the records of failed iterations hit by no fault, of invariant violations, and of a sample of 20 passes and 20 failures per fault, sanitized. |
+| STR-42 | **Evidence size.** Per-iteration records stay in the working run (`LAB_EVIDENCE_DIR`); a run collected to `docs/validation/<run_id>-summary/` keeps `summary.md`, `summary.json` and `results.jsonl` (one line per iteration: instance, mode, fault, outcome, failing step, step timings, times), which hold no secret: nonces and proofs stay in the records. |
 | STR-43 | The records of stress sessions name gate `S`, a group of the report like `R` (evidence only, no decision expected). |
 
 ### Sessions (Phase A)
@@ -131,7 +131,7 @@ Runnable once the plugins attest (attestor spec delivery step (e)) and the lab's
 
 ## Lab resources
 
-The fleet's containers are small (Alpine, about 30 MB of memory each): 50 per server fit in the standalone servers' 12 GiB. The cluster faults need one cluster at a time (3 × 4 GiB), as G-L16 did when both clusters exceeded the host's free memory.
+The fleet's containers are small (Alpine, about 30 MB of memory each): 35 per server fit easily in the standalone servers' 12 GiB. LXD's limit of 99 permissions per authorization group, not memory, bounds the fleet until gate L17. The cluster faults need one cluster at a time (3 × 4 GiB), as G-L16 did when both clusters exceeded the host's free memory.
 
 ## Open questions
 

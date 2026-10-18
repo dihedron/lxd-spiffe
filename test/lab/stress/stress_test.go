@@ -215,3 +215,15 @@ func TestSTR41Summary(t *testing.T) {
 		t.Errorf("summary.json: %s", js.String())
 	}
 }
+
+func TestWriteResults(t *testing.T) {
+	var b bytes.Buffer
+	rs := []Result{res(1, targets[0], FilePull, "", Pass, 0, 1), res(2, targets[1], ConfigPush, "C9", Fail, 1, 2)}
+	if err := WriteResults(&b, rs); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(b.String()), "\n")
+	if len(lines) != 2 || !strings.Contains(lines[1], `"fault":"C9"`) || !strings.Contains(lines[0], `"steps_ms":{`) {
+		t.Errorf("results.jsonl:\n%s", b.String())
+	}
+}

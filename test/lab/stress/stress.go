@@ -7,6 +7,8 @@ package stress
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"math/rand/v2"
 	"sync"
 	"time"
@@ -243,4 +245,16 @@ func Run(ctx context.Context, items []Item, workers int, iterate func(context.Co
 		}
 	}
 	return out
+}
+
+// WriteResults writes results as JSON Lines, one iteration per line
+// (results.jsonl, STR-60).
+func WriteResults(w io.Writer, results []Result) error {
+	enc := json.NewEncoder(w)
+	for _, r := range results {
+		if err := enc.Encode(r); err != nil {
+			return err
+		}
+	}
+	return nil
 }
