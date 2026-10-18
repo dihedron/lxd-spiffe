@@ -40,7 +40,7 @@ func NewAliases() *Aliases {
 // created with the first alias.
 func OpenAliases(path string) (*Aliases, error) {
 	a := &Aliases{path: path, m: map[string]map[string]string{}}
-	data, err := os.ReadFile(path) //nolint:gosec // G304: the run's own aliases.json, under the evidence directory
+	data, err := readEvidenceFile(path)
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, fmt.Errorf("reading aliases: %w", err)
 	}
@@ -116,7 +116,8 @@ func (a *Aliases) allocate(kind, value string) string {
 // allocateShared re-reads the file under an exclusive lock, so that another
 // process's aliases are seen, allocates if still needed and writes it back.
 func (a *Aliases) allocateShared(kind, value string) (alias string, err error) {
-	f, err := os.OpenFile(a.path, os.O_RDWR|os.O_CREATE, 0o600)
+	//nolint:gosec // G304: the run's aliases.json; a symlink is refused by O_NOFOLLOW
+	f, err := os.OpenFile(a.path, os.O_RDWR|os.O_CREATE|syscall.O_NOFOLLOW, 0o600)
 	if err != nil {
 		return "", err
 	}
@@ -126,6 +127,9 @@ func (a *Aliases) allocateShared(kind, value string) (alias string, err error) {
 			alias, err = "", cerr
 		}
 	}()
+	if err := checkRegular(f); err != nil {
+		return "", err
+	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
 		return "", err
 	}
