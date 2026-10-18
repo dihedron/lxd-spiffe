@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "id": "util/0001",
+  "time": "2026-10-18T15:53:15.608908844Z",
+  "tool_version": "deeaafe",
+  "env": "util",
+  "verb": "note",
+  "args": [
+    "--decision"
+  ],
+  "gate": "L17",
+  "cell": "all",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "decision"
+    },
+    {
+      "key": "note.text",
+      "value": "Decision (accepted Oct 18, 2026): LXD 5.21.8 and 6.9 refuse the 100th permission of an authorization group (\"Failed to verify that projects are viewable: ... ContextualTuples ... no more than 100\"); the limit is on a group, not on an identity: an identity in three groups holding 248 permissions in all had every grant honoured (instance read, files API, PATCH, the uuid filter), and an ungranted file read was denied. Least privilege therefore shards the per-instance grants: groups of at most 90 instance grants, each also holding project can_view (granted first); the SPIRE identity is a member of every group, and a group is added as the fleet grows. Evidence: runs 20261018T154449Z-g-l17-*."
+    }
+  ],
+  "raw": null
+}
