@@ -54,3 +54,10 @@ clean: ## clean the binary directory
 checksum: ## print the SHA-256 of the SPIRE plugin binaries in dist/ (for plugin_checksum)
 	@find dist -type f \( -name lxd-agent-plugin -o -name lxd-server-plugin \) -exec sha256sum {} + | sort -k2
 
+
+.PHONY: proto
+proto: ## regenerate the Go code of the wire protocol (needs protoc; protoc-gen-go comes from go.mod)
+	@command -v protoc >/dev/null 2>&1 || { echo "protoc is not installed" >&2; exit 1; }
+	@tmp="$$(mktemp -d)"; trap 'rm -rf "$$tmp"' EXIT; \
+		go build -o "$$tmp/protoc-gen-go" google.golang.org/protobuf/cmd/protoc-gen-go && \
+		protoc --plugin=protoc-gen-go="$$tmp/protoc-gen-go" --go_out=. --go_opt=paths=source_relative internal/proto/lxd_instance.proto
