@@ -2,11 +2,11 @@
 
 Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 
-*Status*: draft v0.6, for spec-driven development. The repository holds stub plugins only: they accept an empty configuration and answer every attestation with `Unimplemented`. Implementation follows the order in *Testing → Implementation instructions*, starting with `lxd-probe` and the validation gates.
+*Status*: draft v0.7, for spec-driven development. Every validation gate is resolved by lab evidence, so the plugins may be implemented. The repository holds `lxd-probe`, which produced that evidence, and stub plugins: they accept an empty configuration and answer every attestation with `Unimplemented`. Implementation follows the order in *Testing → Implementation instructions*, from step (a).
 
 | Field | Value |
 |---|---|
-| Status | Draft v0.5 for spec-driven development (v0.4 plus the stage-1 gates L1–L4 and L14 resolved by lab evidence) |
+| Status | Draft v0.7 for spec-driven development: gates L1–L15 resolved by lab evidence (L5 withdrawn), implementation may start |
 | Components | Agent NodeAttestor plugin + Server NodeAttestor plugin |
 | Plugin name | `lxd_instance` (both sides) |
 | Binaries | `lxd-agent-plugin` (SPIRE Agent), `lxd-server-plugin` (SPIRE Server) |
@@ -14,9 +14,9 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Language / SDK | Go, `github.com/spiffe/spire-plugin-sdk`. LXD access through the **LXD Go client SDK** (`github.com/canonical/lxd/client` and `github.com/canonical/lxd/shared/...`), wrapped by `internal/lxd` (FR-S17). These packages are Apache-2.0 (their own `COPYING` files) although the rest of the LXD repository is AGPL-3.0-only; no other LXD package is imported (NFR-03, gate L10). |
 | Guest OS | Linux (containers and VMs), amd64 and arm64. Windows guests out of scope (*Overview → Non-goals*) |
 | Hard constraints | No CGO and no native libraries on either side; the agent MUST NOT require LXD client tools or `cloud-init` in the guest |
-| Companion documents | `SPIRE vsphere_guest Node Attestor — Specification` v0.3 (same structure, same ID conventions, same threat-model method); `lxd-probe` specification v0.3, `lxd-probe.md` (validation harness for gates L1–L15, to be built and run first) |
+| Companion documents | `SPIRE vsphere_guest Node Attestor — Specification` v0.3 (same structure, same ID conventions, same threat-model method); `lxd-probe` specification v0.3, `lxd-probe.md` (validation harness for gates L1–L15, built and run; its evidence is in `docs/validation/`) |
 
-**Keywords.** MUST, MUST NOT, SHOULD, MAY are used per RFC 2119. Requirements carry IDs (`FR-*`, `SEC-*`, `NFR-*`); validation gates carry `L*` IDs; threats `T*`. Statements about LXD behaviour are tagged **[D]** when confirmed in the LXD documentation consulted for this draft (*Testing → Sources consulted*) **[V:Ln]** when they are assumptions that a validation gate (*Testing → Validation gates*) MUST confirm before the dependent code is written, and **[E:Ln]** when the gate's lab evidence established them on LXD 5.21.8 and 6.9 (the runs under `docs/validation/`, listed with the gate).
+**Keywords.** MUST, MUST NOT, SHOULD, MAY are used per RFC 2119. Requirements carry IDs (`FR-*`, `SEC-*`, `NFR-*`); validation gates carry `L*` IDs; threats `T*`. Statements about LXD behaviour are tagged **[D]** when confirmed in the LXD documentation consulted for this draft (*Testing → Sources consulted*), **[V:Ln]** when they are assumptions that a validation gate (*Testing → Validation gates*) MUST confirm before the dependent code is written, and **[E:Ln]** when the gate's lab evidence established them on LXD 5.21.8 and 6.9 (the runs under `docs/validation/`, listed with the gate). Since v0.7 no statement is tagged **[V:Ln]**; the tag stays for gates that later revisions may add.
 
 **Revision history.**
 
@@ -34,6 +34,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | v0.6 (Oct 15, 2026) | Stage-2 checkpoint: gates L6, L7, L8, L9, L12, L13 and L14 resolved on LXD 5.21.8 and 6.9. `volatile.uuid` is unique per server only: an export and import keeps it, on the same server too, so the server checks uniqueness with a filtered list (FR-S18; `api_filtering` required) and least privilege grants project `can_view_instances` in every mode. `file_pull` retries the files API while a VM's `lxd-agent` starts (500, then briefly 404; reason `vm_agent_unavailable`), and its isolation check also rejects disks below the proof directory. Optional bearer token as the LXD credential on 6.x (FR-S19). 5.21 LTS is the minimum version; TLS 1.3. Supported guests include Rocky Linux 9 and AlmaLinux 9, with a documented drop-in for SELinux enforcing. Gate table, API usage, minimal API contract, operational guidance and tests updated. |
 | Oct 15, 2026 (later) | Gates L10 and L15 resolved: the pinned SDK covers every call, with `RawQuery` for the `PATCH` and the filtered list (FR-S17 (9)); fixtures of every call on 5.21.8 and 6.9, error responses of the files API included, decode with the contract fields present. The plugin keys on status codes, not error messages, but for the 500 of a VM without `lxd-agent`. No gate blocks the standalone implementation any more. |
 | Oct 17, 2026 | Gate L11 resolved on three-member clusters of LXD 5.21.8 and 6.9: every member forwards the plugin's calls, so a cluster is one `servers` entry with no cluster logic in the client (FR-S11; T21's redirect retry dropped); `location` is accurate within 1 s of a move and is now compared between reads (FR-S10, FR-S14; new reason `instance_moved`); identity keys survive moves and evacuations; a VM's files API answers 500 for 25–30 s after an evacuation, handled as VM start-up. The `volatile.cluster.group` claim is withdrawn: it records a placement request, not membership. Live migration is untested. Gate L8 closed: clusters need nothing beyond the standalone minimum, and LXD is supported as the snap only, since no distribution package ships 5.21 or later. Gate L15 closed for clusters: the responses the plugin handles, errors included, decode as forwarded by a member that holds neither instance. |
+| v0.7 (Oct 18, 2026) | Checkpoint after the gates: every gate L1–L15 is resolved (L5 withdrawn) and no statement is tagged **[V:Ln]**, so implementation may start, from step (a). Status lines updated (the table still said v0.5). The minimal API contract is no longer a recollection to confirm: the L15 fixtures confirmed it and are the contract. *Sources consulted* lists the gaps that remain. `lxd-probe` is built; its stage 3 rehearsals need `internal/proof` and follow step (a) (implementation instructions 1, 2, 7). No requirement changes. |
 
 ## Overview
 
@@ -567,7 +568,7 @@ No caching of outcomes. A cache of at most 10 s for resolved instance names is o
 
 #### Minimal API contract
 
-The fields below are the **only** ones the plugin consumes. They are the author's recollection of the LXD API plus the documentation consulted (*Testing → Sources consulted*) and MUST be confirmed by recorded fixtures (gate L15) before the client is written; the fixtures, not this table, are then the contract.
+The fields below are the **only** ones the plugin consumes. They were first drawn from the documentation consulted (*Testing → Sources consulted*) and are confirmed by the fixtures that gate L15 recorded from LXD 5.21.8 and 6.9, standalone and clustered, errors included (`test/fixtures/`). The fixtures, not this table, are the contract: a field missing from them is not consumed, and `lxd-probe util fixtures verify` checks that the client's typed structs decode them with these fields present.
 
 | Call | Fields and headers consumed | Status |
 |---|---|---|
@@ -689,6 +690,8 @@ Validation at `Configure`: unknown keys rejected; missing pin/CA (SEC-07); per s
 
 ### Validation gates (to resolve with a spike **before** implementing the dependent code)
 
+All gates are resolved as of v0.7 (L5 withdrawn); the table keeps each question with its answer and evidence.
+
 | ID | Assumption to verify on real LXD, containers and VMs |
 |---|---|
 | L1 | The files API returns owner uid/gid, mode and type for a file in `/run` of a container and of a VM (requiring the `lxd-agent`); pulls work on tmpfs; measure latency. **Decide the owner representation for unprivileged containers: does LXD report the in-container uid (0) or the host-shifted uid?** Record it per instance class and LXD version; it fixes the single expected owner of *Proof of co-location → Mode `file_pull`*. Confirm the key names and semantics of `volatile.idmap.base` / `current` / `next` and cross-check `volatile.idmap.current` against the guest's own `/proc/self/uid_map`. Check how symlinks and directories are reported. **Resolved (Oct 12, 2026, runs `20261012T181538Z-g-l1-*`):** headers as in the minimal API contract; LXD reports the in-container owner in every class; symlinks and directories are distinguishable; `volatile.idmap.current` matches the guest's `uid_map`. |
@@ -711,13 +714,13 @@ Evidence for each gate is produced with `lxd-probe` (its own specification, one 
 
 ### Implementation instructions (for the implementing agent, Claude)
 
-1. Every gate the standalone implementation depends on is resolved: L1–L4 (v0.5), L6–L10 and L12–L15 (v0.6). L11 (clusters) is resolved too, with the cluster parts of L8 and L15 (Oct 17, 2026). Parts that do not depend on gates may start immediately: proto, claim parsing, proof computation, selectors, limits, policy skeleton.
-2. Build **`lxd-probe`** first, from its own specification (`lxd-probe.md`): it runs the experiments of gates L1–L15, records evidence and the fixtures that this project's fake LXD API must replay, and is the first consumer of `internal/lxd`. Its findings are folded back into this specification (next revision) before the dependent code is written.
+1. Every gate is resolved: L1–L4 (v0.5), L6–L10 and L12–L15 (v0.6), L11 with the cluster parts of L8 and L15 (Oct 17, 2026); v0.7 is the checkpoint after them. No code waits on a gate any more.
+2. **`lxd-probe`** (its own specification, `lxd-probe.md`) is built: it ran the experiments of gates L1–L15, recorded the evidence in `docs/validation/` and the fixtures in `test/fixtures/` that this project's fake LXD API replays, and is the first consumer of `internal/lxd`. Its findings are folded into this specification (v0.5 to v0.7). Its stage 3, the rehearsals of the real proofs (`server rehearse file-pull` and `config-push`), needs `internal/proof` and follows step (a).
 3. Keep requirement IDs in test names and comments.
 4. Treat every value from LXD, devLXD, the guest filesystem and the agent as untrusted; no untrusted data in error strings, shell commands or log format strings.
 5. All failure paths return the uniform error (SEC-10).
 6. Prefer small interfaces (`InstanceReader`, `FileReader`, `ChallengeWriter`, `DevLXDClient`) so each part is mockable. Use the LXD Go client SDK only through `internal/lxd` and `internal/devlxd` (FR-S17), so that the rest of the code depends on the small interfaces, not on the SDK.
-7. Delivery order: (0) `lxd-probe` and the gate evidence, then a specification revision; (a) proto, claims, proof, policy skeleton, selectors, fuzz; (b) the `internal/lxd` client against recorded fixtures, then the server with the fake LXD (`file_pull`, with the owner rule decided by L1); (c) agent `file_pull`; (d) `config_push` with the ETag/412 logic as fixed by L14; (e) end-to-end lab; (f) packaging and documentation.
+7. Delivery order: (0) `lxd-probe` and the gate evidence, then a specification revision (done: v0.7); (a) proto, claims, proof, policy skeleton, selectors, fuzz, then `lxd-probe`'s stage 3 rehearsals in the lab; (b) the `internal/lxd` client against recorded fixtures, then the server with the fake LXD (`file_pull`, with the owner rule decided by L1); (c) agent `file_pull`; (d) `config_push` with the ETag/412 logic as fixed by L14; (e) end-to-end lab; (f) packaging and documentation.
 8. When a gate disproves an assumption tagged **[V:Ln]**, propose a spec amendment instead of silently diverging.
 
 ### Sources consulted
@@ -740,4 +743,4 @@ Documentation read for this draft (LXD 6.9 documentation unless noted); statemen
 - [How `security.idmap.isolated` works (volatile.idmap.base/current/next)](https://discuss.linuxcontainers.org/t/how-security-idmap-isolated-works-in-detail/13266) (forum thread, not official documentation)
 - [LXD REST API conventions (return values, ETag/If-Match for PUT, PATCH vs PUT, background operations)](https://raw.githubusercontent.com/canonical/lxd/main/doc/rest-api.md)
 
-Items not found in these sources are tagged **[V:Ln]** and listed in *Testing → Validation gates*. Notable gaps: VM SMBIOS identifiers, Windows guest support, and the precise privilege boundary of each entitlement. The contents of `/1.0/meta-data`, the files API headers and owner representation, live update of `user.*` keys, `If-Match` on `PATCH` and single-key removal were gaps too, until the lab established them (**[E:Ln]**, v0.5 and v0.6), as were the behaviour of `volatile.uuid` across imports, `lxd-agent` start-up and SELinux, shared-disk forgery and bearer tokens, and cluster forwarding and moves (L11).
+Items not found in these sources were tagged **[V:Ln]** and listed in *Testing → Validation gates*, until the lab established them (**[E:Ln]**, v0.5 to v0.7): the contents of `/1.0/meta-data`, the files API headers and owner representation, live update of `user.*` keys, `If-Match` on `PATCH` and single-key removal, the privilege boundary of each entitlement (L9), the behaviour of `volatile.uuid` across imports, `lxd-agent` start-up and SELinux, shared-disk forgery and bearer tokens, and cluster forwarding and moves (L11). Gaps that remain, none of which the plugins depend on: VM SMBIOS identifiers (not used), Windows guests (unsupported, L7) and live migration (untested, L11).
