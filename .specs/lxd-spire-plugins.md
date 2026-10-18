@@ -36,6 +36,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Oct 17, 2026 | Gate L11 resolved on three-member clusters of LXD 5.21.8 and 6.9: every member forwards the plugin's calls, so a cluster is one `servers` entry with no cluster logic in the client (FR-S11; T21's redirect retry dropped); `location` is accurate within 1 s of a move and is now compared between reads (FR-S10, FR-S14; new reason `instance_moved`); identity keys survive moves and evacuations; a VM's files API answers 500 for 25–30 s after an evacuation, handled as VM start-up. The `volatile.cluster.group` claim is withdrawn: it records a placement request, not membership. Live migration is untested. Gate L8 closed: clusters need nothing beyond the standalone minimum, and LXD is supported as the snap only, since no distribution package ships 5.21 or later. Gate L15 closed for clusters: the responses the plugin handles, errors included, decode as forwarded by a member that holds neither instance. |
 | v0.7 (Oct 18, 2026) | Checkpoint after the gates: every gate L1–L15 is resolved (L5 withdrawn) and no statement is tagged **[V:Ln]**, so implementation may start, from step (a). Status lines updated (the table still said v0.5). The minimal API contract is no longer a recollection to confirm: the L15 fixtures confirmed it and are the contract. *Sources consulted* lists the gaps that remain. `lxd-probe` is built; its stage 3 rehearsals need `internal/proof` and follow step (a) (implementation instructions 1, 2, 7). No requirement changes. |
 | Oct 18, 2026 (later) | FR-S2: names are checked as LXD checks them, instead of the simplified "letters, digits, hyphen" rule, which refused valid project names such as `team.a`: instance names with the SDK's `IsHostname`, project names with LXD's project rule (reimplemented, NFR-03), capped at 63 bytes. |
+| Oct 18, 2026 (selectors) | *Selectors*: values are not escaped, since SPIRE has no escaping rule; a value that is not valid UTF-8, has a control character or exceeds 256 bytes is left out with a WARN instead of truncated, which could make two values collide. |
 
 ## Overview
 
@@ -515,7 +516,7 @@ Recommendations (SEC-16, *Configuration → Operational guidance*):
 
 ### Selectors
 
-Type: `lxd_instance`. Values are escaped according to SPIRE selector rules and capped at 256 characters. `Trust` follows the tiers of *Trust model → What claims can be made reliably*.
+Type: `lxd_instance`. SPIRE treats a selector value as an opaque string, colons included, so values are not escaped. A value that is not valid UTF-8, contains a control character or is longer than 256 bytes is left out, with a WARN naming the selector and the instance, and never truncated: two long values cut to the same prefix would give the same selector. `Trust` follows the tiers of *Trust model → What claims can be made reliably*.
 
 | Selector | Trust | Default | Notes |
 |---|---|---|---|
