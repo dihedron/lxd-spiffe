@@ -51,12 +51,13 @@ type Server struct {
 
 	mu        sync.Mutex
 	requests  []Request
-	instances map[string]*instance // key: project/name
-	files     map[string]*File     // key: project/name/path
-	deny      []string             // path prefixes answered with 403
-	hidden    []string             // projects answered with 404
-	exts      []string             // api_extensions of GET /1.0
-	member    string               // server_name of GET /1.0 when clustered
+	instances map[string]*instance         // key: project/name
+	projects  map[string]map[string]string // key: name; value: config
+	files     map[string]*File             // key: project/name/path
+	deny      []string                     // path prefixes answered with 403
+	hidden    []string                     // projects answered with 404
+	exts      []string                     // api_extensions of GET /1.0
+	member    string                       // server_name of GET /1.0 when clustered
 	nextOp    int
 	replay    map[string][]evidence.Fixture
 	// bearerExpiry, when set, refuses bearer tokens from then on, as LXD
@@ -103,7 +104,7 @@ func (i *instance) etag() string {
 func NewAssumed(t testing.TB) *Server {
 	t.Helper()
 	t.Log("fakelxd: ASSUMPTION-BASED fake LXD (PRT-10); replace with recorded fixtures after Lab 0")
-	s := &Server{t: t, instances: map[string]*instance{}, files: map[string]*File{}, exts: DefaultExtensions}
+	s := &Server{t: t, instances: map[string]*instance{}, projects: map[string]map[string]string{}, files: map[string]*File{}, exts: DefaultExtensions}
 	s.start(http.HandlerFunc(s.assumed))
 	return s
 }
@@ -158,6 +159,13 @@ func (s *Server) AddInstance(project, name string, config map[string]string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.instances[project+"/"+name] = &instance{Name: name, Project: project, Status: "Running", Config: maps.Clone(config)}
+}
+
+// AddProject adds a project with its config, for GET /1.0/projects/{name}.
+func (s *Server) AddProject(name string, config map[string]string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.projects[name] = maps.Clone(config)
 }
 
 // AddFile adds a file to an instance.
@@ -362,6 +370,8 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 		} else {
 			writeError(w, http.StatusNotFound, "Instance not found")
 		}
+	case len(parts) == 3 && parts[1] == "projects" && r.Method == http.MethodGet:
+		s.project(w, parts[2])
 	case len(parts) == 2 && parts[1] == "instances" && r.Method == http.MethodGet:
 		s.list(w, project)
 	case len(parts) == 3 && parts[1] == "instances":
@@ -373,6 +383,21 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeError(w, http.StatusNotFound, "not found")
 	}
+}
+
+// project answers GET /1.0/projects/{name}: a hidden project is a 404, as
+// LXD answers an identity that may not view it.
+func (s *Server) project(w http.ResponseWriter, name string) {
+	config, ok := s.projects[name]
+	if !ok || slices.Contains(s.hidden, name) {
+		writeError(w, http.StatusNotFound, "Not Found")
+		return
+	}
+	if config == nil {
+		config = map[string]string{}
+	}
+	sum := sha256.Sum256([]byte("project/" + name))
+	writeSync(w, map[string]any{"name": name, "description": "", "config": config, "used_by": []string{}}, hex.EncodeToString(sum[:8]))
 }
 
 // list answers GET /1.0/instances?recursion=1 for the project.

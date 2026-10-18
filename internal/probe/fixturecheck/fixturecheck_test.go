@@ -55,6 +55,10 @@ func TestCheck(t *testing.T) {
 			map[string]any{"type": "async", "metadata": map[string]any{}}), Checked, true, []string{"envelope type sync (got async)"}, nil},
 		{"error envelope", fixture("GET", "/1.0/instances/x", "", 404, nil, map[string]any{"type": "error", "error": "Not Found", "error_code": 404}), Error, false, nil, nil},
 		{"error without envelope", fixture("GET", "/1.0/instances/x", "", 403, nil, "forbidden"), Error, true, nil, nil},
+		{"project with config", fixture("GET", "/1.0/projects/l16-on", "", 200, etag,
+			sync(map[string]any{"name": "l16-on", "config": map[string]string{"features.networks": "true"}})), Decoded, false, nil, nil},
+		{"project without config", fixture("GET", "/1.0/projects/l16-on", "", 200, etag, sync(map[string]any{"name": "l16-on"})), Decoded, true,
+			[]string{"config"}, nil},
 		{"a call the probe does not make", fixture("DELETE", "/1.0/instances/c1", "", 200, nil, sync(nil)), Skipped, false, nil, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

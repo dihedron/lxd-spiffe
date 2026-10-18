@@ -94,6 +94,8 @@ var serverCalls = []call{
 		target: func() any { return &api.Instance{} }, fields: instanceFields, headers: []string{"ETag"}},
 	{name: "GET /1.0/instances", method: http.MethodGet, path: regexp.MustCompile(`^/1\.0/instances$`),
 		target: func() any { return &[]api.Instance{} }},
+	{name: "GET /1.0/projects/{name}", method: http.MethodGet, path: regexp.MustCompile(`^/1\.0/projects/[^/]+$`),
+		target: func() any { return &api.Project{} }, fields: []string{"name", "config"}, headers: []string{"ETag"}},
 	{name: "GET /1.0/instances/{name}/state", method: http.MethodGet, path: regexp.MustCompile(`^/1\.0/instances/[^/]+/state$`),
 		target: func() any { return &api.InstanceState{} }},
 	// a file's body is not JSON (a directory's is a listing): headers only

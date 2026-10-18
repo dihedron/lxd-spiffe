@@ -91,6 +91,15 @@ var (
 	}
 )
 
+// Project is GET /1.0/projects/{name} (server project show, PRS-13): the
+// project read of the attestor's optional selectors.network_project, which
+// gate L16 confirms.
+var Project = Expectation{
+	Name: "project", Method: http.MethodGet, Path: "/1.0/projects/{name}",
+	Status: []int{http.StatusOK}, Headers: []string{"ETag"}, Envelope: Sync,
+	Fields: []string{"name", "config"},
+}
+
 var instanceFields = []string{
 	"name", "project", "status", "status_code", "type", "architecture", "location", "profiles",
 	"config", "devices", "expanded_config", "expanded_devices", "created_at", "last_used_at",
@@ -184,7 +193,7 @@ var Table = []Expectation{
 	Server, IdentityCurrent, Instance, InstanceFull,
 	DevLXDRoot, DevLXDServer, DevLXDConfig, DevLXDConfigKey, DevLXDMetadata, DevLXDDevices,
 	FileRead, FileHead, FileDir,
-	InstancePatch, InstancePut, OperationWait, InstanceList,
+	InstancePatch, InstancePut, OperationWait, InstanceList, Project,
 }
 
 // Denied returns the expectation of the same call when a 403 is the expected

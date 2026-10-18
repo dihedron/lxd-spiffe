@@ -11,6 +11,7 @@ type Commands struct {
 	Info        Info        `command:"info" description:"Record the server's version, API extensions and TLS parameters (PRS-01)."`
 	Whoami      Whoami      `command:"whoami" description:"Record the identity and permissions the server reports for the probe (PRS-02)."`
 	Instance    Instance    `command:"instance" description:"Inspect instances."`
+	Project     Project     `command:"project" description:"Inspect projects."`
 	Config      Config      `command:"config" description:"Read and write lab config keys of an instance."`
 	File        File        `command:"file" description:"Use the files API of an instance."`
 	Permissions Permissions `command:"permissions" description:"Run the read-only permission matrix for the presented identity (PRS-40)."`
@@ -23,6 +24,11 @@ type Instance struct {
 	Show  InstanceShow  `command:"show" description:"Record an instance, its ETag and volatile keys (PRS-10)."`
 	Watch InstanceWatch `command:"watch" description:"Poll an instance and record changes of its identity keys (PRS-11)."`
 	List  InstanceList  `command:"list" description:"Record the instances of the project (PRS-12)."`
+}
+
+// Project groups the project verbs.
+type Project struct {
+	Show ProjectShow `command:"show" description:"Record a project and its features.networks (PRS-13)."`
 }
 
 // Config groups the config verbs.
