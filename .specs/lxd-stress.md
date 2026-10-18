@@ -62,14 +62,14 @@ Each fault has an **injection point** (when, relative to the iteration's steps),
 | ID | Fault | Injection point | Expected outcome of the hit iteration | Clean-up |
 |---|---|---|---|---|
 | C1 | Instance stopped | after the challenge, before the read | fail at `read` or `recheck` (never pass) | instance started again |
-| C2 | Instance restarted | after the guest's answer, before the read | container: fail at `read` (the proof was on tmpfs); VM: `read` retries through the agent's start-up, then fails (file gone) | none (it restarts itself) |
-| C3 | LXD daemon restarted (`snap restart lxd`) on the server | anywhere | fail at the step in flight, or pass if the restart fell between steps and `recheck` saw the instance unchanged | wait for the daemon |
+| C2 | Instance restarted (`file_pull` only: `config_push` has nothing left to read in the instance once the agent echoed, and a restart keeps its identity) | after the guest's answer, before the read | container: fail at `read` (the proof was on tmpfs); VM: `read` retries through the agent's start-up, then fails (file gone) | none (it restarts itself) |
+| C3 | LXD daemon killed (`kill -9` of the `lxd` process): systemd starts it again within seconds and the instances keep running. Not `snap restart lxd`, whose stop hook runs `lxd shutdown` and so stops and restarts every instance on the server (seen in the first chaos run) | after the challenge | fail at the step in flight, or pass if the crash fell between steps and `recheck` saw the instance unchanged | wait until LXD answers again |
 | C4 | Server half killed (`SIGKILL`) | `config_push`: after `write`, before `cleanup`; `file_pull`: after `challenge` | harness records the kill; the challenge key (or proof file) is **left behind** | counted; removed by the session's sweep (STR-30) |
 | C5 | Guest half killed, or never answers | after the challenge | fail at `answer` within `--timeout`; `config_push` still runs `cleanup` | none |
 | C6 | Network partition between the lab host and an LXD server (`iptables` drop of 8443 on the VM) for 5–20 s | anywhere | fail at the step in flight within `--timeout`, never pass across the partition unless `recheck` succeeded after it | rule removed by the VM's own timer |
 | C7 | Cluster member stopped (one that holds the instance, or one that only forwards) | anywhere | fail or pass as forwarding allows; never pass with a changed instance | member started again |
 | C8 | Instance moved or its member evacuated (cluster) | between `challenge` and `recheck` | fail at `recheck` (`location` changed, FR-S10); a VM may fail at `read` first | instance moved back, member restored |
-| C9 | Concurrent writer on the instance's config (another `PATCH`) | between the first read and `write` (`config_push`) | fail at `write` with 412 (the rehearsal does one `PATCH`; FR-S14's retries are the plugin's) | the writer's key removed |
+| C9 | Concurrent writer on the instance's config (another key, in a loop) | from the start of the iteration to the challenge (`config_push`) | fail at `write` with 412 when the writer lands between the read and the write (the rehearsal does one `PATCH`; FR-S14's retries are the plugin's); the race is not deterministic from outside the probe, so a pass after the writer stopped is allowed | the writer's key removed |
 | C10 | Proof tampered or swapped (`--tamper`, or a proof for another instance written at the path) | the guest's step | fail at `compare` | proof file removed |
 
 The injector picks the fault and its moment from the seeded generator; each record of a hit iteration names the fault (`--cell <instance>-<fault>`), so the report groups outcomes by fault.
@@ -78,9 +78,9 @@ The injector picks the fault and its moment from the seeded generator; each reco
 
 | ID | Invariant |
 |---|---|
-| INV-1 | **No false pass.** An iteration hit by C1, C2, C4–C6 (when they cut the step in flight), C8 or C10 MUST NOT pass; one hit by C3, C6 or C7 passes only if its `recheck` step ran after the fault and found the instance unchanged. Any other pass of a hit iteration is a violation. |
+| INV-1 | **No false pass.** An iteration hit by C1, C2, C4, C5, C8 or C10 MUST NOT pass. Under C3, C6, C7 or C9 a pass is legitimate: it ends with a fresh read compared with the first (`recheck`), and none of these faults changes an instance's identity. (The first soak judged such passes by the fault's window instead; windows observed over SSH are only known to about a second, which made the rule both fragile and redundant.) |
 | INV-2 | **Bounded time.** Every iteration ends within `--timeout` + 10 s, the margin for the harness's own processes; a hung iteration is a violation and is killed. |
-| INV-3 | **Recovery.** After each fault's clean-up, the next iteration on the same instance (and, for C3, C6, C7, on the same server) passes within 60 s, retrying at most 5 times. |
+| INV-3 | **Recovery.** After each fault's clean-up, the next iteration on the same instance (and, for C3, C6, C7, on the same server) passes within 60 s of the server becoming quiet: while further server-wide faults on it start within 60 s, the deadline moves to their end. The harness retries every 5 s for up to 5 minutes. (An LXD crash restarts every container on the server, so an instance cannot recover while crashes go on.) |
 | INV-4 | **No leftovers.** After an iteration that ran to its end, no `user.spire.challenge.*` key is set on its instance and no proof file is left in its proof directory (the guest's `file rm` runs as part of the iteration). Leftovers after C4 are counted as **orphans**, not violations: they measure what a crash leaves behind. |
 | INV-5 | **Sanitized evidence.** The committed evidence passes `util sanitize --check`. |
 | INV-6 | **No drift.** Over the soak, the LXD daemon's resident memory and the number of its operations do not grow without bound: the session samples them every 60 s (`/proc/<pid>/status`, `GET /1.0/operations`), and a growth of the last sample over the first above 50 % is a finding, not a violation. |
@@ -127,7 +127,7 @@ Runnable once the plugins attest (attestor spec delivery step (e)) and the lab's
 | STR-60 | A concurrent driver in `test/lab/acceptance`: a worker pool of `LAB_STRESS_WORKERS` goroutines, each running one iteration at a time through the existing rehearse helper (server half piped, guest half through `lab.sh guest`), and one injector goroutine that schedules faults from the seeded generator and performs their clean-up. Results go to a JSON Lines file per run, one line per iteration (instance, mode, fault, outcome, failing step, step timings, start and end time), from which the summary is computed. |
 | STR-61 | Faults are performed through `lab.sh ssh` on the VMs (`lxc stop`, `snap restart lxd`, `iptables` with a `systemd-run --on-active` revert, `lxc move`, `lxc cluster evacuate`/`restore`) and by signalling the harness's own child processes (C4, C5). Every fault that cuts access arms its revert on the VM before cutting. |
 | STR-62 | Settings come from the environment with defaults: `LAB_STRESS_FLEET`, `LAB_STRESS_ITERATIONS`, `LAB_STRESS_WORKERS`, `LAB_STRESS_FAULT_RATE`, `LAB_STRESS_SEED` (default: from the clock, recorded), `LAB_STRESS_FAULTS` (default: the session's set). |
-| STR-63 | A stress session never runs as part of a plain `lab.sh test`: it runs only when selected (`-run 'TestST'`), since it takes tens of minutes. |
+| STR-63 | A stress session never runs as part of a plain `lab.sh test`: it runs only when selected (`-run 'TestST'`), since it takes tens of minutes; `LAB_TEST_TIMEOUT` (default `60m`) raises `go test`'s timeout for a long soak. |
 
 ## Lab resources
 

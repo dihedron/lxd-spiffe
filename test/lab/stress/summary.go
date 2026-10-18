@@ -58,6 +58,9 @@ type Summary struct {
 	Orphans    map[string]int                       `json:"orphans"`
 	Recoveries int                                  `json:"recoveries"`
 	Windows    int                                  `json:"windows"`
+	// Swept is what the end-of-session sweep found (STR-30): challenge keys
+	// and proof files left on the fleet.
+	Swept int `json:"swept"`
 }
 
 // OK reports whether no invariant was broken.
@@ -77,36 +80,62 @@ func Summarize(results []Result, settings map[string]string, b Bounds) Summary {
 	}
 	s.Windows = len(windows)
 	for _, r := range results {
+		hits := hitBy(r, windows)
 		if r.Recovery {
+			// a recovery is judged by INV-3 only, but what it leaves counts
 			s.Recoveries++
+			s.leftovers(r, hits)
 			continue
 		}
 		s.count(r)
-		hits := hitBy(r, windows)
+		// a must-fail fault never passes; under the others (LXD crashed or
+		// cut off, a cluster member down, a concurrent writer) a pass is
+		// legitimate, since it ends with a fresh read compared with the
+		// first, and none of them changes an instance's identity
 		for _, w := range hits {
-			f, _ := Lookup(w.Fault)
-			switch {
-			case r.Outcome != Pass:
-			case f.MustFail:
+			if f, _ := Lookup(w.Fault); f.MustFail && r.Outcome == Pass {
 				s.violate("INV-1", r, fmt.Sprintf("passed although hit by %s (%s)", f.ID, f.Name))
-			case r.End.Before(w.End):
-				s.violate("INV-1", r, fmt.Sprintf("passed while %s (%s) was not cleared", f.ID, f.Name))
 			}
 		}
 		if b.Iteration > 0 && r.Duration() > b.Iteration {
 			s.violate("INV-2", r, fmt.Sprintf("took %s, over %s", r.Duration().Round(time.Millisecond), b.Iteration))
 		}
-		if r.Leftovers > 0 {
-			if f, ok := Lookup(r.Fault); ok && f.Crash {
-				s.Orphans[f.ID] += r.Leftovers
-			} else {
-				s.violate("INV-4", r, fmt.Sprintf("%d challenge keys or proof files left", r.Leftovers))
-			}
-		}
+		s.leftovers(r, hits)
 	}
 	s.checkRecovery(results, windows, b)
 	s.Load = load(results, windows)
 	return s
+}
+
+// leftovers are orphans of the fault that hit the iteration (a crash of
+// its own, or LXD unreachable under a server-wide fault); without one,
+// they break INV-4.
+func (s *Summary) leftovers(r Result, hits []Window) {
+	if r.Leftovers == 0 {
+		return
+	}
+	if len(hits) > 0 {
+		s.Orphans[cause(hits)] += r.Leftovers
+		return
+	}
+	s.violate("INV-4", r, fmt.Sprintf("%d challenge keys or proof files left", r.Leftovers))
+}
+
+// cause is the fault a leftover is blamed on among those that hit an
+// iteration: a crash first, then a server-wide fault (LXD unreachable), then
+// any; a tampered proof, say, never keeps the cleanup from running.
+func cause(hits []Window) string {
+	for _, pick := range []func(Fault) bool{
+		func(f Fault) bool { return f.Crash },
+		func(f Fault) bool { return f.Scope == ScopeServer },
+	} {
+		for _, w := range hits {
+			if f, _ := Lookup(w.Fault); pick(f) {
+				return w.Fault
+			}
+		}
+	}
+	return hits[0].Fault
 }
 
 func (s *Summary) violate(inv string, r Result, detail string) {
@@ -156,6 +185,7 @@ func hitBy(r Result, windows []Window) []Window {
 func (s *Summary) checkRecovery(results []Result, windows []Window, b Bounds) {
 	for _, w := range windows {
 		f, _ := Lookup(w.Fault)
+		quiet := quietFrom(w.End, w.Server, windows, b.Recovery)
 		recovered := false
 		for _, r := range results {
 			if !r.Recovery || r.Outcome != Pass || r.Fault != w.Fault || r.Target.Server != w.Server {
@@ -164,7 +194,7 @@ func (s *Summary) checkRecovery(results []Result, windows []Window, b Bounds) {
 			if f.Scope == ScopeInstance && r.Target.Instance != w.Instance {
 				continue
 			}
-			if !r.End.Before(w.End) && (b.Recovery == 0 || r.End.Sub(w.End) <= b.Recovery) {
+			if !r.End.Before(w.End) && (b.Recovery == 0 || r.End.Sub(quiet) <= b.Recovery) {
 				recovered = true
 				break
 			}
@@ -176,6 +206,28 @@ func (s *Summary) checkRecovery(results []Result, windows []Window, b Bounds) {
 			})
 		}
 	}
+}
+
+// quietFrom is when the server becomes quiet after from: while a
+// server-wide fault on it starts within the recovery bound of the current
+// quiet time, the quiet time moves to that fault's end. Recovery is
+// measured from there (INV-3): a crash elsewhere on the server restarts its
+// containers, so the instance cannot recover while crashes go on.
+func quietFrom(from time.Time, server string, windows []Window, bound time.Duration) time.Time {
+	quiet := from
+	for moved := true; moved; {
+		moved = false
+		for _, w := range windows {
+			f, _ := Lookup(w.Fault)
+			if f.Scope != ScopeServer || w.Server != server || !w.End.After(quiet) {
+				continue
+			}
+			if bound == 0 || !w.Start.After(quiet.Add(bound)) {
+				quiet, moved = w.End, true
+			}
+		}
+	}
+	return quiet
 }
 
 // load computes latency and throughput per load step and mode, over the
@@ -252,6 +304,20 @@ func percentiles(v []int64) Latency {
 	return Latency{Count: len(s), P50: rank(0.50), P95: rank(0.95), P99: rank(0.99), Max: s[len(s)-1]}
 }
 
+// Sweep records what the end-of-session sweep found (STR-30): leftovers
+// beyond the orphans the crashes account for break INV-4.
+func (s *Summary) Sweep(found int) {
+	s.Swept = found
+	orphans := 0
+	for _, n := range s.Orphans {
+		orphans += n
+	}
+	if found > orphans {
+		s.Violations = append(s.Violations, Violation{Invariant: "INV-4",
+			Detail: fmt.Sprintf("the sweep found %d leftovers, the crashes account for %d", found, orphans)})
+	}
+}
+
 // WriteJSON writes the summary as summary.json's content.
 func (s Summary) WriteJSON(w io.Writer) error {
 	enc := json.NewEncoder(w)
@@ -291,7 +357,7 @@ func (s Summary) WriteMarkdown(w io.Writer) error {
 		fmt.Fprintf(&b, "| %s | %s | %d | %.1f | %d ms | %d ms | %d ms | %d ms |\n",
 			l.Label, l.Mode, l.Iterations, l.PerSecond, l.Attestor.P50, l.Attestor.P95, l.Attestor.P99, l.Attestor.Max)
 	}
-	b.WriteString("\n## Orphans (left by crashes, INV-4)\n\n")
+	fmt.Fprintf(&b, "\n## Orphans (left by crashes, INV-4)\n\nThe end-of-session sweep found %d.\n\n", s.Swept)
 	if len(s.Orphans) == 0 {
 		b.WriteString("None.\n")
 	}

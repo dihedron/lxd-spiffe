@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
 	"github.com/dihedron/lxd-spiffe/internal/probe/rehearse"
 	"github.com/dihedron/lxd-spiffe/test/lab/stress"
 )
@@ -49,8 +50,10 @@ func loadStressSettings(t *testing.T) stressSettings {
 		t.Fatal("LAB_STRESS_SEED: not a number")
 	}
 	return stressSettings{
-		fleet:   atoi("LAB_STRESS_FLEET", 35), // LXD allows 99 permissions per group: see STR-01 iterations: atoi("LAB_STRESS_ITERATIONS", 500),
-		workers: atoi("LAB_STRESS_WORKERS", 10), faultRate: rate, seed: seed,
+		// the fleet: LXD allows 99 permissions per group, see STR-01
+		fleet:      atoi("LAB_STRESS_FLEET", 35),
+		iterations: atoi("LAB_STRESS_ITERATIONS", 500),
+		workers:    atoi("LAB_STRESS_WORKERS", 10), faultRate: rate, seed: seed,
 	}
 }
 
@@ -141,7 +144,14 @@ type stressRun struct {
 // removal of the proof file. Leftovers (INV-4): for file_pull, a proof
 // file the removal could not remove after a pass; for config_push, a
 // cleanup the rehearsal reports as failed (cleanup.result).
-func (sr *stressRun) iterate(ctx context.Context, it stress.Item) (r stress.Result) {
+func (sr *stressRun) iterate(ctx context.Context, it stress.Item) stress.Result {
+	r, _ := sr.iterateHooked(ctx, it, rehearseHooks{}, nil)
+	return r
+}
+
+// iterateHooked is iterate with a fault's hooks and extra guest flags; it
+// also returns the challenge, for the faults' leftover checks.
+func (sr *stressRun) iterateHooked(ctx context.Context, it stress.Item, h rehearseHooks, guestExtra []string) (r stress.Result, c rehearse.Challenge) {
 	l := sr.l
 	r = stress.Result{Item: it, Label: sr.label, Start: time.Now()}
 	defer func() { r.End = time.Now() }() // r is the named result: the deferred write reaches the caller
@@ -156,10 +166,21 @@ func (sr *stressRun) iterate(ctx context.Context, it stress.Item) (r stress.Resu
 		sargs = append(sargs, "--allow-write", "--lab", "--allow-spire-keys")
 		gargs = tags
 	}
-	reh, err := l.rehearseE(ctx, sr.session, it.Target.Server, identity, "default", it.Target.Instance, it.Mode, sargs, gargs)
+	gargs = append(gargs, guestExtra...)
+	reh, err := l.rehearseHooked(ctx, sr.session, it.Target.Server, identity, "default", it.Target.Instance, it.Mode, sargs, gargs, h)
+	c = reh.challenge
+	r.ServerEnd = serverEnd(reh.server)
 	if err != nil {
+		// LXD unreachable or too slow is the server half failing, not the
+		// harness: it happens under faults that cut LXD off
+		if reh.server != nil && (reh.server.code == exit.Connection || reh.server.code == exit.Timeout) {
+			r.Outcome, r.FailedStep = stress.Fail, map[int]string{exit.Connection: "connect", exit.Timeout: "timeout"}[reh.server.code]
+			r.Detail = err.Error()
+			r.Leftovers = sr.checkLeftovers(it, c)
+			return r, c
+		}
 		r.Outcome, r.Detail = stress.Error, err.Error()
-		return r
+		return r, c
 	}
 	r.Steps = stepTimings(reh.server)
 	result := reh.server.result()
@@ -175,17 +196,47 @@ func (sr *stressRun) iterate(ctx context.Context, it stress.Item) (r stress.Resu
 	if it.Mode == stress.FilePull && reh.challenge.ProofPath != "" && reh.guest != nil {
 		rm, err := l.guestE(ctx, sr.session, it.Target.Server, "default", it.Target.Instance,
 			append(append([]string{"guest", "file", "rm", reh.challenge.ProofPath}, spireWrite...), tags...)...)
-		if (err != nil || rm.rec.Outcome != "ok") && r.Outcome == stress.Pass {
-			r.Leftovers++
+		if err != nil || rm.rec.Outcome != "ok" {
+			r.Leftovers = sr.checkLeftovers(it, c)
 		}
 	}
-	if it.Mode == stress.ConfigPush {
+	if it.Mode == stress.ConfigPush && r.Outcome != stress.Pass {
+		// the cleanup may have failed or never run: the instance says
+		r.Leftovers = sr.checkLeftovers(it, c)
 		if v, ok := reh.server.observation("cleanup.result"); ok {
-			r.Leftovers++
 			r.Detail = fmt.Sprint(v)
 		}
 	}
-	return r
+	return r, c
+}
+
+// serverEnd is when the server half's record says it ended (its start
+// plus its duration, measured by the probe itself), so that INV-1 judges
+// the recheck by the probe's clock, not by when the harness noticed;
+// zero when there is no record.
+func serverEnd(r *run) time.Time {
+	if r == nil || r.rec == nil || r.rec.Time.IsZero() {
+		return time.Time{}
+	}
+	return r.rec.Time.Add(time.Duration(r.rec.DurationMS) * time.Millisecond)
+}
+
+// checkLeftovers reports whether the iteration's challenge key
+// (config_push) or proof file (file_pull) is still on the instance (INV-4).
+func (sr *stressRun) checkLeftovers(it stress.Item, c rehearse.Challenge) int {
+	server, inst := it.Target.Server, it.Target.Instance
+	switch {
+	case c.ProofKey != "":
+		out, err := sr.l.trySSH(server, "sudo lxc config get "+inst+" "+c.ProofKey)
+		if err == nil && strings.TrimSpace(out) != "" {
+			return 1
+		}
+	case c.ProofPath != "":
+		if _, err := sr.l.trySSH(server, "sudo timeout 20 lxc exec "+inst+" -- test -e "+c.ProofPath); err == nil {
+			return 1
+		}
+	}
+	return 0
 }
 
 // stepTimings reads the step.<name>.ms observations (PRS-54).
@@ -263,6 +314,15 @@ func (l *lab) writeSummary(t *testing.T, name string, sum stress.Summary, result
 	}
 }
 
+// requireIterations fails a session that ran nothing: its invariants
+// would hold vacuously.
+func requireIterations(t *testing.T, results []stress.Result) {
+	t.Helper()
+	if len(results) == 0 {
+		t.Fatal("no iteration ran: check the LAB_STRESS_* settings")
+	}
+}
+
 // stressBounds are the invariants' bounds: --timeout (30 s) plus 10 s,
 // and 60 s to recover (INV-2, INV-3).
 var stressBounds = stress.Bounds{Iteration: 40 * time.Second, Recovery: 60 * time.Second}
@@ -289,6 +349,7 @@ func TestST1Fleet(t *testing.T) {
 	stamp := time.Now().UTC().Format("20060102T150405Z")
 	sr := &stressRun{l: l, session: session{evidenceDir: l.evidence, runID: stamp + "-st-1"}, label: "fleet check"}
 	results := stress.Run(context.Background(), eachInstanceOnce(l.stressTargets(names)), set.workers, sr.iterate)
+	requireIterations(t, results)
 	sum := stress.Summarize(results, set.record(), stressBounds)
 	l.writeSummary(t, stamp+"-st-1-summary", sum, results)
 	for _, r := range results {
@@ -320,6 +381,7 @@ func TestST2Load(t *testing.T) {
 		t.Logf("%s: %d iterations", sr.label, len(step))
 		results = append(results, step...)
 	}
+	requireIterations(t, results)
 	settings := set.record()
 	settings["session"] = "ST-2"
 	sum := stress.Summarize(results, settings, stressBounds)
@@ -359,6 +421,7 @@ func TestST5Burst(t *testing.T) {
 		return sr.iterate(ctx, it)
 	}
 	results := stress.Run(window, plan.Items(), 16, paced)
+	requireIterations(t, results)
 	settings := set.record()
 	settings["session"], settings["offered"] = "ST-5", "20/s for 60 s, 16 in flight"
 	sum := stress.Summarize(results, settings, stressBounds)

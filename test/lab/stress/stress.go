@@ -58,14 +58,18 @@ type Fault struct {
 // Catalogue is the fault catalogue, C1 to C10.
 var Catalogue = []Fault{
 	{ID: "C1", Name: "instance stopped", Scope: ScopeInstance, MustFail: true},
-	{ID: "C2", Name: "instance restarted", Scope: ScopeInstance, MustFail: true},
-	{ID: "C3", Name: "LXD daemon restarted", Scope: ScopeServer},
+	// C2 restarts the instance once its proof is written: config_push has
+	// nothing left to read in the instance, so it applies to file_pull only
+	{ID: "C2", Name: "instance restarted", Scope: ScopeInstance, MustFail: true, Modes: []string{FilePull}},
+	{ID: "C3", Name: "LXD daemon killed", Scope: ScopeServer},
 	{ID: "C4", Name: "server half killed", Scope: ScopeInstance, MustFail: true, Crash: true},
 	{ID: "C5", Name: "guest half killed", Scope: ScopeInstance, MustFail: true},
 	{ID: "C6", Name: "network partition", Scope: ScopeServer},
 	{ID: "C7", Name: "cluster member stopped", Scope: ScopeServer, Cluster: true},
 	{ID: "C8", Name: "instance moved", Scope: ScopeInstance, MustFail: true, Cluster: true},
-	{ID: "C9", Name: "concurrent writer", Scope: ScopeInstance, MustFail: true, Modes: []string{ConfigPush}},
+	// C9 races the rehearsal from outside: the write may meet the writer
+	// (412) or not, so a pass is allowed once the writer has stopped
+	{ID: "C9", Name: "concurrent writer", Scope: ScopeInstance, Modes: []string{ConfigPush}},
 	{ID: "C10", Name: "proof tampered", Scope: ScopeInstance, MustFail: true},
 }
 
@@ -157,6 +161,9 @@ type Result struct {
 	Steps      map[string]int64 `json:"steps_ms,omitempty"`
 	Start      time.Time        `json:"start"`
 	End        time.Time        `json:"end"`
+	// ServerEnd is when the server half ended: its last step, the recheck,
+	// ran just before. Zero: unknown, End is used.
+	ServerEnd time.Time `json:"server_end,omitzero"`
 	// Window is the fault this iteration injected, if any.
 	Window *Window `json:"window,omitempty"`
 	// Leftovers counts challenge keys and proof files left after it.

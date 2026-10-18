@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -41,12 +42,36 @@ func (l *lab) rehearse(t *testing.T, s session, server, identity, project, insta
 // rehearseE is rehearse returning its failure, for the stress workers;
 // ctx kills both halves.
 func (l *lab) rehearseE(ctx context.Context, s session, server, identity, project, instance, mode string, serverArgs, guestArgs []string) (rehearsal, error) {
+	return l.rehearseHooked(ctx, s, server, identity, project, instance, mode, serverArgs, guestArgs, rehearseHooks{})
+}
+
+// rehearseHooks are the points where the chaos sessions inject faults
+// (stress spec, Fault catalogue).
+type rehearseHooks struct {
+	// afterChallenge runs once the server half has sent its challenge
+	// (config_push: after its write), before the guest half.
+	afterChallenge func()
+	// skipGuest runs no guest half: the server half gets no answer (C5).
+	skipGuest bool
+	// afterGuest runs after the guest half, before its answer is fed back.
+	afterGuest func()
+	// killServer kills the server half with SIGKILL right after the
+	// challenge, before afterChallenge (C4); the guest half still runs.
+	killServer bool
+}
+
+// rehearseHooked is rehearseE with fault injection points.
+func (l *lab) rehearseHooked(ctx context.Context, s session, server, identity, project, instance, mode string, serverArgs, guestArgs []string, h rehearseHooks) (rehearsal, error) {
 	var reh rehearsal
 	verb := map[string]string{rehearse.FilePull: "file-pull", rehearse.ConfigPush: "config-push"}[mode]
 	args := append([]string{"probe", server, "--as", identity, "--", "server", "rehearse", verb, instance, "--project", project}, serverArgs...)
 	args = append(args, "--json", "--evidence-dir", s.evidenceDir)
 	cmd := exec.CommandContext(ctx, filepath.Join(l.dir, "lab.sh"), args...)
 	cmd.Env = append(os.Environ(), "LXD_PROBE_RUN_ID="+s.runID)
+	// lab.sh runs lxd-probe in a subshell: a process group of its own lets
+	// C4 kill the probe itself, not only lab.sh's shell
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return reh, err
@@ -89,10 +114,19 @@ wait:
 		}
 	}
 	var guestErr error
-	if line != "" {
+	if line != "" && h.killServer {
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) // the whole group: lab.sh and lxd-probe
+	}
+	if line != "" && h.afterChallenge != nil {
+		h.afterChallenge()
+	}
+	if line != "" && !h.skipGuest {
 		gargs := append([]string{"guest", "rehearse", verb}, guestArgs...)
 		gargs = append(gargs, "--challenge", line)
 		reh.guest, guestErr = l.guestE(ctx, s, server, project, instance, gargs...)
+		if h.afterGuest != nil {
+			h.afterGuest()
+		}
 		if reh.guest != nil {
 			actx, cancel := context.WithTimeout(ctx, 5*time.Second)
 			answer, err := rehearse.ReadAnswer(actx, strings.NewReader(reh.guest.stdout))
@@ -110,7 +144,7 @@ wait:
 	switch {
 	case err != nil:
 		return reh, err
-	case line == "":
+	case line == "" && reh.server.result() == "":
 		return reh, fmt.Errorf("%s %s/%s: no challenge: %s", server, project, instance, reh.server)
 	case guestErr != nil && reh.guest == nil:
 		return reh, guestErr

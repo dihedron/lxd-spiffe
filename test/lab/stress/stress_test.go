@@ -122,9 +122,9 @@ func violations(s Summary, inv string) []Violation {
 
 var bounds = Bounds{Iteration: 40 * time.Second, Recovery: 60 * time.Second}
 
-// TestINV1NoFalsePass: a must-fail fault never passes; a server-wide fault
-// passes only for iterations that ended after it was cleared, and hits the
-// other iterations on its server.
+// TestINV1NoFalsePass: a must-fail fault never passes; under a server-wide
+// fault a pass is legitimate (its recheck is a fresh read compared with the
+// first, and an LXD crash changes no identity).
 func TestINV1NoFalsePass(t *testing.T) {
 	a, b, c := targets[0], targets[1], targets[2]
 	c1 := withWindow(res(1, a, FilePull, "C1", Pass, 0, 5), 1, 3)
@@ -138,7 +138,7 @@ func TestINV1NoFalsePass(t *testing.T) {
 	}
 	s := Summarize(results, nil, bounds)
 	got := violations(s, "INV-1")
-	if len(got) != 2 || got[0].Iteration != 1 || got[1].Iteration != 3 {
+	if len(got) != 1 || got[0].Iteration != 1 {
 		t.Errorf("INV-1 violations %+v", got)
 	}
 }
@@ -225,5 +225,88 @@ func TestWriteResults(t *testing.T) {
 	lines := strings.Split(strings.TrimSpace(b.String()), "\n")
 	if len(lines) != 2 || !strings.Contains(lines[1], `"fault":"C9"`) || !strings.Contains(lines[0], `"steps_ms":{`) {
 		t.Errorf("results.jsonl:\n%s", b.String())
+	}
+}
+
+// TestSTR30Sweep: the sweep may find the crashes' orphans, no more.
+func TestSTR30Sweep(t *testing.T) {
+	a := targets[0]
+	crash := withWindow(res(1, a, ConfigPush, "C4", Fail, 0, 1), 0, 1)
+	crash.Leftovers = 1
+	ok := Summarize([]Result{crash, recovery(crash, 5)}, nil, bounds)
+	ok.Sweep(1)
+	if !ok.OK() || ok.Swept != 1 {
+		t.Errorf("one orphan swept: %+v", ok.Violations)
+	}
+	bad := Summarize([]Result{crash, recovery(crash, 5)}, nil, bounds)
+	bad.Sweep(3)
+	if v := violations(bad, "INV-4"); len(v) != 1 {
+		t.Errorf("three swept for one orphan: %+v", bad.Violations)
+	}
+}
+
+// C9 races the rehearsal: a pass after the writer stopped is allowed.
+func TestC9MayPass(t *testing.T) {
+	r := withWindow(res(1, targets[0], ConfigPush, "C9", Pass, 0, 5), 0, 2)
+	if s := Summarize([]Result{r, recovery(r, 6)}, nil, bounds); !s.OK() {
+		t.Errorf("C9 pass after the writer stopped: %+v", s.Violations)
+	}
+}
+
+// TestINV3QuietServer: recovery is measured from when the server is quiet:
+// crashes that follow within the bound push the deadline on.
+func TestINV3QuietServer(t *testing.T) {
+	a, b := targets[0], targets[1]
+	c5 := withWindow(res(1, a, FilePull, "C5", Fail, 0, 5), 0, 5)
+	// crashes elsewhere on lxd5 at 30-40 s and 80-90 s keep the server busy
+	c3a := withWindow(res(2, b, FilePull, "C3", Fail, 30, 40), 30, 40)
+	c3b := withWindow(res(3, b, FilePull, "C3", Fail, 80, 90), 80, 90)
+	late := recovery(c5, 120) // 30 s after the last crash, 115 s after C5
+	s := Summarize([]Result{c5, late, c3a, recovery(c3a, 45), c3b, recovery(c3b, 95)}, nil, bounds)
+	if v := violations(s, "INV-3"); len(v) != 0 {
+		t.Errorf("INV-3 %+v", v)
+	}
+	// without the crashes, 115 s is too late
+	s = Summarize([]Result{c5, late}, nil, bounds)
+	if v := violations(s, "INV-3"); len(v) != 1 {
+		t.Errorf("INV-3 without crashes %+v", v)
+	}
+}
+
+// TestINV4Attributed: leftovers under a server-wide fault are its orphans.
+func TestINV4Attributed(t *testing.T) {
+	a, b := targets[0], targets[1]
+	c3 := withWindow(res(1, b, ConfigPush, "C3", Fail, 10, 20), 10, 14)
+	hit := res(2, a, ConfigPush, "", Fail, 11, 13)
+	hit.Leftovers = 1
+	s := Summarize([]Result{c3, recovery(c3, 30), hit}, nil, bounds)
+	if !s.OK() || s.Orphans["C3"] != 1 {
+		t.Errorf("violations %+v, orphans %v", s.Violations, s.Orphans)
+	}
+}
+
+// A recovery's leftovers count too: attributed to a fault that hit it.
+func TestRecoveryLeftovers(t *testing.T) {
+	a, b := targets[0], targets[1]
+	c3 := withWindow(res(1, b, ConfigPush, "C3", Fail, 10, 20), 10, 14)
+	rec := recovery(c3, 13)
+	rec.Target, rec.Start, rec.Leftovers = a, at(11), 1
+	s := Summarize([]Result{c3, recovery(c3, 30), rec}, nil, bounds)
+	s.Sweep(1)
+	if !s.OK() || s.Orphans["C3"] != 1 {
+		t.Errorf("violations %+v, orphans %v", s.Violations, s.Orphans)
+	}
+}
+
+// A leftover is blamed on the crash or outage that hit the iteration, not
+// on its own tampered proof.
+func TestLeftoverCause(t *testing.T) {
+	a, b := targets[0], targets[1]
+	c3 := withWindow(res(1, b, ConfigPush, "C3", Fail, 10, 20), 10, 14)
+	c10 := withWindow(res(2, a, ConfigPush, "C10", Fail, 11, 13), 11, 13)
+	c10.Leftovers = 1
+	s := Summarize([]Result{c3, recovery(c3, 30), c10, recovery(c10, 31)}, nil, bounds)
+	if s.Orphans["C3"] != 1 || s.Orphans["C10"] != 0 {
+		t.Errorf("orphans %v", s.Orphans)
 	}
 }
