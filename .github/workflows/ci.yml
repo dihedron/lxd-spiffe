@@ -71,7 +71,10 @@ jobs:
         run: make
 
       - name: Test with coverage
-        run: go test ./... -coverprofile=coverage.txt
+        # -coverpkg credits code with the coverage of every package's tests,
+        # not only its own: test/fakelxd and internal/lxd are mostly exercised
+        # from other packages
+        run: go test ./... -coverpkg=./... -coverprofile=coverage.txt
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1

@@ -43,7 +43,7 @@ lxd_store_revision() {
 		track=latest risk="$channel"
 	fi
 	[[ "$risk" != */* ]] || die "snap channel $channel: branches are not supported"
-	curl -fsS -H 'Snap-Device-Series: 16' 'https://api.snapcraft.io/v2/snaps/info/lxd?fields=revision,version' |
+	curl -fsS --proto '=https' -H 'Snap-Device-Series: 16' 'https://api.snapcraft.io/v2/snaps/info/lxd?fields=revision,version' |
 		jq -er --arg track "$track" --arg risk "$risk" '
 			first(."channel-map"[]
 				| select(.channel.architecture == "amd64" and .channel.track == $track and .channel.risk == $risk)
@@ -285,7 +285,7 @@ lxd_check() {
 	endpoint="$(lxd_endpoint "$server")"
 	vm_ssh "$server" "sudo lxc info" >/dev/null || die "$server: lxc info fails"
 	local_json="$(vm_ssh "$server" "sudo lxc query /1.0")" || die "$server: lxc query /1.0 fails"
-	remote_json="$(curl -fsSk --max-time 10 "$endpoint/1.0")" ||
+	remote_json="$(curl -fsSk --proto '=https' --max-time 10 "$endpoint/1.0")" ||
 		die "$server: GET $endpoint/1.0 fails from this host"
 	[[ "$(jq -r .metadata.auth <<<"$remote_json")" == untrusted ]] ||
 		die "$server: GET $endpoint/1.0 is not an untrusted answer: $(jq -c .metadata.auth <<<"$remote_json")"

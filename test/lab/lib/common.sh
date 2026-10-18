@@ -240,7 +240,7 @@ ubuntu_image_url() {
 # to it.
 published_sha256() {
 	local dir="${1%/*}" file="${1##*/}"
-	curl -fsSL "$dir/SHA256SUMS" 2>/dev/null | awk -v f="$file" '
+	curl -fsSL --proto '=https' "$dir/SHA256SUMS" 2>/dev/null | awk -v f="$file" '
 		$2 == f || $2 == "*" f { print $1; found = 1; exit }
 		END { exit !found }'
 }
@@ -256,7 +256,7 @@ fetch() {
 		return
 	fi
 	info "downloading $url" >&2
-	curl -fL --progress-bar -o "$path.part" "$url" >&2 || die "cannot download $url"
+	curl -fL --proto '=https' --progress-bar -o "$path.part" "$url" >&2 || die "cannot download $url"
 	echo "$sha  $path.part" | sha256sum -c --quiet >/dev/null 2>&1 || {
 		rm -f "$path.part"
 		die "checksum mismatch for $url (expected $sha)"
