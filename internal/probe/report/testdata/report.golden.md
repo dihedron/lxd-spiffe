@@ -173,7 +173,7 @@ Counted over every record of the report, through the expectations the records na
 | Write/remove challenge | `PATCH /1.0/instances/{name}` | 1 |
 | Own identity (optional) | `GET /1.0/auth/identities/current` | 0 |
 | Uniqueness check | `GET /1.0/instances` | 0 |
-| Network project (optional) | `GET /1.0/projects/{name}` | 0 |
+| Network project | `GET /1.0/projects/{name}` | 0 |
 
 ## Open items
 
@@ -181,7 +181,7 @@ Counted over every record of the report, through the expectations the records na
 - No record reached `GET /1.0/instances/{name}` (Resolve instance).
 - No record reached `GET /1.0/auth/identities/current` (Own identity (optional)).
 - No record reached `GET /1.0/instances` (Uniqueness check).
-- No record reached `GET /1.0/projects/{name}` (Network project (optional)).
+- No record reached `GET /1.0/projects/{name}` (Network project).
 
 ## Observations
 

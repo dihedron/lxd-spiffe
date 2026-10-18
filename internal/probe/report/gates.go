@@ -152,5 +152,5 @@ var APIUsage = []Call{
 	{"Write/remove challenge", "PATCH", "/1.0/instances/{name}"},
 	{"Own identity (optional)", "GET", "/1.0/auth/identities/current"},
 	{"Uniqueness check", "GET", "/1.0/instances"},
-	{"Network project (optional)", "GET", "/1.0/projects/{name}"},
+	{"Network project", "GET", "/1.0/projects/{name}"},
 }
