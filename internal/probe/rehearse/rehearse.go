@@ -195,5 +195,11 @@ func GuestCommand(c Challenge) string {
 	if c.Mode == FilePull {
 		verb, flags = "file-pull", " --allow-write --lab --allow-spire-paths"
 	}
-	return fmt.Sprintf("lxd-probe guest rehearse %s%s --challenge '%s'", verb, flags, data)
+	return fmt.Sprintf("lxd-probe guest rehearse %s%s --challenge %s", verb, flags, shellQuote(string(data)))
+}
+
+// shellQuote quotes s for a POSIX shell: single quotes, each embedded one
+// written as '\”.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
