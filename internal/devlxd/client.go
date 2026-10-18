@@ -21,6 +21,7 @@ import (
 	lxdclient "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
 
+	"github.com/dihedron/lxd-spiffe/internal/limits"
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
 	"github.com/dihedron/lxd-spiffe/pkg/metadata"
 )
@@ -29,7 +30,7 @@ import (
 const (
 	DefaultSocket   = "/dev/lxd/sock"
 	DefaultTimeout  = 5 * time.Second
-	DefaultMaxBytes = 64 << 10
+	DefaultMaxBytes = limits.MaxDevLXDResponse
 )
 
 // Config configures a connection.

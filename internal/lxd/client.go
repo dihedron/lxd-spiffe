@@ -23,11 +23,12 @@ import (
 	lxdclient "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
 
+	"github.com/dihedron/lxd-spiffe/internal/limits"
 	"github.com/dihedron/lxd-spiffe/pkg/metadata"
 )
 
 // DefaultMaxBytes is the default limit of a response body (FR-S17 (6)).
-const DefaultMaxBytes = 1 << 20
+const DefaultMaxBytes = limits.MaxLXDResponse
 
 // Config configures a connection.
 type Config struct {
