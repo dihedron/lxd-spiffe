@@ -2,11 +2,11 @@
 
 Oct 8, 2026 · @Andrea Funtò
 
-*Status*: draft v0.3, for spec-driven development. `lxd-probe` is step 0 of the attestor spec's implementation order (`lxd-spire-plugins.md`, *Testing → Implementation instructions*): it is built and run before any plugin code that depends on a validation gate. Nothing of it is implemented yet.
+*Status*: draft v0.3, for spec-driven development. `lxd-probe` is step 0 of the attestor spec's implementation order (`lxd-spire-plugins.md`, *Testing → Implementation instructions*): it is built and run before any plugin code that depends on a validation gate. Stages 0–2 are implemented and have closed every gate (PRs #1, #2 and #8; evidence in `docs/validation/`); stage 3, the rehearsals of the real proofs, needs the attestor's `internal/proof` and follows its delivery step (a).
 
 | Field | Value |
 |---|---|
-| Status | Draft v0.3 for spec-driven development (SDD) |
+| Status | Draft v0.3 for spec-driven development (SDD); stages 0–2 implemented, stage 3 pending |
 | Purpose | A lab tool that **observes real LXD behaviour** and records it as evidence, so that every `[V:Ln]` validation gate of the attestor spec is closed with data instead of assumptions. |
 | Companion of | `lxd-spire-plugins.md` (the "attestor spec") |
 | Binary | `lxd-probe` |
@@ -42,6 +42,7 @@ Oct 8, 2026 · @Andrea Funtò
 | Oct 15, 2026 | `server instance list` records each instance's `volatile.uuid` and takes `--filter` (PRS-12), to learn whether LXD filters instances by `volatile.uuid` for the attestor's uniqueness check (gate L6); `util overlap` also rejects a disk below the proof directory, as the L12 decision tightens the attestor's isolation check (PRU-04); the body of a files-API error response is kept in records, artifacts and fixtures, since it is an LXD error envelope, not content (PRS-35). |
 | Oct 15, 2026 (chunk 12) | The lab matrix has a cluster per series, 5.21 LTS and 6.x; the L11 runbook is concrete: forwarding through each member, the filtered list across members, a cold move and an evacuation under `instance watch`, `volatile.cluster.group`, cluster fixtures. |
 | Oct 16, 2026 (chunk 12) | A record through a cluster names the member that answered (PRE-02). |
+| Oct 18, 2026 | Status after attestor spec v0.7: stages 0–2 implemented, every gate closed, stage 3 waits for `internal/proof` (attestor delivery step (a)). The open questions ledger records where each answer went; Q1, Q2 and Q4 got no decision and block nothing. No requirement changes. |
 
 ## Overview
 
@@ -560,13 +561,13 @@ Each stage ends with: run the relevant runbooks, commit sanitized evidence to `d
 
 ### Open questions ledger (to be closed by the lab, then moved into the attestor spec)
 
-| # | Question | Gate |
-|---|---|---|
-| Q1 | Maximum file size accepted/returned by the files API; behaviour with files larger than `--max-bytes` | L1 |
-| Q2 | Behaviour of files and config calls on a frozen or stopped instance | L1, L7 |
-| Q3 | TLS versions and ciphers accepted by LXD 5.21 and 6.x on the remote API | L8 |
-| Q4 | Rate limits or request throttling on the API | L14 |
-| Q5 | Is the ETag of the instance affected by volatile keys changing in the background | L14 |
-| Q6 | Does a config event reach devLXD (`/1.0/events`) and in which form | L2 |
-| Q7 | Is the project name obtainable from inside the instance | L3 |
-| Q8 | Does `volatile.uuid` survive `lxc copy` to another server | L6 |
+| # | Question | Gate | Outcome |
+|---|---|---|---|
+| Q1 | Maximum file size accepted/returned by the files API; behaviour with files larger than `--max-bytes` | L1 | No decision: the plugin reads a 64-byte proof file and bounds every response at 1 MiB (attestor SEC-11), so the files API's own maximum does not matter. |
+| Q2 | Behaviour of files and config calls on a frozen or stopped instance | L1, L7 | No decision: the plugin requires `Running` and rejects frozen and stopped instances (attestor R1, T8). |
+| Q3 | TLS versions and ciphers accepted by LXD 5.21 and 6.x on the remote API | L8 | Answered: both refuse TLS 1.2, the plugin requires TLS 1.3 (L8). |
+| Q4 | Rate limits or request throttling on the API | L14 | No decision: not measured; an attestation makes a few calls and retries are bounded (attestor FR-S14). |
+| Q5 | Is the ETag of the instance affected by volatile keys changing in the background | L14 | Answered: no ETag change on idle instances in 5 minutes (L14). |
+| Q6 | Does a config event reach devLXD (`/1.0/events`) and in which form | L2 | Answered: a `config` event reaches devLXD (L2). |
+| Q7 | Is the project name obtainable from inside the instance | L3 | Answered: no project inside the instance (L3). |
+| Q8 | Does `volatile.uuid` survive `lxc copy` to another server | L6 | Answered: a copy gets a new `volatile.uuid`; an import keeps it (L6). |
