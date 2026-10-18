@@ -27,8 +27,8 @@ type Preflight struct {
 
 	// root is where /proc and /run are read: "/" but in tests.
 	root string
-	// detectVirt is the systemd-detect-virt to run, looked up in PATH when
-	// it has no slash.
+	// detectVirt is the systemd-detect-virt to run: an absolute path in
+	// tests, empty otherwise (found in the system directories).
 	detectVirt string
 	stdout     io.Writer
 }
@@ -37,9 +37,6 @@ type Preflight struct {
 func (cmd *Preflight) Execute(args []string) error {
 	if cmd.root == "" {
 		cmd.root = "/"
-	}
-	if cmd.detectVirt == "" {
-		cmd.detectVirt = "systemd-detect-virt"
 	}
 	s, err := newSession(&cmd.GuestCommand, cmd.stdout, "preflight", nil)
 	if err != nil {
@@ -174,12 +171,36 @@ func (cmd *Preflight) run(s *session) {
 	}
 }
 
+// detectVirtDirs are where systemd-detect-virt is looked for. PATH is not
+// searched: preflight runs as root, and a writable directory early in an
+// inherited PATH could hold another program of that name.
+var detectVirtDirs = []string{"/usr/bin", "/bin", "/usr/sbin", "/sbin"}
+
+// findDetectVirt returns the systemd-detect-virt to run: override when
+// set (tests), else the first of detectVirtDirs, if it is an executable
+// regular file; "" when there is none.
+func findDetectVirt(override string) string {
+	candidates := []string{override}
+	if override == "" {
+		candidates = candidates[:0]
+		for _, dir := range detectVirtDirs {
+			candidates = append(candidates, filepath.Join(dir, "systemd-detect-virt"))
+		}
+	}
+	for _, path := range candidates {
+		if fi, err := os.Stat(path); err == nil && fi.Mode().IsRegular() && fi.Mode().Perm()&0o111 != 0 {
+			return path
+		}
+	}
+	return ""
+}
+
 // virt records systemd-detect-virt's answer when it is there, and a guess
 // from /run and /proc. A container is told first: one on a VM sees the
 // hypervisor flag of its host's CPU too.
 func (cmd *Preflight) virt(s *session) {
 	detect := map[string]any{"available": false}
-	if path, err := exec.LookPath(cmd.detectVirt); err == nil {
+	if path := findDetectVirt(cmd.detectVirt); path != "" {
 		timeout := cmd.Timeout
 		if timeout <= 0 {
 			timeout = 10 * time.Second
@@ -187,7 +208,9 @@ func (cmd *Preflight) virt(s *session) {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		var out bytes.Buffer
-		c := exec.CommandContext(ctx, path) //nolint:gosec // G204: systemd-detect-virt from PATH, no arguments
+		c := exec.CommandContext(ctx, path) //nolint:gosec // G204: systemd-detect-virt from a system directory, no arguments, no shell
+		c.Env = []string{"PATH=/usr/sbin:/usr/bin:/sbin:/bin", "LC_ALL=C"}
+		c.Dir = "/"
 		c.Stdout = &out
 		err := c.Run()
 		code := 0

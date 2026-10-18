@@ -215,3 +215,27 @@ func TestPreflightUnreadable(t *testing.T) {
 		t.Errorf("run.mount.error = %v", v)
 	}
 }
+
+// TestDetectVirtNotFromPATH: systemd-detect-virt is looked up in the system
+// directories only, never through PATH, so a planted one in an earlier,
+// writable PATH directory is not run (preflight runs as root).
+func TestDetectVirtNotFromPATH(t *testing.T) {
+	planted := t.TempDir()
+	marker := filepath.Join(t.TempDir(), "ran")
+	script := "#!/bin/sh\ntouch " + marker + "\necho planted\n"
+	if err := os.WriteFile(filepath.Join(planted, "systemd-detect-virt"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", planted+string(os.PathListSeparator)+os.Getenv("PATH"))
+	if got := findDetectVirt(""); got != "" && strings.HasPrefix(got, planted) {
+		t.Errorf("found %s through PATH", got)
+	}
+	cmd := &Preflight{
+		GuestCommand: probe.GuestCommand{GlobalOptions: probe.GlobalOptions{EvidenceDir: t.TempDir(), JSON: true}},
+		root:         t.TempDir(), stdout: &bytes.Buffer{},
+	}
+	_ = cmd.Execute(nil)
+	if _, err := os.Stat(marker); err == nil {
+		t.Error("the planted systemd-detect-virt ran")
+	}
+}
