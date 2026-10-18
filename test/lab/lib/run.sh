@@ -66,6 +66,7 @@ cmd_probe() {
 
 # cmd_guest SERVER INSTANCE [--project P] [--user UID] -- ARGS...: runs
 # lxd-probe ARGS inside INSTANCE, as root unless --user is given.
+# LAB_GUEST_TIMEOUT, in seconds, bounds the lxc exec on the member.
 cmd_guest() {
 	require_state
 	local usage="usage: lab.sh guest <server> <instance> [--project <project>] [--user <uid>] -- <args>"
@@ -96,6 +97,15 @@ cmd_guest() {
 	for var in "${LAB_PROBE_SESSION_VARS[@]}"; do
 		[[ -z "${!var:-}" ]] || env+=(--env "$var=${!var}")
 	done
+	if [[ -n "${LAB_GUEST_TIMEOUT:-}" ]]; then
+		# bounded on the member too: an lxc exec into an instance that a
+		# power-off or an evacuation took away never ends, and killing the
+		# local ssh leaves it running there (stress spec, ST-4)
+		[[ "$LAB_GUEST_TIMEOUT" =~ ^[0-9]+$ ]] || die "LAB_GUEST_TIMEOUT takes seconds"
+		vm_ssh "$server" "sudo timeout -k 5 $LAB_GUEST_TIMEOUT lxc $(printf '%q ' exec "$instance" --project "$project" \
+			--user "$uid" --group "$uid" --cwd / "${env[@]}" -- "$LAB_GUEST_PROBE" "$@")"
+		return
+	fi
 	vm_lxc "$server" exec "$instance" --project "$project" --user "$uid" --group "$uid" --cwd / \
 		"${env[@]}" -- "$LAB_GUEST_PROBE" "$@"
 }

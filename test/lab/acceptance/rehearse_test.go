@@ -70,8 +70,7 @@ func (l *lab) rehearseHooked(ctx context.Context, s session, server, identity, p
 	cmd.Env = append(os.Environ(), "LXD_PROBE_RUN_ID="+s.runID)
 	// lab.sh runs lxd-probe in a subshell: a process group of its own lets
 	// C4 kill the probe itself, not only lab.sh's shell
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	boundCommand(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return reh, err

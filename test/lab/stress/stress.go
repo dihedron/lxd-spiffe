@@ -55,7 +55,7 @@ type Fault struct {
 	Cluster bool // needs a cluster
 }
 
-// Catalogue is the fault catalogue, C1 to C10.
+// Catalogue is the fault catalogue, C1 to C10 (C7 and C8 in two variants).
 var Catalogue = []Fault{
 	{ID: "C1", Name: "instance stopped", Scope: ScopeInstance, MustFail: true},
 	// C2 restarts the instance once its proof is written: config_push has
@@ -65,8 +65,11 @@ var Catalogue = []Fault{
 	{ID: "C4", Name: "server half killed", Scope: ScopeInstance, MustFail: true, Crash: true},
 	{ID: "C5", Name: "guest half killed", Scope: ScopeInstance, MustFail: true},
 	{ID: "C6", Name: "network partition", Scope: ScopeServer},
-	{ID: "C7", Name: "cluster member stopped", Scope: ScopeServer, Cluster: true},
-	{ID: "C8", Name: "instance moved", Scope: ScopeInstance, MustFail: true, Cluster: true},
+	// the cluster faults (ST-4); a cluster is one "server" of the plan
+	{ID: "C7a", Name: "forwarding member down", Scope: ScopeServer, Cluster: true},
+	{ID: "C7b", Name: "holding member down", Scope: ScopeServer, MustFail: true, Cluster: true},
+	{ID: "C8a", Name: "instance moved", Scope: ScopeInstance, MustFail: true, Cluster: true},
+	{ID: "C8b", Name: "member evacuated", Scope: ScopeServer, MustFail: true, Cluster: true},
 	// C9 races the rehearsal from outside: the write may meet the writer
 	// (412) or not, so a pass is allowed once the writer has stopped
 	{ID: "C9", Name: "concurrent writer", Scope: ScopeInstance, Modes: []string{ConfigPush}},
@@ -173,6 +176,15 @@ type Result struct {
 	Recovery bool   `json:"recovery,omitempty"`
 	Attempts int    `json:"attempts,omitempty"`
 	Detail   string `json:"detail,omitempty"`
+}
+
+// serverDuration is how long the server half took, from the iteration's
+// start to the end its record states; the whole iteration when unknown.
+func (r Result) serverDuration() time.Duration {
+	if r.ServerEnd.IsZero() {
+		return r.Duration()
+	}
+	return r.ServerEnd.Sub(r.Start)
 }
 
 // Duration is how long the iteration took.

@@ -310,3 +310,28 @@ func TestLeftoverCause(t *testing.T) {
 		t.Errorf("orphans %v", s.Orphans)
 	}
 }
+
+// A must-fail fault fails the iteration it targets only: another instance
+// overlapping it may pass (C8b evacuates one member, not the cluster).
+func TestINV1MustFailTargetsOnly(t *testing.T) {
+	a, b := targets[0], targets[1]
+	c8b := withWindow(res(1, a, FilePull, "C8b", Fail, 10, 20), 10, 20)
+	other := res(2, b, FilePull, "", Pass, 11, 15)
+	own := withWindow(res(3, a, FilePull, "C8b", Pass, 30, 35), 30, 35)
+	s := Summarize([]Result{c8b, recovery(c8b, 25), other, own, recovery(own, 40)}, nil, bounds)
+	if v := violations(s, "INV-1"); len(v) != 1 || v[0].Iteration != 3 {
+		t.Errorf("INV-1 %+v", v)
+	}
+}
+
+// INV-2 measures the server half: a slow guest half is the harness's.
+func TestINV2ServerHalf(t *testing.T) {
+	slowGuest := res(1, targets[0], FilePull, "", Pass, 0, 55)
+	slowGuest.ServerEnd = at(20)
+	slowServer := res(2, targets[1], FilePull, "", Pass, 0, 55)
+	slowServer.ServerEnd = at(50)
+	s := Summarize([]Result{slowGuest, slowServer}, nil, bounds)
+	if v := violations(s, "INV-2"); len(v) != 1 || v[0].Iteration != 2 {
+		t.Errorf("INV-2 %+v", v)
+	}
+}

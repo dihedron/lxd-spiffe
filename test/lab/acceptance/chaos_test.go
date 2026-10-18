@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,6 +31,9 @@ type chaosRun struct {
 	mu         sync.Mutex
 	recoveries []stress.Result
 	serverMu   map[string]*sync.Mutex
+	// failedCleanups are the clean-ups that could not undo their fault:
+	// the faults after them run on a changed lab, so the session fails
+	failedCleanups []string
 }
 
 func newChaosRun(sr *stressRun, servers []string) *chaosRun {
@@ -45,6 +49,9 @@ type injection struct {
 	hooks      rehearseHooks
 	guestExtra []string
 	start      time.Time // when the fault was injected; zero: the iteration's start
+	// notApplicable, when set, says why the fault was not injected: the
+	// iteration runs without it
+	notApplicable string
 	// cleared is when the fault stopped acting, when it is known more
 	// precisely than the end of its clean-up (H1)
 	mu      sync.Mutex
@@ -66,6 +73,13 @@ func (inj *injection) clear(at time.Time) {
 func (inj *injection) mark() {
 	if inj.start.IsZero() {
 		inj.start = time.Now()
+	}
+}
+
+// virsh powers a lab VM off (destroy) or on (start) from the lab host.
+func (inj *injection) virsh(action, vm string) {
+	if out, err := exec.Command("virsh", "-c", "qemu:///system", action, "lxd-lab-"+vm).CombinedOutput(); err != nil {
+		inj.detail = append(inj.detail, fmt.Sprintf("virsh %s %s: %v %s", action, vm, err, strings.TrimSpace(string(out))))
 	}
 }
 
@@ -118,7 +132,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			locked = true
 			// the window starts once the kill has returned: a recheck just
 			// before it may still have reached LXD
-			inj.ssh(l, server, "sudo kill -9 $(pgrep -x lxd)")
+			inj.ssh(l, c.faultVM(server, inst), "sudo kill -9 $(pgrep -x lxd)")
 			inj.mark()
 			// a watcher notes when LXD answers again, while the iteration
 			// goes on (H1)
@@ -145,12 +159,14 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 		unit := fmt.Sprintf("lab-c6-%d-%d", it.N, time.Now().UnixNano()%100000)
 		rule := "INPUT -p tcp --dport 8443 -j DROP"
 		locked := false
+		target := server
 		inj.hooks.afterChallenge = func() {
 			c.serverMu[server].Lock()
 			locked = true
 			// the revert is armed before the cut, so the lab recovers even if
 			// the harness dies here (STR-61)
-			inj.ssh(l, server, fmt.Sprintf("sudo systemd-run --quiet --unit=%s --on-active=%ds iptables -D %s && sudo iptables -I %s", unit, seconds, rule, rule))
+			target = c.faultVM(server, inst)
+			inj.ssh(l, target, fmt.Sprintf("sudo systemd-run --quiet --unit=%s --on-active=%ds iptables -D %s && sudo iptables -I %s", unit, seconds, rule, rule))
 			inj.mark()
 			inj.clear(inj.start.Add(time.Duration(seconds) * time.Second)) // the VM's timer removes the rule then
 		}
@@ -160,7 +176,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			}
 			defer c.serverMu[server].Unlock()
 			return waitFor(time.Duration(seconds+30)*time.Second, func() bool {
-				_, err := l.trySSH(server, "sudo iptables -C "+rule+" 2>/dev/null")
+				_, err := l.trySSH(target, "sudo iptables -C "+rule+" 2>/dev/null")
 				return err != nil
 			})
 		}
@@ -188,8 +204,173 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 		}
 	case "C10": // the guest writes or echoes a wrong proof
 		inj.guestExtra = []string{"--tamper"}
+	case "C7a", "C7b": // a cluster member powered off: forwarding, or holding
+		holder := c.holder(server, inst)
+		member := holder
+		if it.Fault == "C7a" {
+			member = c.otherMember(server, holder)
+		}
+		if member == c.l.vmOf(server) || member == "" {
+			// the entry member down would cut the probe off: not this fault
+			inj.notApplicable = "the instance is on the entry member"
+			break
+		}
+		locked := false
+		inj.hooks.afterChallenge = func() {
+			c.serverMu[server].Lock()
+			locked = true
+			inj.virsh("destroy", member)
+			inj.mark()
+		}
+		inj.cleanup = func() error {
+			if !locked {
+				return nil
+			}
+			defer c.serverMu[server].Unlock()
+			inj.virsh("start", member)
+			if err := waitFor(5*time.Minute, func() bool { return c.membersOnline(server) }); err != nil {
+				return fmt.Errorf("member %s: %w", member, err)
+			}
+			// a power-off while LXD writes its image stream cache leaves it
+			// empty: LXD then fails every launch from a remote image on that
+			// member, and once the files are gone its next launch hangs in
+			// "create" until its daemon restarts (seen on 5.21.8). The remedy
+			// an operator would apply is applied here, and noted.
+			if out, _ := c.l.trySSH(member, "sudo find /var/snap/lxd/common/lxd/cache -maxdepth 3 -type f -size 0 -print -delete"); strings.TrimSpace(out) != "" {
+				inj.detail = append(inj.detail, "LXD's image cache was truncated by the power-off ("+strings.Join(strings.Fields(out), " ")+"): emptied files removed, LXD restarted on "+member)
+				_, _ = c.l.trySSH(member, "sudo systemctl restart snap.lxd.daemon")
+				if err := waitFor(5*time.Minute, func() bool { return c.membersOnline(server) }); err != nil {
+					return fmt.Errorf("member %s after the LXD restart: %w", member, err)
+				}
+			}
+			inj.clear(time.Now())
+			return c.ensureRunning(inj, server, inst)
+		}
+	case "C8a": // the instance moved to another member, cold
+		holder := c.holder(server, inst)
+		other := c.otherMember(server, holder)
+		inj.hooks.afterChallenge = func() {
+			inj.mark()
+			inj.ssh(l, server, fmt.Sprintf("sudo lxc stop --force %s; sudo lxc move %s --target %s && sudo lxc start %s", inst, inst, other, inst))
+		}
+		inj.cleanup = func() error {
+			inj.ssh(l, server, fmt.Sprintf("sudo lxc stop --force %s; sudo lxc move %s --target %s; sudo lxc start %s", inst, inst, holder, inst))
+			if now := c.holder(server, inst); now != holder {
+				return fmt.Errorf("%s is on %q, not back on %s", inst, now, holder)
+			}
+			return c.ensureRunning(inj, server, inst)
+		}
+	case "C8b": // the instance's member evacuated, then restored
+		holder := c.holder(server, inst)
+		flag := "--yes"
+		if strings.HasPrefix(c.l.env.Servers[server].Version, "5.") {
+			flag = "--force" // 5.21 skips the prompt with --force (gate L8)
+		}
+		locked := false
+		inj.hooks.afterChallenge = func() {
+			c.serverMu[server].Lock()
+			locked = true
+			inj.mark()
+			inj.ssh(l, server, fmt.Sprintf("sudo lxc cluster evacuate %s %s", holder, flag))
+		}
+		inj.cleanup = func() error {
+			if !locked {
+				return nil
+			}
+			defer c.serverMu[server].Unlock()
+			if err := c.restoreMember(inj, server, holder, flag); err != nil {
+				return err
+			}
+			inj.clear(time.Now())
+			return c.ensureRunning(inj, server, inst)
+		}
 	}
 	return inj
+}
+
+// isCluster reports whether server is a cluster of the lab.
+func (c *chaosRun) isCluster(server string) bool {
+	return c.l.env.Servers[server].Cluster == "yes"
+}
+
+// holder is the member that holds the instance; "" on a standalone server.
+func (c *chaosRun) holder(server, inst string) string {
+	if !c.isCluster(server) {
+		return ""
+	}
+	out, err := c.l.trySSH(server, `sudo lxc list -c L -f csv "^`+inst+`$"`)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out)
+}
+
+// otherMember is a member that is neither the entry member nor skip.
+func (c *chaosRun) otherMember(server, skip string) string {
+	for _, m := range c.l.members(server) {
+		if m != c.l.vmOf(server) && m != skip {
+			return m
+		}
+	}
+	return ""
+}
+
+// faultVM is where a server-wide fault acts: the server's VM, or on a
+// cluster a member that is not the entry, the holding one when it can be.
+func (c *chaosRun) faultVM(server, inst string) string {
+	if !c.isCluster(server) {
+		return server
+	}
+	if h := c.holder(server, inst); h != "" && h != c.l.vmOf(server) {
+		return h
+	}
+	return c.otherMember(server, "")
+}
+
+// membersOnline reports whether every member of the cluster is ONLINE.
+func (c *chaosRun) membersOnline(server string) bool {
+	out, err := c.l.trySSH(server, "sudo timeout 10 lxc cluster list -f csv")
+	return err == nil && strings.Count(out, ",ONLINE,") == len(c.l.members(server))
+}
+
+// reportCleanups fails the session for each clean-up that could not undo
+// its fault (stress spec, Fault catalogue): it ran on, but on a lab the
+// faults left changed.
+func (c *chaosRun) reportCleanups(t *testing.T) {
+	t.Helper()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, f := range c.failedCleanups {
+		t.Errorf("clean-up failed: %s", f)
+	}
+}
+
+// restoreMember restores an evacuated member, trying again for up to five
+// minutes: a restore can fail on an instance volume the evacuation left on
+// the member ("Cannot create volume, already exists on migration target
+// storage", seen on 5.21.8), which then stays evacuated. Each failure is
+// noted; the member must end up ONLINE.
+func (c *chaosRun) restoreMember(inj *injection, server, member, flag string) error {
+	restore := fmt.Sprintf("sudo lxc cluster restore %s %s", member, flag)
+	err := waitFor(5*time.Minute, func() bool {
+		out, err := c.l.trySSH(server, restore)
+		if err != nil && !strings.Contains(out, "already restored") {
+			inj.detail = append(inj.detail, fmt.Sprintf("%s: %v %s", restore, err, lastLine(out)))
+			time.Sleep(10 * time.Second)
+		}
+		return c.membersOnline(server)
+	})
+	if err != nil {
+		return fmt.Errorf("member %s not restored: %w", member, err)
+	}
+	return nil
+}
+
+// lastLine is the last non-empty line of out: lxc's error after its
+// progress lines.
+func lastLine(out string) string {
+	parts := strings.Split(strings.ReplaceAll(strings.TrimSpace(out), "\r", "\n"), "\n")
+	return strings.TrimSpace(parts[len(parts)-1])
 }
 
 // ensureRunning restores the instance after C1 or C2: an LXD crash during
@@ -222,6 +403,13 @@ func (c *chaosRun) iterate(ctx context.Context, it stress.Item) stress.Result {
 		return c.stressRun.iterate(ctx, it)
 	}
 	inj := c.prepare(it)
+	if inj.notApplicable != "" {
+		clean := it
+		clean.Fault = ""
+		r := c.stressRun.iterate(ctx, clean)
+		r.Detail = strings.TrimSpace(r.Detail + " " + it.Fault + " not applicable: " + inj.notApplicable)
+		return r
+	}
 	start := time.Now()
 	r, ch := c.iterateHooked(ctx, it, inj.hooks, inj.guestExtra)
 	if inj.start.IsZero() {
@@ -230,6 +418,9 @@ func (c *chaosRun) iterate(ctx context.Context, it stress.Item) stress.Result {
 	if inj.cleanup != nil {
 		if err := inj.cleanup(); err != nil {
 			inj.detail = append(inj.detail, "clean-up: "+err.Error())
+			c.mu.Lock()
+			c.failedCleanups = append(c.failedCleanups, fmt.Sprintf("iteration %d, %s/%s, %s: %v", it.N, it.Target.Server, it.Target.Instance, it.Fault, err))
+			c.mu.Unlock()
 		}
 	}
 	end := time.Now()
@@ -321,6 +512,7 @@ func TestST3Chaos(t *testing.T) {
 	results := stress.Run(context.Background(), plan.Items(), set.workers, per)
 	t.Logf("%d iterations and %d recoveries in %s", len(results), len(cr.recoveries), time.Since(start).Round(time.Second))
 	requireIterations(t, results)
+	cr.reportCleanups(t)
 	settings := set.record()
 	settings["session"], settings["faults"] = "ST-3", strings.Join(faults, ",")
 	sum := stress.Summarize(append(results, cr.recoveries...), settings, stressBounds)
@@ -332,5 +524,61 @@ func TestST3Chaos(t *testing.T) {
 	l.writeSummary(t, stamp+"-st-3-summary", sum, append(results, cr.recoveries...))
 	if !sum.OK() {
 		t.Errorf("invariants: %+v", sum.Violations)
+	}
+}
+
+// clusterFaults are ST-4's faults (stress spec, ST-4).
+var clusterFaults = []string{"C3", "C6", "C7a", "C7b", "C8a", "C8b", "C9", "C10"}
+
+// TestST4ClusterChaos is ST-4: on each running cluster in turn, a seeded
+// soak over a fleet spread over the members, plus the cluster's baseline,
+// with the cluster faults; every invariant; the sweep. The probe enters
+// through the first member. LAB_STRESS_CLUSTER_FLEET (default 9),
+// LAB_STRESS_ITERATIONS (default 200 here) and LAB_STRESS_FAULT_RATE
+// (default 0.25 here) size it.
+func TestST4ClusterChaos(t *testing.T) {
+	l := newLab(t)
+	clusters := l.clusters()
+	if len(clusters) == 0 {
+		t.Skip("ST-4 needs a running cluster: LAB_CLUSTER=5.21, 6.9 or both")
+	}
+	t.Setenv("LAB_STRESS_ITERATIONS", setting("LAB_STRESS_ITERATIONS", "200"))
+	t.Setenv("LAB_STRESS_FAULT_RATE", setting("LAB_STRESS_FAULT_RATE", "0.25"))
+	t.Setenv("LAB_STRESS_FLEET", setting("LAB_STRESS_CLUSTER_FLEET", "9"))
+	set := loadStressSettings(t)
+	for _, cluster := range clusters {
+		t.Run(cluster, func(t *testing.T) {
+			names := fleetNames(set.fleet)
+			l.fleetSetup(t, cluster, names, l.members(cluster)...)
+			stamp := time.Now().UTC().Format("20060102T150405Z")
+			sr := &stressRun{l: l, session: session{evidenceDir: l.evidence, runID: stamp + "-st-4-" + cluster}, label: "cluster chaos"}
+			cr := newChaosRun(sr, []string{cluster})
+			instances := append(append([]string{}, names...), "c-unpriv", "v-ubuntu")
+			var targets []stress.Target
+			for _, n := range instances {
+				targets = append(targets, stress.Target{Server: cluster, Instance: n})
+			}
+			plan := stress.Plan{Seed: set.seed, Iterations: set.iterations * 2, FaultRate: set.faultRate,
+				Faults: clusterFaults, Modes: []string{rehearse.FilePull, rehearse.ConfigPush}, Targets: targets}
+			start := time.Now()
+			per := func(ctx context.Context, it stress.Item) stress.Result {
+				ictx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+				defer cancel()
+				return cr.iterate(ictx, it)
+			}
+			results := stress.Run(context.Background(), plan.Items(), set.workers, per)
+			t.Logf("%d iterations and %d recoveries in %s", len(results), len(cr.recoveries), time.Since(start).Round(time.Second))
+			requireIterations(t, results)
+			cr.reportCleanups(t)
+			settings := set.record()
+			settings["session"], settings["cluster"], settings["faults"] = "ST-4", cluster, strings.Join(clusterFaults, ",")
+			all := append(results, cr.recoveries...)
+			sum := stress.Summarize(all, settings, stressBounds)
+			sum.Sweep(l.sweep(t, cluster, instances))
+			l.writeSummary(t, stamp+"-st-4-"+cluster+"-summary", sum, all)
+			if !sum.OK() {
+				t.Errorf("invariants: %+v", sum.Violations)
+			}
+		})
 	}
 }
