@@ -127,7 +127,8 @@ func bearerToken(opts *probe.ServerCommand) (string, error) {
 	if token == "" {
 		return "", errors.New("--auth bearer needs --token-file or LXD_PROBE_TOKEN")
 	}
-	if _, _, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{}); err != nil {
+	// only the format is checked here: LXD verifies the token
+	if _, _, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{}); err != nil { // NOSONAR: format check, never trusted
 		return "", fmt.Errorf("the bearer token is not a JWT: %w", err)
 	}
 	return token, nil

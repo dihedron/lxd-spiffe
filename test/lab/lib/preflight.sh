@@ -406,7 +406,7 @@ pf_install_steps() {
 pf_install_go() {
 	local required release file sha
 	required="$(go_mod_version)"
-	release="$(curl -fsSL 'https://go.dev/dl/?mode=json&include=all' |
+	release="$(curl -fsSL --proto '=https' 'https://go.dev/dl/?mode=json&include=all' |
 		jq -r --arg v "go$required" '[.[] | select(.stable and (.version == $v or (.version | startswith($v + "."))))][0]')" || return 1
 	file="$(jq -r '.files[] | select(.os == "linux" and .arch == "amd64" and .kind == "archive") | .filename' <<<"$release")"
 	sha="$(jq -r '.files[] | select(.os == "linux" and .arch == "amd64" and .kind == "archive") | .sha256' <<<"$release")"
@@ -415,7 +415,7 @@ pf_install_go() {
 		return 1
 	}
 	mkdir -p "$LAB_CACHE_DIR" "$LAB_TOOLS_DIR"
-	curl -fsSL -o "$LAB_CACHE_DIR/$file" "https://go.dev/dl/$file" || return 1
+	curl -fsSL --proto '=https' -o "$LAB_CACHE_DIR/$file" "https://go.dev/dl/$file" || return 1
 	echo "$sha  $LAB_CACHE_DIR/$file" | sha256sum -c --quiet || return 1
 	rm -rf "$LAB_TOOLS_DIR/go"
 	tar -C "$LAB_TOOLS_DIR" -xzf "$LAB_CACHE_DIR/$file"
@@ -526,7 +526,7 @@ pf_libvirt_subnet() {
 pf_endpoint() {
 	local code headers=()
 	[[ -n "${3:-}" ]] && headers=(-H "$3")
-	code="$(curl -sS -L -r 0-0 -o /dev/null --max-time 20 -w '%{http_code}' "${headers[@]}" "$2" 2>/dev/null)" || code="${code:-000}"
+	code="$(curl -sS -L --proto '=https' -r 0-0 -o /dev/null --max-time 20 -w '%{http_code}' "${headers[@]}" "$2" 2>/dev/null)" || code="${code:-000}"
 	case "$code" in
 	200 | 206) pf_ok "reachable: $1" ;;
 	*) pf_fail "not reachable (HTTP $code): $1, $2" ;;
