@@ -316,8 +316,16 @@ func TestCommittedEvidence(t *testing.T) {
 			t.Logf("%s decided without a real cell for %v", r.Gate.ID, r.Missing)
 		}
 	}
-	if l10 := find(t, reports, "L10"); slices.ContainsFunc(l10.Calls, func(c CallCoverage) bool { return c.Records == 0 }) {
-		t.Errorf("an API usage call no record reached: %v", l10.Calls)
+	// awaitingEvidence: calls whose gate is open, by path, with the gate.
+	awaitingEvidence := map[string]string{"/1.0/projects/{name}": "L16"}
+	for _, c := range find(t, reports, "L10").Calls {
+		gate, open := awaitingEvidence[c.Path]
+		switch {
+		case c.Records == 0 && !open:
+			t.Errorf("no record reached the API usage call %+v", c.Call)
+		case c.Records > 0 && open:
+			t.Errorf("records reach %+v: gate %s has evidence, drop it from awaitingEvidence", c.Call, gate)
+		}
 	}
 	if err := Render(&bytes.Buffer{}, ev, reports); err != nil {
 		t.Fatal(err)
