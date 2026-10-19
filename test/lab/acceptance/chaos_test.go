@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -507,7 +506,7 @@ func (c *chaosRun) iterate(ctx context.Context, it stress.Item) stress.Result {
 	r.Window = &stress.Window{Fault: it.Fault, Server: it.Target.Server, Instance: it.Target.Instance, Start: inj.start, End: end}
 	if it.Fault == "C4" {
 		r.Outcome, r.FailedStep = stress.Fail, "killed"
-		r.Leftovers = c.checkLeftovers(it, ch)
+		c.leftovers(&r, it, ch)
 	}
 	if len(inj.detail) > 0 {
 		r.Detail = strings.TrimSpace(r.Detail + " " + strings.Join(inj.detail, "; "))
@@ -545,12 +544,16 @@ func (c *chaosRun) recover(it stress.Item) {
 func (l *lab) sweep(t *testing.T, server string, instances []string) int {
 	t.Helper()
 	script := `n=0; for i in ` + strings.Join(instances, " ") + `; do ` +
-		`for k in $(sudo lxc config show "$i" | sed -n 's/^  \(user\.spire\.challenge\.[0-9a-f]*\):.*/\1/p'); do sudo lxc config unset "$i" "$k"; n=$((n+1)); done; ` +
-		`f=$(sudo timeout -k 5 20 lxc exec "$i" -- sh -c 'c=$(ls /run/spire/lxd 2>/dev/null | grep -c "^proof-"); rm -f /run/spire/lxd/proof-* /run/spire/lxd/.proof-*; echo $c' 2>/dev/null || echo 0); n=$((n+f)); done; echo $n`
-	out := strings.TrimSpace(l.ssh(t, server, script))
-	n, err := strconv.Atoi(out)
+		`for k in $(sudo lxc config show "$i" | sed -n 's/^  \(user\.spire\.challenge\.[0-9a-f]*\):.*/\1/p'); do sudo lxc config unset "$i" "$k"; echo "left $i $k"; n=$((n+1)); done; ` +
+		`f=$(sudo timeout -k 5 20 lxc exec "$i" -- sh -c 'for p in /run/spire/lxd/proof-*; do [ -e "$p" ] && echo "$p"; done; rm -f /run/spire/lxd/proof-* /run/spire/lxd/.proof-*' 2>/dev/null); ` +
+		`for p in $f; do echo "left $i $p"; n=$((n+1)); done; done; echo $n`
+	out := l.ssh(t, server, script)
+	n, left, err := parseSweep(out)
 	if err != nil {
-		t.Errorf("%s: sweep: %q", server, out)
+		t.Errorf("%s: sweep: %v", server, err)
+	}
+	if len(left) > 0 {
+		t.Logf("%s: the sweep removed %s", server, strings.Join(left, ", "))
 	}
 	return n
 }
@@ -592,13 +595,15 @@ func TestST3Chaos(t *testing.T) {
 	cr.reportCleanups(t)
 	settings := set.record()
 	settings["session"], settings["faults"] = "ST-3", strings.Join(faults, ",")
-	sum := stress.Summarize(append(results, cr.recoveries...), settings, stressBounds)
+	all := append(results, cr.recoveries...)
+	sr.recheckLeftovers(t, all)
+	sum := stress.Summarize(all, settings, stressBounds)
 	swept := 0
 	for _, server := range l.servers() {
 		swept += l.sweep(t, server, append(append([]string{}, names...), stressBaseline...))
 	}
 	sum.Sweep(swept)
-	l.writeSummary(t, stamp+"-st-3-summary", sum, append(results, cr.recoveries...))
+	l.writeSummary(t, stamp+"-st-3-summary", sum, all)
 	if !sum.OK() {
 		t.Errorf("invariants: %+v", sum.Violations)
 	}
@@ -650,6 +655,7 @@ func TestST4ClusterChaos(t *testing.T) {
 			settings := set.record()
 			settings["session"], settings["cluster"], settings["faults"] = "ST-4", cluster, strings.Join(clusterFaults, ",")
 			all := append(results, cr.recoveries...)
+			sr.recheckLeftovers(t, all)
 			sum := stress.Summarize(all, settings, stressBounds)
 			sum.Sweep(l.sweep(t, cluster, instances))
 			l.writeSummary(t, stamp+"-st-4-"+cluster+"-summary", sum, all)

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -191,6 +192,66 @@ type stressRun struct {
 	l       *lab
 	session session
 	label   string
+	// unchecked are the iterations whose leftovers could not be checked,
+	// the instance out of reach under a fault: checked again at the end
+	mu        sync.Mutex
+	unchecked map[uncheckedKey]uncheckedLeftover
+}
+
+// uncheckedKey names one result: its item, target and start.
+type uncheckedKey struct {
+	n      int
+	target stress.Target
+	start  time.Time
+}
+
+// uncheckedLeftover is what the late check needs.
+type uncheckedLeftover struct {
+	it stress.Item
+	c  rehearse.Challenge
+}
+
+// leftovers sets r's leftovers (INV-4), or, when the instance cannot be
+// reached, keeps the check for recheckLeftovers: counted as none, it hid
+// leftovers that the sweep then found (ST-4).
+func (sr *stressRun) leftovers(r *stress.Result, it stress.Item, c rehearse.Challenge) {
+	n, known := sr.checkLeftovers(it, c)
+	r.Leftovers = n
+	if known {
+		return
+	}
+	sr.mu.Lock()
+	defer sr.mu.Unlock()
+	if sr.unchecked == nil {
+		sr.unchecked = map[uncheckedKey]uncheckedLeftover{}
+	}
+	sr.unchecked[uncheckedKey{it.N, it.Target, r.Start}] = uncheckedLeftover{it, c}
+}
+
+// recheckLeftovers checks again, on the lab the faults have left, the
+// leftovers of the results whose check could not reach the instance.
+func (sr *stressRun) recheckLeftovers(t *testing.T, results []stress.Result) {
+	t.Helper()
+	sr.mu.Lock()
+	defer sr.mu.Unlock()
+	if len(sr.unchecked) == 0 {
+		return
+	}
+	found, unknown := 0, 0
+	for i := range results {
+		u, ok := sr.unchecked[uncheckedKey{results[i].N, results[i].Target, results[i].Start}]
+		if !ok {
+			continue
+		}
+		n, known := sr.checkLeftovers(u.it, u.c)
+		if !known {
+			unknown++
+			continue
+		}
+		results[i].Leftovers = n
+		found += n
+	}
+	t.Logf("leftovers checked again after the session: %d checks, %d found, %d still unknown", len(sr.unchecked), found, unknown)
 }
 
 // iterate runs one item: the rehearsal, then, for file_pull, the guest's
@@ -229,7 +290,7 @@ func (sr *stressRun) iterateHooked(ctx context.Context, it stress.Item, h rehear
 		if reh.server != nil && (reh.server.code == exit.Connection || reh.server.code == exit.Timeout) {
 			r.Outcome, r.FailedStep = stress.Fail, map[int]string{exit.Connection: "connect", exit.Timeout: "timeout"}[reh.server.code]
 			r.Detail = err.Error()
-			r.Leftovers = sr.checkLeftovers(it, c)
+			sr.leftovers(&r, it, c)
 			return r, c
 		}
 		r.Outcome, r.Detail = stress.Error, err.Error()
@@ -253,16 +314,16 @@ func (sr *stressRun) iterateHooked(ctx context.Context, it stress.Item, h rehear
 		rm, err := l.guestE(ctx, sr.session, it.Target.Server, "default", it.Target.Instance,
 			append(append([]string{"guest", "file", "rm", reh.challenge.ProofPath}, spireWrite...), tags...)...)
 		if err != nil || rm.rec.Outcome != "ok" {
-			r.Leftovers = sr.checkLeftovers(it, c)
+			sr.leftovers(&r, it, c)
 		}
 	}
 	if it.Mode == stress.FilePull && reh.challenge.ProofPath != "" && reh.guest == nil && reh.guestErr != nil {
 		// a guest half cut off may have written the proof file first
-		r.Leftovers = sr.checkLeftovers(it, c)
+		sr.leftovers(&r, it, c)
 	}
 	if it.Mode == stress.ConfigPush && r.Outcome != stress.Pass {
 		// the cleanup may have failed or never run: the instance says
-		r.Leftovers = sr.checkLeftovers(it, c)
+		sr.leftovers(&r, it, c)
 		if v, ok := reh.server.observation("cleanup.result"); ok {
 			r.Detail = strings.TrimSpace(r.Detail + " " + fmt.Sprint(v))
 		}
@@ -282,21 +343,21 @@ func serverEnd(r *run) time.Time {
 }
 
 // checkLeftovers reports whether the iteration's challenge key
-// (config_push) or proof file (file_pull) is still on the instance (INV-4).
-func (sr *stressRun) checkLeftovers(it stress.Item, c rehearse.Challenge) int {
+// (config_push) or proof file (file_pull) is still on the instance
+// (INV-4), and whether the instance could tell: lxc exec fails the same
+// way for a missing file and for an instance out of reach, so the guest
+// says which.
+func (sr *stressRun) checkLeftovers(it stress.Item, c rehearse.Challenge) (int, bool) {
 	server, inst := it.Target.Server, it.Target.Instance
 	switch {
 	case c.ProofKey != "":
-		out, err := sr.l.trySSH(server, "sudo lxc config get "+inst+" "+c.ProofKey)
-		if err == nil && strings.TrimSpace(out) != "" {
-			return 1
-		}
+		out, err := sr.l.trySSH(server, "sudo timeout -k 5 20 lxc config get "+inst+" "+c.ProofKey)
+		return parseLeftover(out, err, false)
 	case c.ProofPath != "":
-		if _, err := sr.l.trySSH(server, "sudo timeout -k 5 20 lxc exec "+inst+" -- test -e "+c.ProofPath); err == nil {
-			return 1
-		}
+		out, err := sr.l.trySSH(server, "sudo timeout -k 5 20 lxc exec "+inst+" -- sh -c 'if test -e "+c.ProofPath+"; then echo present; else echo absent; fi'")
+		return parseLeftover(out, err, true)
 	}
-	return 0
+	return 0, true
 }
 
 // stepTimings reads the step.<name>.ms observations (PRS-54).
@@ -423,6 +484,7 @@ func TestST1Fleet(t *testing.T) {
 	sr := &stressRun{l: l, session: session{evidenceDir: l.evidence, runID: stamp + "-st-1"}, label: "fleet check"}
 	results := stress.Run(context.Background(), eachInstanceOnce(l.stressTargets(names)), set.workers, sr.iterate)
 	requireIterations(t, results)
+	sr.recheckLeftovers(t, results)
 	sum := stress.Summarize(results, set.record(), stressBounds)
 	l.writeSummary(t, stamp+"-st-1-summary", sum, results)
 	for _, r := range results {
@@ -451,6 +513,7 @@ func TestST2Load(t *testing.T) {
 			items[i].N += len(results)
 		}
 		step := stress.Run(context.Background(), items, c, sr.iterate)
+		sr.recheckLeftovers(t, step)
 		t.Logf("%s: %d iterations", sr.label, len(step))
 		results = append(results, step...)
 	}
@@ -497,6 +560,7 @@ func TestST5Burst(t *testing.T) {
 	requireIterations(t, results)
 	settings := set.record()
 	settings["session"], settings["offered"] = "ST-5", "20/s for 60 s, 16 in flight"
+	sr.recheckLeftovers(t, results)
 	sum := stress.Summarize(results, settings, stressBounds)
 	l.writeSummary(t, stamp+"-st-5-summary", sum, results)
 	if !sum.OK() {

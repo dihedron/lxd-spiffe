@@ -1,7 +1,10 @@
 package acceptance
 
 import (
+	"errors"
+	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -85,5 +88,90 @@ func TestOrphanVolumes(t *testing.T) {
 	}
 	if got := orphanVolumes("", ""); len(got) != 0 {
 		t.Errorf("empty: %v", got)
+	}
+}
+
+// parseLeftover reads a leftover check: with present, the guest's
+// "present" or "absent" as the output's last word; without, a config
+// key's value, empty when the key is gone. known is false when the check
+// could not reach the instance.
+func parseLeftover(out string, err error, present bool) (n int, known bool) {
+	f := strings.Fields(out)
+	last := ""
+	if len(f) > 0 {
+		last = f[len(f)-1]
+	}
+	switch {
+	case present && last == "present":
+		return 1, true
+	case present && last == "absent":
+		return 0, true
+	case present || err != nil:
+		return 0, false
+	case strings.TrimSpace(out) != "":
+		return 1, true
+	}
+	return 0, true
+}
+
+// parseSweep reads the sweep's output: a "left INSTANCE ITEM" line per
+// key or file removed, then their count.
+func parseSweep(out string) (n int, left []string, err error) {
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	for _, ln := range lines[:len(lines)-1] {
+		if f := strings.Fields(ln); len(f) == 3 && f[0] == "left" {
+			left = append(left, f[1]+":"+f[2])
+		}
+	}
+	last := strings.TrimSpace(lines[len(lines)-1])
+	if n, err = strconv.Atoi(last); err != nil {
+		return 0, left, fmt.Errorf("no count in %q", last)
+	}
+	if n != len(left) {
+		return n, left, fmt.Errorf("count %d, but %d items listed", n, len(left))
+	}
+	return n, left, nil
+}
+
+// TestParseLeftover: the guest's answer decides; an unreachable instance
+// is unknown, never "none".
+func TestParseLeftover(t *testing.T) {
+	failed := errors.New("exit status 1")
+	for _, tc := range []struct {
+		out     string
+		err     error
+		present bool
+		n       int
+		known   bool
+	}{
+		{"present\n", nil, true, 1, true},
+		{"absent\r\n", nil, true, 0, true},
+		{"Error: Instance is not running\n", failed, true, 0, false},
+		{"", failed, true, 0, false},
+		{"", nil, true, 0, false},
+		{"4f2a…\n", nil, false, 1, true},
+		{"\n", nil, false, 0, true},
+		{"Error: Failed to connect\n", failed, false, 0, false},
+	} {
+		if n, known := parseLeftover(tc.out, tc.err, tc.present); n != tc.n || known != tc.known {
+			t.Errorf("parseLeftover(%q, %v, %t) = %d, %t; want %d, %t", tc.out, tc.err, tc.present, n, known, tc.n, tc.known)
+		}
+	}
+}
+
+// TestParseSweep: the items listed, their count, and the mismatches.
+func TestParseSweep(t *testing.T) {
+	n, left, err := parseSweep("left s-002 /run/spire/lxd/proof-ab\nleft s-007 user.spire.challenge.cd\n2\n")
+	if err != nil || n != 2 || !slices.Equal(left, []string{"s-002:/run/spire/lxd/proof-ab", "s-007:user.spire.challenge.cd"}) {
+		t.Errorf("parseSweep = %d, %v, %v", n, left, err)
+	}
+	if n, left, err := parseSweep("0\n"); err != nil || n != 0 || len(left) != 0 {
+		t.Errorf("empty sweep = %d, %v, %v", n, left, err)
+	}
+	if _, _, err := parseSweep("left s-001 x\n2\n"); err == nil {
+		t.Error("a count that does not match the items passed")
+	}
+	if _, _, err := parseSweep("garbage"); err == nil {
+		t.Error("no count passed")
 	}
 }
