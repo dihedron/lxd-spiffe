@@ -283,6 +283,14 @@ func (sr *stressRun) iterateHooked(ctx context.Context, it stress.Item, h rehear
 	gargs = append(gargs, guestExtra...)
 	reh, err := l.rehearseHooked(ctx, sr.session, it.Target.Server, identity, "default", it.Target.Instance, it.Mode, sargs, gargs, h)
 	c = reh.challenge
+	if c.ProofKey == "" && c.ProofPath == "" && reh.server != nil {
+		// no challenge: the write failed, but it may have been applied
+		// (a forwarded PATCH reset after the member applied it); the
+		// record names the key it tried (INV-4)
+		if k, ok := reh.server.observation("challenge-write.key"); ok {
+			c.ProofKey, _ = k.(string)
+		}
+	}
 	r.ServerEnd = serverEnd(reh.server)
 	if err != nil {
 		// LXD unreachable or too slow is the server half failing, not the
