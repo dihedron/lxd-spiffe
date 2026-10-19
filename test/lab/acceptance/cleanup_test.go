@@ -1,6 +1,7 @@
 package acceptance
 
 import (
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"slices"
@@ -173,5 +174,60 @@ func TestParseSweep(t *testing.T) {
 	}
 	if _, _, err := parseSweep("garbage"); err == nil {
 		t.Error("no count passed")
+	}
+}
+
+// clusterHealthy reads "lxc cluster list -f csv" (name, URL, roles, ...,
+// status, message): all of members are listed, ONLINE, and voters of the
+// database ("database" on 5.21; "database-leader" or "database-voter" on
+// 6.x, where a standby or a member without a role does not vote).
+func clusterHealthy(list string, members int) bool {
+	r := csv.NewReader(strings.NewReader(list))
+	r.FieldsPerRecord = -1
+	recs, err := r.ReadAll()
+	if err != nil || len(recs) != members {
+		return false
+	}
+	for _, rec := range recs {
+		if len(rec) < 4 || rec[len(rec)-2] != "ONLINE" {
+			return false
+		}
+		voter := false
+		for role := range strings.SplitSeq(rec[2], ",") {
+			voter = voter || role == "database" || role == "database-leader" || role == "database-voter"
+		}
+		if !voter {
+			return false
+		}
+	}
+	return true
+}
+
+// TestClusterHealthy: the lists seen on 5.21.8 and 6.9, healthy or not.
+func TestClusterHealthy(t *testing.T) {
+	for _, tc := range []struct {
+		name, list string
+		healthy    bool
+	}{
+		{"5.21 healthy", "c5n1,https://10.251.0.21:8443,\"database-leader,database\",x86_64,default,,ONLINE,Fully operational\n" +
+			"c5n2,https://10.251.0.22:8443,database,x86_64,default,,ONLINE,Fully operational\n" +
+			"c5n3,https://10.251.0.23:8443,database,x86_64,default,,ONLINE,Fully operational\n", true},
+		{"6.9 healthy", "c6n1,https://10.251.0.24:8443,database-leader,x86_64,default,,ONLINE,Fully operational\n" +
+			"c6n2,https://10.251.0.25:8443,database-voter,x86_64,default,,ONLINE,Fully operational\n" +
+			"c6n3,https://10.251.0.26:8443,database-voter,x86_64,default,,ONLINE,Fully operational\n", true},
+		{"6.9 evacuated, no role", "c6n1,https://10.251.0.24:8443,database-leader,x86_64,default,,ONLINE,Fully operational\n" +
+			"c6n2,https://10.251.0.25:8443,,x86_64,default,,EVACUATED,Unavailable due to maintenance\n" +
+			"c6n3,https://10.251.0.26:8443,database-voter,x86_64,default,,ONLINE,Fully operational\n", false},
+		{"6.9 restored, no role yet", "c6n1,https://10.251.0.24:8443,database-leader,x86_64,default,,ONLINE,Fully operational\n" +
+			"c6n2,https://10.251.0.25:8443,,x86_64,default,,ONLINE,Fully operational\n" +
+			"c6n3,https://10.251.0.26:8443,database-voter,x86_64,default,,ONLINE,Fully operational\n", false},
+		{"standby", "a,u,database-leader,x,d,,ONLINE,ok\nb,u,database-voter,x,d,,ONLINE,ok\nc,u,database-standby,x,d,,ONLINE,ok\n", false},
+		{"offline", "a,u,database,x,d,,ONLINE,ok\nb,u,database,x,d,,OFFLINE,No heartbeat\nc,u,database,x,d,,ONLINE,ok\n", false},
+		{"a member missing", "a,u,database,x,d,,ONLINE,ok\nb,u,database,x,d,,ONLINE,ok\n", false},
+		{"empty", "", false},
+	} {
+		if got := clusterHealthy(tc.list, 3); got != tc.healthy {
+			t.Errorf("%s: healthy %t, want %t", tc.name, got, tc.healthy)
+		}
 	}
 }

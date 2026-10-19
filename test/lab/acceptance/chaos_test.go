@@ -121,10 +121,16 @@ func (inj *injection) ssh(l *lab, vm, command string) {
 	}
 }
 
-// waitFor polls check every second until it succeeds or the deadline.
-func waitFor(deadline time.Duration, check func() bool) error {
+// waitFor polls check every second until it succeeds or the deadline,
+// and gives up at once when the session is stopping: the lab is broken
+// then, and a clean-up waiting on it only delays the end (a stopped c6
+// session went on for 20 minutes, five for each instance it waited on).
+func (c *chaosRun) waitFor(deadline time.Duration, check func() bool) error {
 	end := time.Now().Add(deadline)
 	for time.Now().Before(end) {
+		if c.stopped() {
+			return errors.New("given up: the session is stopping")
+		}
 		if check() {
 			return nil
 		}
@@ -149,13 +155,13 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			inj.mark()
 			inj.ssh(l, server, "sudo lxc stop --force "+inst)
 		}
-		inj.cleanup = func() error { return c.ensureRunning(inj, server, inst) }
+		inj.cleanup = func() error { return c.ensureRunning(inj, server, inst, 5*time.Minute) }
 	case "C2": // instance restarted after the guest's answer
 		inj.hooks.afterGuest = func() {
 			inj.mark()
 			inj.ssh(l, server, "sudo lxc restart --force "+inst)
 		}
-		inj.cleanup = func() error { return c.ensureRunning(inj, server, inst) }
+		inj.cleanup = func() error { return c.ensureRunning(inj, server, inst, 5*time.Minute) }
 	case "C3": // the LXD daemon killed: systemd starts it again, the
 		// instances keep running (snap restart lxd would stop them all)
 		locked := false
@@ -166,7 +172,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 		// its daemon still restarted (ST-4)
 		target := server
 		up := func() bool {
-			return lxdUp(target)() && (!c.isCluster(server) || c.membersOnline(server))
+			return lxdUp(target)() && (!c.isCluster(server) || c.healthy(server))
 		}
 		inj.hooks.afterChallenge = func() {
 			c.serverMu[server].Lock()
@@ -179,7 +185,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			// a watcher notes when LXD answers again, while the iteration
 			// goes on (H1)
 			watching.Go(func() {
-				if waitFor(3*time.Minute, up) == nil {
+				if c.waitFor(3*time.Minute, up) == nil {
 					inj.clear(time.Now())
 				}
 			})
@@ -190,10 +196,10 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			}
 			defer c.serverMu[server].Unlock()
 			watching.Wait()
-			if err := waitFor(3*time.Minute, up); err != nil {
+			if err := c.waitFor(3*time.Minute, up); err != nil {
 				return fmt.Errorf("LXD on %s: %w", target, err)
 			}
-			if err := c.ensureRunning(inj, server, inst); err != nil {
+			if err := c.ensureRunning(inj, server, inst, 5*time.Minute); err != nil {
 				return err
 			}
 			return c.ensureFleetRunning(inj, server, inst)
@@ -223,7 +229,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 				return nil // the iteration never reached the challenge
 			}
 			defer c.serverMu[server].Unlock()
-			return waitFor(time.Duration(seconds+30)*time.Second, func() bool {
+			return c.waitFor(time.Duration(seconds+30)*time.Second, func() bool {
 				_, err := l.trySSH(target, "sudo iptables -C "+rule+" 2>/dev/null")
 				return err != nil
 			})
@@ -276,7 +282,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			}
 			defer c.serverMu[server].Unlock()
 			inj.virsh("start", member)
-			if err := waitFor(5*time.Minute, func() bool { return c.membersOnline(server) }); err != nil {
+			if err := c.waitFor(5*time.Minute, func() bool { return c.healthy(server) }); err != nil {
 				return fmt.Errorf("member %s: %w", member, err)
 			}
 			// a power-off while LXD writes its image stream cache leaves it
@@ -287,12 +293,12 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			if out, _ := c.l.trySSH(member, boundedRemote(time.Minute, "sudo find /var/snap/lxd/common/lxd/cache -maxdepth 3 -type f -size 0 -print -delete")); strings.TrimSpace(out) != "" {
 				inj.detail = append(inj.detail, "LXD's image cache was truncated by the power-off ("+strings.Join(strings.Fields(out), " ")+"): emptied files removed, LXD restarted on "+member)
 				_, _ = c.l.trySSH(member, boundedRemote(2*time.Minute, "sudo systemctl restart snap.lxd.daemon"))
-				if err := waitFor(5*time.Minute, func() bool { return c.membersOnline(server) }); err != nil {
+				if err := c.waitFor(5*time.Minute, func() bool { return c.healthy(server) }); err != nil {
 					return fmt.Errorf("member %s after the LXD restart: %w", member, err)
 				}
 			}
 			inj.clear(time.Now())
-			if err := c.ensureRunning(inj, server, inst); err != nil {
+			if err := c.ensureRunning(inj, server, inst, 5*time.Minute); err != nil {
 				return err
 			}
 			return c.ensureFleetRunning(inj, server, inst)
@@ -320,7 +326,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			if now := c.holder(server, inst); now != holder {
 				return fmt.Errorf("%s is on %q, not back on %s", inst, now, holder)
 			}
-			return c.ensureRunning(inj, server, inst)
+			return c.ensureRunning(inj, server, inst, 5*time.Minute)
 		}
 	case "C8b": // the instance's member evacuated, then restored
 		holder := c.holder(server, inst)
@@ -351,7 +357,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 				return err
 			}
 			inj.clear(time.Now())
-			if err := c.ensureRunning(inj, server, inst); err != nil {
+			if err := c.ensureRunning(inj, server, inst, 5*time.Minute); err != nil {
 				return err
 			}
 			return c.ensureFleetRunning(inj, server, inst)
@@ -399,10 +405,13 @@ func (c *chaosRun) faultVM(server, inst string) string {
 	return c.otherMember(server, "")
 }
 
-// membersOnline reports whether every member of the cluster is ONLINE.
-func (c *chaosRun) membersOnline(server string) bool {
+// healthy reports whether every member of the cluster is ONLINE and a
+// voter of its database: on 6.9 an evacuated member loses its database
+// role, and a fault on one of the two voters left then took the cluster
+// below quorum (ST-4 on c6).
+func (c *chaosRun) healthy(server string) bool {
 	out, err := c.l.trySSH(server, "sudo timeout -k 5 10 lxc cluster list -f csv")
-	return err == nil && strings.Count(out, ",ONLINE,") == len(c.l.members(server))
+	return err == nil && clusterHealthy(out, len(c.l.members(server)))
 }
 
 // reportStop fails the session when a failed clean-up stopped it.
@@ -438,7 +447,7 @@ const leftoverVolume = "already exists on migration target storage"
 func (c *chaosRun) restoreMember(inj *injection, server, member string) error {
 	restore := boundedRemote(3*time.Minute, "sudo lxc cluster restore "+member+" --force")
 	leftovers, last := 0, ""
-	err := waitFor(5*time.Minute, func() bool {
+	err := c.waitFor(5*time.Minute, func() bool {
 		out, err := c.l.trySSH(server, restore)
 		if err != nil && !strings.Contains(out, "already restored") {
 			last = lastLine(out)
@@ -450,7 +459,7 @@ func (c *chaosRun) restoreMember(inj *injection, server, member string) error {
 			}
 			time.Sleep(10 * time.Second)
 		}
-		return c.membersOnline(server)
+		return c.healthy(server)
 	})
 	if leftovers == 3 {
 		return fmt.Errorf("member %s cannot be restored, LXD left an instance volume on it (a finding; lab.sh reset): %s", member, last)
@@ -471,10 +480,10 @@ func lastLine(out string) string {
 // ensureRunning restores the instance after C1 or C2: an LXD crash during
 // the stop, start or restart loses the operation and leaves the instance
 // stopped (finding F2), so it is started whenever it is found stopped,
-// for up to five minutes, until it answers. A repeated start is noted.
-func (c *chaosRun) ensureRunning(inj *injection, server, inst string) error {
+// for up to within, until it answers. A repeated start is noted.
+func (c *chaosRun) ensureRunning(inj *injection, server, inst string, within time.Duration) error {
 	starts := 0
-	err := waitFor(5*time.Minute, func() bool {
+	err := c.waitFor(within, func() bool {
 		if _, err := c.l.trySSH(server, "sudo timeout -k 5 10 lxc exec "+inst+" -- true"); err == nil {
 			return true
 		}
@@ -507,10 +516,13 @@ func (c *chaosRun) ensureFleetRunning(inj *injection, server, own string) error 
 		return name == own || c.busy[stress.Target{Server: server, Instance: name}] > 0
 	})
 	c.mu.Unlock()
+	// one deadline for all: each instance's own five minutes added up
+	// to a quarter of an hour on a broken cluster
+	deadline := time.Now().Add(5 * time.Minute)
 	var errs []error
 	for _, name := range stopped {
 		inj.detail = append(inj.detail, name+" left stopped: started again")
-		if err := c.ensureRunning(inj, server, name); err != nil {
+		if err := c.ensureRunning(inj, server, name, time.Until(deadline)); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", name, err))
 		}
 	}
@@ -668,8 +680,10 @@ func TestST3Chaos(t *testing.T) {
 	}
 }
 
-// clusterFaults are ST-4's faults (stress spec, ST-4).
-var clusterFaults = []string{"C3", "C6", "C7a", "C7b", "C8a", "C8b", "C9", "C10"}
+// clusterFaults are ST-4's faults (stress spec, ST-4). C8b is not one:
+// an evacuation can leave a volume that no restore gets past, on 5.21.8
+// and 6.9 alike, and ST-6 measures it; C8a covers a move for the attestor.
+var clusterFaults = []string{"C3", "C6", "C7a", "C7b", "C8a", "C9", "C10"}
 
 // TestST4ClusterChaos is ST-4: on each running cluster in turn, a seeded
 // soak over a fleet spread over the members, plus the cluster's baseline,
