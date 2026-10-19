@@ -39,7 +39,8 @@ type chaosRun struct {
 	// the faults after them run on a changed lab, so the session fails
 	failedCleanups []string
 	// session ends the plan's dispatch when abort cancels it, with why: a
-	// lab no clean-up can repair makes the iterations after it worthless
+	// clean-up that failed left a lab that makes the iterations after it
+	// worthless
 	session context.Context
 	abort   context.CancelCauseFunc
 }
@@ -59,6 +60,7 @@ func (c *chaosRun) stopped() bool {
 
 func newChaosRun(sr *stressRun, targets []stress.Target) *chaosRun {
 	c := &chaosRun{stressRun: sr, serverMu: map[string]*sync.Mutex{}, fleet: map[string][]string{}, busy: map[stress.Target]int{}}
+	c.session, c.abort = context.WithCancelCause(context.Background())
 	for _, tg := range targets {
 		if c.serverMu[tg.Server] == nil {
 			c.serverMu[tg.Server] = &sync.Mutex{}
@@ -345,7 +347,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 				return nil
 			}
 			defer c.serverMu[server].Unlock()
-			if err := c.restoreMember(inj, server, holder, flag); err != nil {
+			if err := c.restoreMember(inj, server, holder); err != nil {
 				return err
 			}
 			inj.clear(time.Now())
@@ -403,6 +405,14 @@ func (c *chaosRun) membersOnline(server string) bool {
 	return err == nil && strings.Count(out, ",ONLINE,") == len(c.l.members(server))
 }
 
+// reportStop fails the session when a failed clean-up stopped it.
+func (c *chaosRun) reportStop(t *testing.T, ran, planned int) {
+	t.Helper()
+	if c.stopped() {
+		t.Errorf("the session stopped after %d of %d iterations: %v", ran, planned, context.Cause(c.session))
+	}
+}
+
 // reportCleanups fails the session for each clean-up that could not undo
 // its fault (stress spec, Fault catalogue): it ran on, but on a lab the
 // faults left changed.
@@ -422,10 +432,11 @@ const leftoverVolume = "already exists on migration target storage"
 // restoreMember restores an evacuated member, trying again for up to five
 // minutes; each failure is noted, and the member must end up ONLINE. A
 // restore that fails three times on a leftover volume never succeeds: the
-// member stays evacuated until the volume is removed by hand, so the
-// session stops there, the finding in its error.
-func (c *chaosRun) restoreMember(inj *injection, server, member, flag string) error {
-	restore := boundedRemote(3*time.Minute, fmt.Sprintf("sudo lxc cluster restore %s %s", member, flag))
+// member stays evacuated until the volume is removed by hand, so it gives
+// up there, the finding in its error. Restore skips its confirmation with
+// --force on 5.21 and 6.x alike (gate L11): 6.x's --yes is evacuate's.
+func (c *chaosRun) restoreMember(inj *injection, server, member string) error {
+	restore := boundedRemote(3*time.Minute, "sudo lxc cluster restore "+member+" --force")
 	leftovers, last := 0, ""
 	err := waitFor(5*time.Minute, func() bool {
 		out, err := c.l.trySSH(server, restore)
@@ -442,9 +453,7 @@ func (c *chaosRun) restoreMember(inj *injection, server, member, flag string) er
 		return c.membersOnline(server)
 	})
 	if leftovers == 3 {
-		err := fmt.Errorf("member %s cannot be restored, LXD left an instance volume on it (a finding; lab.sh reset): %s", member, last)
-		c.stopSession(err)
-		return err
+		return fmt.Errorf("member %s cannot be restored, LXD left an instance volume on it (a finding; lab.sh reset): %s", member, last)
 	}
 	if err != nil {
 		return fmt.Errorf("member %s not restored: %w", member, err)
@@ -539,9 +548,13 @@ func (c *chaosRun) iterate(ctx context.Context, it stress.Item) stress.Result {
 	if inj.cleanup != nil {
 		if err := inj.cleanup(); err != nil {
 			inj.detail = append(inj.detail, "clean-up: "+err.Error())
+			failed := fmt.Sprintf("iteration %d, %s/%s, %s: %v", it.N, it.Target.Server, it.Target.Instance, it.Fault, err)
 			c.mu.Lock()
-			c.failedCleanups = append(c.failedCleanups, fmt.Sprintf("iteration %d, %s/%s, %s: %v", it.N, it.Target.Server, it.Target.Instance, it.Fault, err))
+			c.failedCleanups = append(c.failedCleanups, failed)
 			c.mu.Unlock()
+			// the lab is not the one the next faults expect: on c6, a member
+			// left evacuated took the cluster below quorum at the next fault
+			c.stopSession(errors.New("clean-up failed: " + failed))
 		}
 	}
 	end := time.Now()
@@ -634,9 +647,10 @@ func TestST3Chaos(t *testing.T) {
 		defer cancel()
 		return cr.iterate(ictx, it)
 	}
-	results := stress.Run(context.Background(), plan.Items(), set.workers, per)
+	results := stress.Run(cr.session, plan.Items(), set.workers, per)
 	t.Logf("%d iterations and %d recoveries in %s", len(results), len(cr.recoveries), time.Since(start).Round(time.Second))
 	requireIterations(t, results)
+	cr.reportStop(t, len(results), len(plan.Items()))
 	cr.reportCleanups(t)
 	settings := set.record()
 	settings["session"], settings["faults"] = "ST-3", strings.Join(faults, ",")
@@ -685,9 +699,6 @@ func TestST4ClusterChaos(t *testing.T) {
 				targets = append(targets, stress.Target{Server: cluster, Instance: n})
 			}
 			cr := newChaosRun(sr, targets)
-			session, abort := context.WithCancelCause(context.Background())
-			defer abort(nil)
-			cr.session, cr.abort = session, abort
 			plan := stress.Plan{Seed: set.seed, Iterations: set.iterations * 2, FaultRate: set.faultRate,
 				Faults: clusterFaults, Modes: []string{rehearse.FilePull, rehearse.ConfigPush}, Targets: targets}
 			start := time.Now()
@@ -696,12 +707,10 @@ func TestST4ClusterChaos(t *testing.T) {
 				defer cancel()
 				return cr.iterate(ictx, it)
 			}
-			results := stress.Run(session, plan.Items(), set.workers, per)
+			results := stress.Run(cr.session, plan.Items(), set.workers, per)
 			t.Logf("%d iterations and %d recoveries in %s", len(results), len(cr.recoveries), time.Since(start).Round(time.Second))
 			requireIterations(t, results)
-			if cr.stopped() {
-				t.Errorf("the session stopped after %d of %d iterations: %v", len(results), len(plan.Items()), context.Cause(session))
-			}
+			cr.reportStop(t, len(results), len(plan.Items()))
 			cr.reportCleanups(t)
 			settings := set.record()
 			settings["session"], settings["cluster"], settings["faults"] = "ST-4", cluster, strings.Join(clusterFaults, ",")
