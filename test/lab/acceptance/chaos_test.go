@@ -275,13 +275,24 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			return c.ensureFleetRunning(inj, server, inst)
 		}
 	case "C8a": // the instance moved to another member, cold
-		holder := c.holder(server, inst)
-		other := c.otherMember(server, holder)
+		// under the server's lock: a move to or from a member being
+		// evacuated or powered off fails, and the instance, not moved,
+		// could pass the iteration this fault must fail (ST-4)
+		locked := false
+		var holder, other string
 		inj.hooks.afterChallenge = func() {
+			c.serverMu[server].Lock()
+			locked = true
+			holder = c.holder(server, inst)
+			other = c.otherMember(server, holder)
 			inj.mark()
 			inj.ssh(l, server, fmt.Sprintf("sudo lxc stop --force %s; sudo lxc move %s --target %s && sudo lxc start %s", inst, inst, other, inst))
 		}
 		inj.cleanup = func() error {
+			if !locked {
+				return nil // the iteration never reached the challenge
+			}
+			defer c.serverMu[server].Unlock()
 			inj.ssh(l, server, fmt.Sprintf("sudo lxc stop --force %s; sudo lxc move %s --target %s; sudo lxc start %s", inst, inst, holder, inst))
 			if now := c.holder(server, inst); now != holder {
 				return fmt.Errorf("%s is on %q, not back on %s", inst, now, holder)
@@ -642,6 +653,9 @@ func TestST4ClusterChaos(t *testing.T) {
 			sum := stress.Summarize(all, settings, stressBounds)
 			sum.Sweep(l.sweep(t, cluster, instances))
 			l.writeSummary(t, stamp+"-st-4-"+cluster+"-summary", sum, all)
+			if orphans := l.orphanVolumes(t, cluster); len(orphans) > 0 {
+				t.Logf("LXD left instance volumes behind (an evacuation that failed deleting its source, a finding): %s; the next session needs lab.sh reset", strings.Join(orphans, " "))
+			}
 			if !sum.OK() {
 				t.Errorf("invariants: %+v", sum.Violations)
 			}

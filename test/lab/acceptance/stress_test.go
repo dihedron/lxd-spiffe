@@ -133,6 +133,11 @@ func (l *lab) fleetSetup(t *testing.T, server string, names []string, members ..
 	teardown := td.String()
 	l.ssh(t, server, teardown)
 	t.Cleanup(func() { l.trySSH(server, teardown) }) //nolint:errcheck // best effort
+	// an instance volume LXD left behind blocks launching that name again
+	// ("UNIQUE constraint failed"), deep in the launches below
+	if orphans := l.orphanVolumes(t, server); len(orphans) > 0 {
+		t.Fatalf("%s has instance volumes without their instance, left by an earlier session (a failed evacuation): %s; run lab.sh reset", server, strings.Join(orphans, " "))
+	}
 	l.ssh(t, server, `printf 'MaxStartups 200:30:400\nMaxSessions 200\n' | sudo tee /etc/ssh/sshd_config.d/90-lab-stress.conf >/dev/null && sudo systemctl reload ssh`)
 
 	start := time.Now()
@@ -312,6 +317,19 @@ func stepTimings(r *run) map[string]int64 {
 		}
 	}
 	return out
+}
+
+// orphanVolumes are the server's instance volumes whose instance is not
+// on their member, as name@member.
+func (l *lab) orphanVolumes(t *testing.T, server string) []string {
+	t.Helper()
+	vols := l.ssh(t, server, "sudo lxc storage volume list default -f csv")
+	columns := "n"
+	if l.env.Servers[server].Cluster == "yes" {
+		columns = "nL" // L is refused when not clustered
+	}
+	insts := l.ssh(t, server, "sudo lxc list -c "+columns+" -f csv")
+	return orphanVolumes(vols, insts)
 }
 
 // stressTargets are the fleet and the baseline of every server.
