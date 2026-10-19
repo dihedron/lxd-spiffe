@@ -117,6 +117,21 @@ The injector picks the fault and its moment from the seeded generator; each reco
 | ST-3 | Soak with chaos | STR-11 with faults C1–C6, C9, C10 on the standalone servers; all invariants; the sweep (STR-30) |
 | ST-4 | Cluster chaos | On each cluster in turn: STR-11 over the cluster fleet (`LAB_STRESS_ITERATIONS` per mode, default 200 here, fault rate 0.25) with C3, C6, C7a, C7b, C8a, C8b, C9 and C10; all invariants; the sweep |
 | ST-5 | Burst | STR-12; INV-2, INV-4 |
+| ST-6 | Evacuation reliability | On each cluster in turn: STR-70–STR-76, containers against VMs, with and without file-API traffic; a characterisation, not an invariant check (Q4) |
+
+### Evacuation reliability (ST-6)
+
+ST-4 found that on 5.21.8 an evacuation can move an instance and then fail to delete its volume on the source member (`zfs destroy`: dataset busy), leaving the volume behind; a later restore onto that member then fails every time ("already exists on migration target storage") and the member stays evacuated. Every case seen involved a container, none the one VM of the fleet, but on too few evacuations to tell. ST-6 measures it: how often, for which instance type, whether traffic on LXD's file API (what the attestor's `file_pull` mode does) plays a part, and on which LXD version.
+
+| ID | Requirement |
+|---|---|
+| STR-70 | **Evacuation fleet.** On the running cluster, one member that is neither the entry member nor holds the baseline VM is the **evacuee**. It holds `LAB_EVAC_CONTAINERS` (default 3) Alpine containers `e-c1`… and `LAB_EVAC_VMS` (default 3) Alpine VMs `e-v1`… (`images:alpine/3.24 --vm`, 1 vCPU, 384 MiB), all running, launched with `--target`. Nothing else of the session runs on the cluster; the fleet is deleted at the end, as STR-02. |
+| STR-71 | **Cycle.** One cycle is: (1) check that every instance runs on the evacuee and no instance volume is orphaned (as the fleet set-up does); (2) `lxc cluster evacuate` the evacuee (`--force` on 5.21, `--yes` on 6.x), and record its outcome, its duration and where each instance ended and in which state; (3) list the orphaned volumes and LXD's errors since the cycle started on every member; (4) `lxc cluster restore --force`, with the same records, and that every instance is back on the evacuee and running; (5) list the orphans again. Every command is bounded on the VM (as the chaos faults). |
+| STR-72 | **Arms.** Arm **idle**: no traffic during the cycle. Arm **files**: during steps 2 and 4, one reader per instance pulls a small file through the files API (`GET /1.0/instances/{name}/files?path=/etc/hostname`, through the entry member, one request at a time), as the attestor's `file_pull` does. The arms alternate (idle, files, idle…) for `LAB_EVAC_CYCLES` (default 10) cycles each, so that drift over time hits both alike. |
+| STR-73 | **Diagnosis.** When a step-3 error says a dataset is busy, the session records, on the member that failed to delete it, the processes whose mount namespace still holds the dataset's mount (`/proc/*/mountinfo`), with their command lines, to test whether the file API's SFTP server is the holder. |
+| STR-74 | **Repair.** A cycle whose restore cannot succeed (a leftover volume, STR-71 step 4, three tries) is recorded as **blocked**; the session then runs `lab.sh reset` for the cluster, rebuilds the evacuation fleet, and goes on with the next cycle, so that one failure does not end the measurement. A reset that fails stops the session. |
+| STR-75 | **Measures.** Per LXD version, arm and instance type: migrations attempted and failed (evacuate and restore apart), volumes left behind, cycles blocked, busy-dataset errors and their holders (STR-73), and the durations (p50, max) of evacuate and restore. `summary.md` and `summary.json` as STR-41, with one result line per cycle in `results.jsonl`. |
+| STR-76 | **Verdict.** ST-6 has no invariant: it fails only on a harness error (a command that could not run, a failed reset). Its numbers answer Q4 and feed the operator guidance and, if the files arm makes evacuations fail, the attestor spec. With the defaults, each type sees 120 migrations per arm and version (6 instances, 10 cycles, 2 directions): none failed of 120 bounds the rate below 2.5 % (rule of three). |
 
 ## Phase B — real attestation and workloads under chaos
 
@@ -140,7 +155,7 @@ Runnable once the plugins attest (attestor spec delivery step (e)) and the lab's
 
 ## Lab resources
 
-The fleet's containers are small (Alpine, about 30 MB of memory each): 35 per server fit easily in the standalone servers' 12 GiB. LXD's limit of 99 permissions per authorization group, not memory, bounds the fleet until gate L17. The cluster faults need one cluster at a time (3 × 4 GiB), as G-L16 did when both clusters exceeded the host's free memory.
+The fleet's containers are small (Alpine, about 30 MB of memory each): 35 per server fit easily in the standalone servers' 12 GiB. LXD's limit of 99 permissions per authorization group, not memory, bounds the fleet until gate L17. The cluster faults need one cluster at a time (3 × 4 GiB), as G-L16 did when both clusters exceeded the host's free memory. ST-6's VMs are small (384 MiB): the three of the evacuee and the baseline `v-ubuntu` (1 GiB) fit on the two members that receive them during an evacuation. A cycle takes a few minutes, each VM's disk crossing the network twice: about two hours per cluster with the defaults, plus about 8 minutes per blocked cycle (STR-74).
 
 ## Open questions
 
@@ -149,3 +164,5 @@ The fleet's containers are small (Alpine, about 30 MB of memory each): 35 per se
 | Q1 | How many challenge keys does a crashed server leave, and should the plugin sweep stale ones (on start-up, or before writing a new one on the same instance)? | **Answered (ST-3):** 121 in 2000 attestations under faults, left whenever LXD was unreachable at cleanup or the server half was killed; the attestor's challenge write now removes the instance's stale keys (attestor spec, *Mode `config_push`*, step 1), and Phase B checks it (STR-53) |
 | Q2 | Do NFR-01 and NFR-02 hold, now that the steps can be timed one by one? | ST-2, ST-5 → attestor spec (NFR-01, NFR-02 lose "provisional") |
 | Q3 | Does LXD queue, throttle or fail under 20 attestations per second on one server, and on a cluster? | ST-5, ST-4 |
+| Q4 | How often does an evacuation leave an instance volume behind, does it hit containers more than VMs, does file-API traffic during the evacuation (the attestor's `file_pull`) make it more likely, and does 6.9 have it? | ST-6 → operator guidance; the attestor spec if file-API traffic plays a part |
+| Q5 | Is there a remedy an operator can apply to a member whose restore fails on a leftover volume, short of removing the volume's database row and dataset by hand? | ST-6 (the blocked cycles); until then, operator guidance says to remove both, with the commands |
