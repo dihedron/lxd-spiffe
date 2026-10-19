@@ -85,7 +85,11 @@ type injection struct {
 	// cleanup undoes the fault and returns when it is over; nil: nothing
 	// to undo, the window ends with the iteration
 	cleanup func() error
-	detail  []string
+	// serverWide faults hold the server's lock from before the iteration
+	// to the end of their clean-up: waiting for it inside the iteration,
+	// after the challenge, counted the wait against the attestor (INV-2)
+	serverWide bool
+	detail     []string
 }
 
 func (inj *injection) clear(at time.Time) {
@@ -164,7 +168,8 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 		inj.cleanup = func() error { return c.ensureRunning(inj, server, inst, 5*time.Minute) }
 	case "C3": // the LXD daemon killed: systemd starts it again, the
 		// instances keep running (snap restart lxd would stop them all)
-		locked := false
+		fired := false
+		inj.serverWide = true
 		var watching sync.WaitGroup
 		// the killed daemon is the one watched: on a cluster the entry
 		// member never went down, and watching it ended the window at
@@ -175,8 +180,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			return lxdUp(target)() && (!c.isCluster(server) || c.healthy(server))
 		}
 		inj.hooks.afterChallenge = func() {
-			c.serverMu[server].Lock()
-			locked = true
+			fired = true
 			target = c.faultVM(server, inst)
 			// the window starts once the kill has returned: a recheck just
 			// before it may still have reached LXD
@@ -191,10 +195,9 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			})
 		}
 		inj.cleanup = func() error {
-			if !locked {
+			if !fired {
 				return nil // the iteration never reached the challenge
 			}
-			defer c.serverMu[server].Unlock()
 			watching.Wait()
 			if err := c.waitFor(3*time.Minute, up); err != nil {
 				return fmt.Errorf("LXD on %s: %w", target, err)
@@ -212,11 +215,11 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 		seconds := 5 + it.N%16
 		unit := fmt.Sprintf("lab-c6-%d-%d", it.N, time.Now().UnixNano()%100000)
 		rule := "INPUT -p tcp --dport 8443 -j DROP"
-		locked := false
+		fired := false
+		inj.serverWide = true
 		target := server
 		inj.hooks.afterChallenge = func() {
-			c.serverMu[server].Lock()
-			locked = true
+			fired = true
 			// the revert is armed before the cut, so the lab recovers even if
 			// the harness dies here (STR-61)
 			target = c.faultVM(server, inst)
@@ -225,10 +228,9 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			inj.clear(inj.start.Add(time.Duration(seconds) * time.Second)) // the VM's timer removes the rule then
 		}
 		inj.cleanup = func() error {
-			if !locked {
+			if !fired {
 				return nil // the iteration never reached the challenge
 			}
-			defer c.serverMu[server].Unlock()
 			return c.waitFor(time.Duration(seconds+30)*time.Second, func() bool {
 				_, err := l.trySSH(target, "sudo iptables -C "+rule+" 2>/dev/null")
 				return err != nil
@@ -269,18 +271,17 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			inj.notApplicable = "the instance is on the entry member"
 			break
 		}
-		locked := false
+		fired := false
+		inj.serverWide = true
 		inj.hooks.afterChallenge = func() {
-			c.serverMu[server].Lock()
-			locked = true
+			fired = true
 			inj.virsh("destroy", member)
 			inj.mark()
 		}
 		inj.cleanup = func() error {
-			if !locked {
+			if !fired {
 				return nil
 			}
-			defer c.serverMu[server].Unlock()
 			inj.virsh("start", member)
 			if err := c.waitFor(5*time.Minute, func() bool { return c.healthy(server) }); err != nil {
 				return fmt.Errorf("member %s: %w", member, err)
@@ -307,21 +308,20 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 		// under the server's lock: a move to or from a member being
 		// evacuated or powered off fails, and the instance, not moved,
 		// could pass the iteration this fault must fail (ST-4)
-		locked := false
+		fired := false
+		inj.serverWide = true
 		var holder, other string
 		inj.hooks.afterChallenge = func() {
-			c.serverMu[server].Lock()
-			locked = true
+			fired = true
 			holder = c.holder(server, inst)
 			other = c.otherMember(server, holder)
 			inj.mark()
 			inj.ssh(l, server, fmt.Sprintf("sudo lxc stop --force %s; sudo lxc move %s --target %s && sudo lxc start %s", inst, inst, other, inst))
 		}
 		inj.cleanup = func() error {
-			if !locked {
+			if !fired {
 				return nil // the iteration never reached the challenge
 			}
-			defer c.serverMu[server].Unlock()
 			inj.ssh(l, server, fmt.Sprintf("sudo lxc stop --force %s; sudo lxc move %s --target %s; sudo lxc start %s", inst, inst, holder, inst))
 			if now := c.holder(server, inst); now != holder {
 				return fmt.Errorf("%s is on %q, not back on %s", inst, now, holder)
@@ -341,18 +341,17 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 		if strings.HasPrefix(c.l.env.Servers[server].Version, "5.") {
 			flag = "--force" // 5.21 skips the prompt with --force (gate L8)
 		}
-		locked := false
+		fired := false
+		inj.serverWide = true
 		inj.hooks.afterChallenge = func() {
-			c.serverMu[server].Lock()
-			locked = true
+			fired = true
 			inj.mark()
 			inj.ssh(l, server, fmt.Sprintf("sudo lxc cluster evacuate %s %s", holder, flag))
 		}
 		inj.cleanup = func() error {
-			if !locked {
+			if !fired {
 				return nil
 			}
-			defer c.serverMu[server].Unlock()
 			if err := c.restoreMember(inj, server, holder); err != nil {
 				return err
 			}
@@ -552,6 +551,9 @@ func (c *chaosRun) iterate(ctx context.Context, it stress.Item) stress.Result {
 		c.busy[it.Target]--
 		c.mu.Unlock()
 	}()
+	if inj.serverWide {
+		c.serverMu[it.Target.Server].Lock()
+	}
 	start := time.Now()
 	r, ch := c.iterateHooked(ctx, it, inj.hooks, inj.guestExtra)
 	if inj.start.IsZero() {
@@ -569,11 +571,15 @@ func (c *chaosRun) iterate(ctx context.Context, it stress.Item) stress.Result {
 			c.stopSession(errors.New("clean-up failed: " + failed))
 		}
 	}
-	end := time.Now()
+	cleanedUp := time.Now()
+	if inj.serverWide {
+		c.serverMu[it.Target.Server].Unlock()
+	}
+	end := cleanedUp
 	if !inj.cleared.IsZero() {
 		end = inj.cleared
 	}
-	r.Window = &stress.Window{Fault: it.Fault, Server: it.Target.Server, Instance: it.Target.Instance, Start: inj.start, End: end}
+	r.Window = &stress.Window{Fault: it.Fault, Server: it.Target.Server, Instance: it.Target.Instance, Start: inj.start, End: end, CleanedUp: cleanedUp}
 	if it.Fault == "C4" {
 		r.Outcome, r.FailedStep = stress.Fail, "killed"
 		c.leftovers(&r, it, ch)

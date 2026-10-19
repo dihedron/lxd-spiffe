@@ -273,6 +273,22 @@ func TestINV3QuietServer(t *testing.T) {
 	}
 }
 
+// TestINV3AfterCleanup: recovery is measured from the end of the clean-up
+// when it ends after the window (a power-off's clean-up starts the
+// instances again after the cluster is healthy), as INV-3 says.
+func TestINV3AfterCleanup(t *testing.T) {
+	hit := withWindow(res(1, targets[0], FilePull, "C1", Fail, 0, 5), 0, 10)
+	hit.Window.CleanedUp = at(130)
+	late := recovery(hit, 150) // 140 s after the window, 20 s after the clean-up
+	if v := violations(Summarize([]Result{hit, late}, nil, bounds), "INV-3"); len(v) != 0 {
+		t.Errorf("INV-3 from the clean-up %+v", v)
+	}
+	hit.Window.CleanedUp = time.Time{}
+	if v := violations(Summarize([]Result{hit, late}, nil, bounds), "INV-3"); len(v) != 1 {
+		t.Errorf("INV-3 without a clean-up time %+v", v)
+	}
+}
+
 // TestINV4Attributed: leftovers under a server-wide fault are its orphans.
 func TestINV4Attributed(t *testing.T) {
 	a, b := targets[0], targets[1]

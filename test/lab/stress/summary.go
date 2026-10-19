@@ -187,7 +187,14 @@ func hitBy(r Result, windows []Window) []Window {
 func (s *Summary) checkRecovery(results []Result, windows []Window, b Bounds) {
 	for _, w := range windows {
 		f, _ := Lookup(w.Fault)
-		quiet := quietFrom(w.End, w.Server, windows, b.Recovery)
+		// recovery is measured once the clean-up is over (INV-3): the
+		// clean-up of a power-off still starts the instances it left
+		// stopped after the fault stopped acting
+		from := w.End
+		if w.CleanedUp.After(from) {
+			from = w.CleanedUp
+		}
+		quiet := quietFrom(from, w.Server, windows, b.Recovery)
 		recovered := false
 		for _, r := range results {
 			if !r.Recovery || r.Outcome != Pass || r.Fault != w.Fault || r.Target.Server != w.Server {

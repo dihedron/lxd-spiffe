@@ -153,6 +153,10 @@ type Window struct {
 	Instance string    `json:"instance,omitempty"`
 	Start    time.Time `json:"start"`
 	End      time.Time `json:"end"`
+	// CleanedUp is when the fault's clean-up ended, which may be after
+	// End (the fault stopped acting, then the clean-up started instances
+	// again): recovery is measured from the later of the two (INV-3)
+	CleanedUp time.Time `json:"cleaned_up,omitzero"`
 }
 
 // Result is one iteration's result.
