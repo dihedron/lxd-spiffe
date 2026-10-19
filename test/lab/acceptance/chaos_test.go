@@ -38,6 +38,23 @@ type chaosRun struct {
 	// failedCleanups are the clean-ups that could not undo their fault:
 	// the faults after them run on a changed lab, so the session fails
 	failedCleanups []string
+	// session ends the plan's dispatch when abort cancels it, with why: a
+	// lab no clean-up can repair makes the iterations after it worthless
+	session context.Context
+	abort   context.CancelCauseFunc
+}
+
+// stopSession ends the session: no new iteration or recovery starts,
+// those in flight finish.
+func (c *chaosRun) stopSession(err error) {
+	if c.abort != nil {
+		c.abort(err)
+	}
+}
+
+// stopped reports whether stopSession was called.
+func (c *chaosRun) stopped() bool {
+	return c.session != nil && c.session.Err() != nil
 }
 
 func newChaosRun(sr *stressRun, targets []stress.Target) *chaosRun {
@@ -305,6 +322,13 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 		}
 	case "C8b": // the instance's member evacuated, then restored
 		holder := c.holder(server, inst)
+		if holder == c.l.vmOf(server) || holder == "" {
+			// the probe's entry member stays up, as behind a load balancer
+			// (STR-03); an evacuated entry member that could not be
+			// restored left the cluster broken for the rest of a session
+			inj.notApplicable = "the instance is on the entry member"
+			break
+		}
 		flag := "--yes"
 		if strings.HasPrefix(c.l.env.Servers[server].Version, "5.") {
 			flag = "--force" // 5.21 skips the prompt with --force (gate L8)
@@ -391,21 +415,37 @@ func (c *chaosRun) reportCleanups(t *testing.T) {
 	}
 }
 
+// leftoverVolume is LXD's error when a restore meets an instance volume
+// the evacuation could not delete on the member (seen on 5.21.8).
+const leftoverVolume = "already exists on migration target storage"
+
 // restoreMember restores an evacuated member, trying again for up to five
-// minutes: a restore can fail on an instance volume the evacuation left on
-// the member ("Cannot create volume, already exists on migration target
-// storage", seen on 5.21.8), which then stays evacuated. Each failure is
-// noted; the member must end up ONLINE.
+// minutes; each failure is noted, and the member must end up ONLINE. A
+// restore that fails three times on a leftover volume never succeeds: the
+// member stays evacuated until the volume is removed by hand, so the
+// session stops there, the finding in its error.
 func (c *chaosRun) restoreMember(inj *injection, server, member, flag string) error {
 	restore := boundedRemote(3*time.Minute, fmt.Sprintf("sudo lxc cluster restore %s %s", member, flag))
+	leftovers, last := 0, ""
 	err := waitFor(5*time.Minute, func() bool {
 		out, err := c.l.trySSH(server, restore)
 		if err != nil && !strings.Contains(out, "already restored") {
-			inj.detail = append(inj.detail, fmt.Sprintf("%s: %v %s", restore, err, lastLine(out)))
+			last = lastLine(out)
+			inj.detail = append(inj.detail, fmt.Sprintf("%s: %v %s", restore, err, last))
+			if strings.Contains(out, leftoverVolume) {
+				if leftovers++; leftovers == 3 {
+					return true
+				}
+			}
 			time.Sleep(10 * time.Second)
 		}
 		return c.membersOnline(server)
 	})
+	if leftovers == 3 {
+		err := fmt.Errorf("member %s cannot be restored, LXD left an instance volume on it (a finding; lab.sh reset): %s", member, last)
+		c.stopSession(err)
+		return err
+	}
 	if err != nil {
 		return fmt.Errorf("member %s not restored: %w", member, err)
 	}
@@ -529,7 +569,7 @@ func (c *chaosRun) recover(it stress.Item) {
 	clean := it
 	clean.Fault = ""
 	deadline := time.Now().Add(5 * time.Minute)
-	for try := 1; time.Now().Before(deadline); try++ {
+	for try := 1; time.Now().Before(deadline) && !c.stopped(); try++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 		r := c.stressRun.iterate(ctx, clean)
 		cancel()
@@ -645,6 +685,9 @@ func TestST4ClusterChaos(t *testing.T) {
 				targets = append(targets, stress.Target{Server: cluster, Instance: n})
 			}
 			cr := newChaosRun(sr, targets)
+			session, abort := context.WithCancelCause(context.Background())
+			defer abort(nil)
+			cr.session, cr.abort = session, abort
 			plan := stress.Plan{Seed: set.seed, Iterations: set.iterations * 2, FaultRate: set.faultRate,
 				Faults: clusterFaults, Modes: []string{rehearse.FilePull, rehearse.ConfigPush}, Targets: targets}
 			start := time.Now()
@@ -653,9 +696,12 @@ func TestST4ClusterChaos(t *testing.T) {
 				defer cancel()
 				return cr.iterate(ictx, it)
 			}
-			results := stress.Run(context.Background(), plan.Items(), set.workers, per)
+			results := stress.Run(session, plan.Items(), set.workers, per)
 			t.Logf("%d iterations and %d recoveries in %s", len(results), len(cr.recoveries), time.Since(start).Round(time.Second))
 			requireIterations(t, results)
+			if cr.stopped() {
+				t.Errorf("the session stopped after %d of %d iterations: %v", len(results), len(plan.Items()), context.Cause(session))
+			}
 			cr.reportCleanups(t)
 			settings := set.record()
 			settings["session"], settings["cluster"], settings["faults"] = "ST-4", cluster, strings.Join(clusterFaults, ",")
