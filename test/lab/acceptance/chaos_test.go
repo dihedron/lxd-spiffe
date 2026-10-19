@@ -90,9 +90,14 @@ func (inj *injection) virsh(action, vm string) {
 	}
 }
 
-// ssh runs a command on a VM from a worker: errors become details.
+// faultCommandTimeout bounds each command of a fault or its clean-up on
+// the VM: a VM's move copies its disk, about two minutes in the lab.
+const faultCommandTimeout = 5 * time.Minute
+
+// ssh runs a command on a VM from a worker, bounded there by
+// faultCommandTimeout: errors become details.
 func (inj *injection) ssh(l *lab, vm, command string) {
-	if out, err := l.trySSH(vm, command); err != nil {
+	if out, err := l.trySSH(vm, boundedRemote(faultCommandTimeout, command)); err != nil {
 		inj.detail = append(inj.detail, fmt.Sprintf("%s: %v %s", command, err, strings.TrimSpace(out)))
 	}
 }
@@ -215,7 +220,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 					return
 				default:
 				}
-				_, _ = l.trySSH(server, fmt.Sprintf("sudo lxc config set %s user.lxd-probe.c9=%d", inst, n))
+				_, _ = l.trySSH(server, boundedRemote(20*time.Second, fmt.Sprintf("sudo lxc config set %s user.lxd-probe.c9=%d", inst, n)))
 			}
 		})
 		once := sync.Once{}
@@ -260,9 +265,9 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 			// member, and once the files are gone its next launch hangs in
 			// "create" until its daemon restarts (seen on 5.21.8). The remedy
 			// an operator would apply is applied here, and noted.
-			if out, _ := c.l.trySSH(member, "sudo find /var/snap/lxd/common/lxd/cache -maxdepth 3 -type f -size 0 -print -delete"); strings.TrimSpace(out) != "" {
+			if out, _ := c.l.trySSH(member, boundedRemote(time.Minute, "sudo find /var/snap/lxd/common/lxd/cache -maxdepth 3 -type f -size 0 -print -delete")); strings.TrimSpace(out) != "" {
 				inj.detail = append(inj.detail, "LXD's image cache was truncated by the power-off ("+strings.Join(strings.Fields(out), " ")+"): emptied files removed, LXD restarted on "+member)
-				_, _ = c.l.trySSH(member, "sudo systemctl restart snap.lxd.daemon")
+				_, _ = c.l.trySSH(member, boundedRemote(2*time.Minute, "sudo systemctl restart snap.lxd.daemon"))
 				if err := waitFor(5*time.Minute, func() bool { return c.membersOnline(server) }); err != nil {
 					return fmt.Errorf("member %s after the LXD restart: %w", member, err)
 				}
@@ -339,7 +344,7 @@ func (c *chaosRun) holder(server, inst string) string {
 	if !c.isCluster(server) {
 		return ""
 	}
-	out, err := c.l.trySSH(server, `sudo lxc list -c L -f csv "^`+inst+`$"`)
+	out, err := c.l.trySSH(server, boundedRemote(30*time.Second, `sudo lxc list -c L -f csv "^`+inst+`$"`))
 	if err != nil {
 		return ""
 	}
@@ -392,7 +397,7 @@ func (c *chaosRun) reportCleanups(t *testing.T) {
 // storage", seen on 5.21.8), which then stays evacuated. Each failure is
 // noted; the member must end up ONLINE.
 func (c *chaosRun) restoreMember(inj *injection, server, member, flag string) error {
-	restore := fmt.Sprintf("sudo lxc cluster restore %s %s", member, flag)
+	restore := boundedRemote(3*time.Minute, fmt.Sprintf("sudo lxc cluster restore %s %s", member, flag))
 	err := waitFor(5*time.Minute, func() bool {
 		out, err := c.l.trySSH(server, restore)
 		if err != nil && !strings.Contains(out, "already restored") {
@@ -424,9 +429,9 @@ func (c *chaosRun) ensureRunning(inj *injection, server, inst string) error {
 		if _, err := c.l.trySSH(server, "sudo timeout -k 5 10 lxc exec "+inst+" -- true"); err == nil {
 			return true
 		}
-		if out, err := c.l.trySSH(server, `sudo lxc list -c s -f csv "^`+inst+`$"`); err == nil && strings.TrimSpace(out) == "STOPPED" {
+		if out, err := c.l.trySSH(server, boundedRemote(30*time.Second, `sudo lxc list -c s -f csv "^`+inst+`$"`)); err == nil && strings.TrimSpace(out) == "STOPPED" {
 			starts++
-			_, _ = c.l.trySSH(server, "sudo lxc start "+inst)
+			_, _ = c.l.trySSH(server, boundedRemote(2*time.Minute, "sudo lxc start "+inst))
 		}
 		return false
 	})
@@ -544,7 +549,7 @@ func (c *chaosRun) recover(it stress.Item) {
 func (l *lab) sweep(t *testing.T, server string, instances []string) int {
 	t.Helper()
 	script := `n=0; for i in ` + strings.Join(instances, " ") + `; do ` +
-		`for k in $(sudo lxc config show "$i" | sed -n 's/^  \(user\.spire\.challenge\.[0-9a-f]*\):.*/\1/p'); do sudo lxc config unset "$i" "$k"; echo "left $i $k"; n=$((n+1)); done; ` +
+		`for k in $(sudo timeout -k 5 20 lxc config show "$i" | sed -n 's/^  \(user\.spire\.challenge\.[0-9a-f]*\):.*/\1/p'); do sudo timeout -k 5 20 lxc config unset "$i" "$k"; echo "left $i $k"; n=$((n+1)); done; ` +
 		`f=$(sudo timeout -k 5 20 lxc exec "$i" -- sh -c 'for p in /run/spire/lxd/proof-*; do [ -e "$p" ] && echo "$p"; done; rm -f /run/spire/lxd/proof-* /run/spire/lxd/.proof-*' 2>/dev/null); ` +
 		`for p in $f; do echo "left $i $p"; n=$((n+1)); done; done; echo $n`
 	out := l.ssh(t, server, script)

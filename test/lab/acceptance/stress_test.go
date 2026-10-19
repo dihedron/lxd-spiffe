@@ -384,12 +384,12 @@ func stepTimings(r *run) map[string]int64 {
 // on their member, as name@member.
 func (l *lab) orphanVolumes(t *testing.T, server string) []string {
 	t.Helper()
-	vols := l.ssh(t, server, "sudo lxc storage volume list default -f csv")
+	vols := l.ssh(t, server, "sudo timeout -k 5 30 lxc storage volume list default -f csv")
 	columns := "n"
 	if l.env.Servers[server].Cluster == "yes" {
 		columns = "nL" // L is refused when not clustered
 	}
-	insts := l.ssh(t, server, "sudo lxc list -c "+columns+" -f csv")
+	insts := l.ssh(t, server, "sudo timeout -k 5 30 lxc list -c "+columns+" -f csv")
 	return orphanVolumes(vols, insts)
 }
 

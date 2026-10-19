@@ -87,3 +87,31 @@ func TestGuestDeadline(t *testing.T) {
 		}
 	}
 }
+
+// shellQuote quotes s for a POSIX shell.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// boundedRemote bounds a command run on a lab VM there, as root: the
+// local end of an ssh killed does not end an lxc on the member, and an
+// lxc stop was seen waiting 12 minutes for a VM already stopped (ST-4).
+// After d, SIGTERM; 5 s later, SIGKILL, which lxc exec cannot pass on.
+func boundedRemote(d time.Duration, command string) string {
+	return fmt.Sprintf("sudo timeout -k 5 %d sh -c %s", int(d.Seconds()), shellQuote(command))
+}
+
+// TestBoundedRemote: the command is quoted whole, bounded in seconds,
+// and runs unchanged.
+func TestBoundedRemote(t *testing.T) {
+	got := boundedRemote(2*time.Minute, `sudo lxc list -c L -f csv "^s-001$" | grep -v 'x'`)
+	want := `sudo timeout -k 5 120 sh -c 'sudo lxc list -c L -f csv "^s-001$" | grep -v '\''x'\'''`
+	if got != want {
+		t.Errorf("boundedRemote:\n got %s\nwant %s", got, want)
+	}
+	cmd := strings.TrimPrefix(boundedRemote(time.Second, `echo "it's" $((1+1))`), "sudo ")
+	out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
+	if err != nil || strings.TrimSpace(string(out)) != "it's 2" {
+		t.Errorf("%s ran as %q, %v", cmd, out, err)
+	}
+}

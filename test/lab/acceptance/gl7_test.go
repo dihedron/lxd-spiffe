@@ -200,11 +200,6 @@ func TestGL7Families(t *testing.T) {
 	}
 }
 
-// shellQuote quotes s for a POSIX shell.
-func shellQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
-}
-
 // selinuxDropIn makes systemd run lxd-agent as bin_t, hence in
 // unconfined_service_t, which may create its vsock socket (in init_t, the
 // domain a var_run_t binary keeps, it may not). The copy of the agent in
