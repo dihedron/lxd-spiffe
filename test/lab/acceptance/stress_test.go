@@ -231,6 +231,9 @@ func (sr *stressRun) iterateHooked(ctx context.Context, it stress.Item, h rehear
 		return r, c
 	}
 	r.Steps = stepTimings(reh.server)
+	if reh.guestErr != nil {
+		r.Detail = "guest half: " + reh.guestErr.Error()
+	}
 	result := reh.server.result()
 	switch {
 	case result == "passed":
@@ -248,11 +251,15 @@ func (sr *stressRun) iterateHooked(ctx context.Context, it stress.Item, h rehear
 			r.Leftovers = sr.checkLeftovers(it, c)
 		}
 	}
+	if it.Mode == stress.FilePull && reh.challenge.ProofPath != "" && reh.guest == nil && reh.guestErr != nil {
+		// a guest half cut off may have written the proof file first
+		r.Leftovers = sr.checkLeftovers(it, c)
+	}
 	if it.Mode == stress.ConfigPush && r.Outcome != stress.Pass {
 		// the cleanup may have failed or never run: the instance says
 		r.Leftovers = sr.checkLeftovers(it, c)
 		if v, ok := reh.server.observation("cleanup.result"); ok {
-			r.Detail = fmt.Sprint(v)
+			r.Detail = strings.TrimSpace(r.Detail + " " + fmt.Sprint(v))
 		}
 	}
 	return r, c

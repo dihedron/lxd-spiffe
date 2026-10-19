@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/dihedron/lxd-spiffe/internal/probe/rehearse"
 )
 
 // boundCommand makes the end of cmd's context end cmd for good: lab.sh
@@ -54,5 +56,34 @@ func TestBoundCommand(t *testing.T) {
 	if !gone() {
 		syscall.Kill(child, syscall.SIGKILL) //nolint:errcheck // cleanup
 		t.Errorf("the child %d survived", child)
+	}
+}
+
+// guestMargin is how long the guest half may outlast the server half's
+// --timeout: its answer is of no use once the server half gave up.
+const guestMargin = 5 * time.Second
+
+// guestDeadline is when the guest half must end: the challenge's timeout
+// after it was received, plus guestMargin; zero when the challenge has no
+// timeout, and the iteration's context alone bounds the guest half.
+func guestDeadline(received time.Time, c rehearse.Challenge) time.Time {
+	if c.TimeoutMS <= 0 {
+		return time.Time{}
+	}
+	return received.Add(time.Duration(c.TimeoutMS)*time.Millisecond + guestMargin)
+}
+
+// TestGuestDeadline: the guest half ends guestMargin after the server
+// half's timeout, counted from the challenge; without a timeout, only the
+// iteration's context bounds it.
+func TestGuestDeadline(t *testing.T) {
+	at := time.Date(2026, 10, 19, 8, 10, 27, 0, time.UTC)
+	if got, want := guestDeadline(at, rehearse.Challenge{TimeoutMS: 30000}), at.Add(35*time.Second); !got.Equal(want) {
+		t.Errorf("30 s timeout: deadline %s, want %s", got, want)
+	}
+	for _, ms := range []int64{0, -1} {
+		if got := guestDeadline(at, rehearse.Challenge{TimeoutMS: ms}); !got.IsZero() {
+			t.Errorf("timeout %d ms: deadline %s, want none", ms, got)
+		}
 	}
 }
