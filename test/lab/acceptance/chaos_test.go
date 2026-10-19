@@ -116,7 +116,7 @@ func (c *chaosRun) prepare(it stress.Item) *injection {
 	inj := &injection{}
 	lxdUp := func(vm string) func() bool {
 		return func() bool {
-			_, err := l.trySSH(vm, "sudo timeout 10 lxc info >/dev/null")
+			_, err := l.trySSH(vm, "sudo timeout -k 5 10 lxc info >/dev/null")
 			return err == nil
 		}
 	}
@@ -371,7 +371,7 @@ func (c *chaosRun) faultVM(server, inst string) string {
 
 // membersOnline reports whether every member of the cluster is ONLINE.
 func (c *chaosRun) membersOnline(server string) bool {
-	out, err := c.l.trySSH(server, "sudo timeout 10 lxc cluster list -f csv")
+	out, err := c.l.trySSH(server, "sudo timeout -k 5 10 lxc cluster list -f csv")
 	return err == nil && strings.Count(out, ",ONLINE,") == len(c.l.members(server))
 }
 
@@ -422,7 +422,7 @@ func lastLine(out string) string {
 func (c *chaosRun) ensureRunning(inj *injection, server, inst string) error {
 	starts := 0
 	err := waitFor(5*time.Minute, func() bool {
-		if _, err := c.l.trySSH(server, "sudo timeout 10 lxc exec "+inst+" -- true"); err == nil {
+		if _, err := c.l.trySSH(server, "sudo timeout -k 5 10 lxc exec "+inst+" -- true"); err == nil {
 			return true
 		}
 		if out, err := c.l.trySSH(server, `sudo lxc list -c s -f csv "^`+inst+`$"`); err == nil && strings.TrimSpace(out) == "STOPPED" {
@@ -445,7 +445,7 @@ func (c *chaosRun) ensureRunning(inj *injection, server, inst string) error {
 // policy's not_running, not the attestor's recovery (INV-3). Each start
 // is noted: it is what an operator would have to do.
 func (c *chaosRun) ensureFleetRunning(inj *injection, server, own string) error {
-	out, err := c.l.trySSH(server, "sudo timeout 20 lxc list -c ns -f csv")
+	out, err := c.l.trySSH(server, "sudo timeout -k 5 20 lxc list -c ns -f csv")
 	if err != nil {
 		return fmt.Errorf("listing the instances: %w", err)
 	}
@@ -546,7 +546,7 @@ func (l *lab) sweep(t *testing.T, server string, instances []string) int {
 	t.Helper()
 	script := `n=0; for i in ` + strings.Join(instances, " ") + `; do ` +
 		`for k in $(sudo lxc config show "$i" | sed -n 's/^  \(user\.spire\.challenge\.[0-9a-f]*\):.*/\1/p'); do sudo lxc config unset "$i" "$k"; n=$((n+1)); done; ` +
-		`f=$(sudo timeout 20 lxc exec "$i" -- sh -c 'c=$(ls /run/spire/lxd 2>/dev/null | grep -c "^proof-"); rm -f /run/spire/lxd/proof-* /run/spire/lxd/.proof-*; echo $c' 2>/dev/null || echo 0); n=$((n+f)); done; echo $n`
+		`f=$(sudo timeout -k 5 20 lxc exec "$i" -- sh -c 'c=$(ls /run/spire/lxd 2>/dev/null | grep -c "^proof-"); rm -f /run/spire/lxd/proof-* /run/spire/lxd/.proof-*; echo $c' 2>/dev/null || echo 0); n=$((n+f)); done; echo $n`
 	out := strings.TrimSpace(l.ssh(t, server, script))
 	n, err := strconv.Atoi(out)
 	if err != nil {

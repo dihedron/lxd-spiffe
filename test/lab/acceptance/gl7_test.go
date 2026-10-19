@@ -134,7 +134,7 @@ func TestGL7Families(t *testing.T) {
 				l.util(t, s, "note", text, "--gate", "L7", "--cell", server+"-"+cell)
 			}
 			inVM := func(vm, script string) string {
-				out, err := l.trySSH(server, "sudo timeout 60 lxc exec "+vm+" -- sh -c "+shellQuote(script))
+				out, err := l.trySSH(server, "sudo timeout -k 5 60 lxc exec "+vm+" -- sh -c "+shellQuote(script))
 				if err != nil {
 					return "failed: " + inline(out+" "+err.Error())
 				}
@@ -250,7 +250,7 @@ func TestGL7SELinux(t *testing.T) {
 			t.Cleanup(func() { l.trySSH(server, teardown) }) //nolint:errcheck // best effort
 			note := func(text string) { l.util(t, s, append([]string{"note", text}, tags...)...) }
 			inVM := func(script string) string {
-				out, err := l.trySSH(server, "sudo timeout 120 lxc exec "+vm+" -- sh -c "+shellQuote(script))
+				out, err := l.trySSH(server, "sudo timeout -k 5 120 lxc exec "+vm+" -- sh -c "+shellQuote(script))
 				if err != nil {
 					return "failed: " + inline(out+" "+err.Error())
 				}
@@ -264,7 +264,7 @@ func TestGL7SELinux(t *testing.T) {
 					if st, _ := l.trySSH(server, "sudo lxc list "+vm+" -c s -f csv"); strings.TrimSpace(st) == "STOPPED" {
 						l.trySSH(server, "sudo lxc start "+vm) //nolint:errcheck // retried
 					}
-					if _, err := l.trySSH(server, "sudo timeout 10 lxc exec "+vm+" -- true"); err == nil {
+					if _, err := l.trySSH(server, "sudo timeout -k 5 10 lxc exec "+vm+" -- true"); err == nil {
 						return nil
 					}
 					time.Sleep(5 * time.Second)

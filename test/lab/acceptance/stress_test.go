@@ -292,7 +292,7 @@ func (sr *stressRun) checkLeftovers(it stress.Item, c rehearse.Challenge) int {
 			return 1
 		}
 	case c.ProofPath != "":
-		if _, err := sr.l.trySSH(server, "sudo timeout 20 lxc exec "+inst+" -- test -e "+c.ProofPath); err == nil {
+		if _, err := sr.l.trySSH(server, "sudo timeout -k 5 20 lxc exec "+inst+" -- test -e "+c.ProofPath); err == nil {
 			return 1
 		}
 	}
