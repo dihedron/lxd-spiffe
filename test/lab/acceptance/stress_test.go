@@ -302,6 +302,10 @@ func (sr *stressRun) iterateHooked(ctx context.Context, it stress.Item, h rehear
 			return r, c
 		}
 		r.Outcome, r.Detail = stress.Error, err.Error()
+		// a probe cut off after its challenge may have left the key or
+		// the proof file: unchecked, the sweep found more than the
+		// iterations had counted (INV-4)
+		sr.leftovers(&r, it, c)
 		return r, c
 	}
 	r.Steps = stepTimings(reh.server)

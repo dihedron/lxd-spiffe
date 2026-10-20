@@ -43,6 +43,8 @@ type chaosRun struct {
 	// worthless
 	session context.Context
 	abort   context.CancelCauseFunc
+	// timeout bounds each iteration, from when it holds what it waits for
+	timeout time.Duration
 }
 
 // stopSession ends the session: no new iteration or recovery starts,
@@ -58,8 +60,8 @@ func (c *chaosRun) stopped() bool {
 	return c.session != nil && c.session.Err() != nil
 }
 
-func newChaosRun(sr *stressRun, targets []stress.Target) *chaosRun {
-	c := &chaosRun{stressRun: sr, serverMu: map[string]*sync.Mutex{}, fleet: map[string][]string{}, busy: map[stress.Target]int{}}
+func newChaosRun(sr *stressRun, targets []stress.Target, timeout time.Duration) *chaosRun {
+	c := &chaosRun{stressRun: sr, serverMu: map[string]*sync.Mutex{}, fleet: map[string][]string{}, busy: map[stress.Target]int{}, timeout: timeout}
 	c.session, c.abort = context.WithCancelCause(context.Background())
 	for _, tg := range targets {
 		if c.serverMu[tg.Server] == nil {
@@ -530,15 +532,21 @@ func (c *chaosRun) ensureFleetRunning(inj *injection, server, own string) error 
 
 // iterate runs one item, with its fault if it has one: the iteration, the
 // clean-up, the fault's window, the leftovers of a crash (C4), and the
-// recovery iterations (INV-3).
-func (c *chaosRun) iterate(ctx context.Context, it stress.Item) stress.Result {
+// recovery iterations (INV-3). Its time is c.timeout, from when it holds
+// the server's lock: not the dispatch's context, which only stops new
+// items.
+func (c *chaosRun) iterate(_ context.Context, it stress.Item) stress.Result {
 	if it.Fault == "" {
+		ctx, cancel := iterationContext(nil, c.timeout)
+		defer cancel()
 		return c.stressRun.iterate(ctx, it)
 	}
 	inj := c.prepare(it)
 	if inj.notApplicable != "" {
 		clean := it
 		clean.Fault = ""
+		ctx, cancel := iterationContext(nil, c.timeout)
+		defer cancel()
 		r := c.stressRun.iterate(ctx, clean)
 		r.Detail = strings.TrimSpace(r.Detail + " " + it.Fault + " not applicable: " + inj.notApplicable)
 		return r
@@ -551,9 +559,12 @@ func (c *chaosRun) iterate(ctx context.Context, it stress.Item) stress.Result {
 		c.busy[it.Target]--
 		c.mu.Unlock()
 	}()
+	var lock sync.Locker
 	if inj.serverWide {
-		c.serverMu[it.Target.Server].Lock()
+		lock = c.serverMu[it.Target.Server]
 	}
+	ctx, cancel := iterationContext(lock, c.timeout)
+	defer cancel()
 	start := time.Now()
 	r, ch := c.iterateHooked(ctx, it, inj.hooks, inj.guestExtra)
 	if inj.start.IsZero() {
@@ -656,16 +667,11 @@ func TestST3Chaos(t *testing.T) {
 	stamp := time.Now().UTC().Format("20060102T150405Z")
 	sr := &stressRun{l: l, session: session{evidenceDir: l.evidence, runID: stamp + "-st-3"}, label: "chaos"}
 	targets := l.stressTargets(names)
-	cr := newChaosRun(sr, targets)
+	cr := newChaosRun(sr, targets, 3*time.Minute)
 	plan := stress.Plan{Seed: set.seed, Iterations: set.iterations * 2 * len(l.servers()), FaultRate: set.faultRate,
 		Faults: faults, Modes: []string{rehearse.FilePull, rehearse.ConfigPush}, Targets: targets}
 	start := time.Now()
-	per := func(ctx context.Context, it stress.Item) stress.Result {
-		ictx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-		defer cancel()
-		return cr.iterate(ictx, it)
-	}
-	results := stress.Run(cr.session, plan.Items(), set.workers, per)
+	results := stress.Run(cr.session, plan.Items(), set.workers, cr.iterate)
 	t.Logf("%d iterations and %d recoveries in %s", len(results), len(cr.recoveries), time.Since(start).Round(time.Second))
 	requireIterations(t, results)
 	cr.reportStop(t, len(results), len(plan.Items()))
@@ -718,16 +724,11 @@ func TestST4ClusterChaos(t *testing.T) {
 			for _, n := range instances {
 				targets = append(targets, stress.Target{Server: cluster, Instance: n})
 			}
-			cr := newChaosRun(sr, targets)
+			cr := newChaosRun(sr, targets, 5*time.Minute)
 			plan := stress.Plan{Seed: set.seed, Iterations: set.iterations * 2, FaultRate: set.faultRate,
 				Faults: clusterFaults, Modes: []string{rehearse.FilePull, rehearse.ConfigPush}, Targets: targets}
 			start := time.Now()
-			per := func(ctx context.Context, it stress.Item) stress.Result {
-				ictx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-				defer cancel()
-				return cr.iterate(ictx, it)
-			}
-			results := stress.Run(cr.session, plan.Items(), set.workers, per)
+			results := stress.Run(cr.session, plan.Items(), set.workers, cr.iterate)
 			t.Logf("%d iterations and %d recoveries in %s", len(results), len(cr.recoveries), time.Since(start).Round(time.Second))
 			requireIterations(t, results)
 			cr.reportStop(t, len(results), len(plan.Items()))

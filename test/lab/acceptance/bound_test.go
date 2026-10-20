@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -113,5 +114,47 @@ func TestBoundedRemote(t *testing.T) {
 	out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
 	if err != nil || strings.TrimSpace(string(out)) != "it's 2" {
 		t.Errorf("%s ran as %q, %v", cmd, out, err)
+	}
+}
+
+// iterationContext takes lock, when there is one, and only then starts an
+// iteration's timeout d; the caller releases the lock. Started before the
+// wait, a server-wide fault queued behind others for minutes ran on a
+// context nearly spent: the probe, killed after its write, left a key no
+// leftover check counted (ST-4 on c5, 20261020T174757Z).
+func iterationContext(lock sync.Locker, d time.Duration) (context.Context, context.CancelFunc) {
+	if lock != nil {
+		lock.Lock()
+	}
+	return context.WithTimeout(context.Background(), d)
+}
+
+// TestIterationContext: the timeout starts once the lock is held, so an
+// iteration queued behind others keeps all of its time; without a lock,
+// it starts at once.
+func TestIterationContext(t *testing.T) {
+	var mu sync.Mutex
+	mu.Lock()
+	type got struct {
+		ctx    context.Context
+		cancel context.CancelFunc
+	}
+	ch := make(chan got)
+	go func() {
+		ctx, cancel := iterationContext(&mu, 200*time.Millisecond)
+		ch <- got{ctx, cancel}
+	}()
+	time.Sleep(300 * time.Millisecond) // longer than the timeout, waiting for the lock
+	mu.Unlock()
+	g := <-ch
+	if err := g.ctx.Err(); err != nil {
+		t.Errorf("after the wait for the lock: %v, want time left", err)
+	}
+	g.cancel()
+	mu.Unlock() // iterationContext took it: the caller releases it
+	ctx, cancel := iterationContext(nil, time.Minute)
+	defer cancel()
+	if d, ok := ctx.Deadline(); !ok || time.Until(d) > time.Minute || time.Until(d) < 59*time.Second {
+		t.Errorf("without a lock: deadline %v (%t), want a minute from now", d, ok)
 	}
 }
