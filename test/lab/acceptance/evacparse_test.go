@@ -2,6 +2,7 @@ package acceptance
 
 import (
 	"maps"
+	"os/exec"
 	"regexp"
 	"slices"
 	"strconv"
@@ -39,37 +40,73 @@ func settled(p map[string]stress.Placement, names []string, evacuee string, onEv
 }
 
 // busyDataset is ZFS's refusal to destroy a dataset still mounted
-// somewhere, as LXD reports it.
-var busyDataset = regexp.MustCompile(`cannot destroy '([^']+)': dataset is busy`)
+// somewhere, as LXD reports it: "cannot destroy 'DATASET': dataset is
+// busy" (5.21.8), or, after "zfs destroy -r DATASET", "cannot unmount
+// 'MOUNTPOINT': pool or dataset is busy" (6.9).
+var busyDataset = regexp.MustCompile(`(?:zfs destroy (?:-r )?([^\s:]+): exit status \d+ \()?cannot (destroy|unmount) '([^']+)': (?:pool or )?dataset is busy`)
 
 // busyDatasets are the datasets out names as busy, once each, in order.
 func busyDatasets(out string) []string {
 	var ds []string
 	for _, m := range busyDataset.FindAllStringSubmatch(out, -1) {
-		if !slices.Contains(ds, m[1]) {
-			ds = append(ds, m[1])
+		d := m[1]
+		if m[2] == "destroy" {
+			d = m[3]
+		}
+		if d != "" && !slices.Contains(ds, d) {
+			ds = append(ds, d)
 		}
 	}
 	return ds
 }
 
-// holdersScript lists, on a member, the processes whose mount namespace
-// still mounts dataset (STR-73): a "holder PID COMMAND LINE" line each.
-func holdersScript(dataset string) string {
-	return `for f in /proc/[0-9]*/mountinfo; do ` +
-		`if grep -qF -- ' - zfs ` + dataset + ` ' "$f" 2>/dev/null; then p=${f#/proc/}; p=${p%/mountinfo}; ` +
-		`echo "holder $p $(tr '\0' ' ' < /proc/$p/cmdline 2>/dev/null)"; fi; done; true`
-}
+// failedMigration is how LXD names an instance whose migration failed:
+// in the evacuation's error, and in the members' journals.
+var failedMigration = regexp.MustCompile(`Failed migrating instance "([^"]+)"|msg="Failed migration on (?:source|target)" clusterMoveSourceName=(\S+)`)
 
-// parseHolders reads holdersScript's output as "PID COMMAND LINE" items.
-func parseHolders(out string) []string {
-	var hs []string
-	for ln := range strings.SplitSeq(out, "\n") {
-		if rest, ok := strings.CutPrefix(strings.TrimSpace(ln), "holder "); ok {
-			hs = append(hs, strings.TrimSpace(rest))
+// failedMigrations are the instances out names as failing to migrate,
+// once each, in order.
+func failedMigrations(out string) []string {
+	var names []string
+	for _, m := range failedMigration.FindAllStringSubmatch(out, -1) {
+		n := m[1] + m[2]
+		if !slices.Contains(names, n) {
+			names = append(names, n)
 		}
 	}
-	return hs
+	return names
+}
+
+// samplerScript samples, once a second for up to 20 minutes, the
+// processes of LXD (their command line names fork, sftp or lxd) that run
+// in a mount namespace other than LXD's and mount one of the evacuation
+// fleet's datasets (STR-73): an LXD helper inside an instance, such as
+// the file API's, holds its dataset busy. A dataset still mounted in
+// LXD's own namespace is not a holder: an unmount that failed leaves it
+// there. A "holder UNIX-TIME PID DATASET COMMAND LINE" line each time.
+func samplerScript() string {
+	return `lxd=$(pgrep -o -f 'lxd --logfile'); lns=$(readlink /proc/$lxd/ns/mnt); end=$(($(date +%s)+1200)); ` +
+		`while [ $(date +%s) -lt $end ]; do for d in /proc/[0-9]*; do ` +
+		`ns=$(readlink $d/ns/mnt 2>/dev/null) || continue; [ "$ns" = "$lns" ] && continue; ` +
+		`cmd=$(tr '\0' ' ' < $d/cmdline 2>/dev/null); case "$cmd" in *fork*|*sftp*|*lxd*) ;; *) continue;; esac; ` +
+		`for ds in $(awk '{for(i=1;i<=NF;i++) if($i=="-"){print $(i+2); break}}' $d/mountinfo 2>/dev/null | grep -E '/(containers|virtual-machines)/([a-z0-9-]+_)?e-[cv][0-9]+(\.block)?$' | sort -u); do ` +
+		`echo "holder $(date +%s) ${d#/proc/} $ds $cmd"; done; done; sleep 1; done`
+}
+
+// parseSamples reads the sampler's lines into the holders of each
+// dataset, as "PID COMMAND LINE (first seen at UNIX-TIME)", once per pid.
+func parseSamples(out string) map[string][]string {
+	holders := map[string][]string{}
+	seen := map[string]bool{}
+	for ln := range strings.SplitSeq(out, "\n") {
+		f := strings.Fields(ln)
+		if len(f) < 4 || f[0] != "holder" || seen[f[2]+" "+f[3]] {
+			continue
+		}
+		seen[f[2]+" "+f[3]] = true
+		holders[f[3]] = append(holders[f[3]], strings.TrimSpace(f[2]+" "+strings.Join(f[4:], " "))+" (first seen at "+f[1]+")")
+	}
+	return holders
 }
 
 // lxdErrors keeps the error lines of LXD's journal output, each at most
@@ -155,8 +192,9 @@ func TestSettled(t *testing.T) {
 func TestBusyDatasets(t *testing.T) {
 	out := `Error: Failed to evacuate: Failed deleting instance "s-002" in project "default": Failed deleting storage volume: Failed to run: zfs destroy -r default/containers/s-002: exit status 1 (cannot destroy 'default/containers/s-002': dataset is busy)
 time="..." level=error msg="..." err="cannot destroy 'default/containers/s-002': dataset is busy"
-cannot destroy 'default/virtual-machines/e-v1.block': dataset is busy`
-	if got, want := busyDatasets(out), []string{"default/containers/s-002", "default/virtual-machines/e-v1.block"}; !slices.Equal(got, want) {
+cannot destroy 'default/virtual-machines/e-v1.block': dataset is busy
+Error: Failed migrating instance "e-c1" in project "default": Failed deleting instance on source member: Error deleting storage volume: Failed running: zfs destroy -r default/containers/e-c1: exit status 1 (cannot unmount '/var/snap/lxd/common/lxd/storage-pools/default/containers/e-c1': pool or dataset is busy) (cluster member remains evacuated)`
+	if got, want := busyDatasets(out), []string{"default/containers/s-002", "default/virtual-machines/e-v1.block", "default/containers/e-c1"}; !slices.Equal(got, want) {
 		t.Errorf("busy %v, want %v", got, want)
 	}
 	if got := busyDatasets("Error: already exists on migration target storage"); len(got) != 0 {
@@ -164,14 +202,35 @@ cannot destroy 'default/virtual-machines/e-v1.block': dataset is busy`
 	}
 }
 
-// TestHolders: the script matches the dataset as a mount's source only,
-// and its output parses to pid and command line.
-func TestHolders(t *testing.T) {
-	if s := holdersScript("default/containers/e-c1"); !strings.Contains(s, `' - zfs default/containers/e-c1 '`) {
-		t.Errorf("script %s", s)
+// TestFailedMigrations: the instances LXD names as failing to migrate,
+// in the step's output or its journals, once each.
+func TestFailedMigrations(t *testing.T) {
+	out := `Error: Failed migrating instance "e-c1" in project "default": Failed deleting instance on source member
+time="x" level=error msg="Failed migration on source" clusterMoveSourceName=e-c1 err="..."
+time="x" level=error msg="Failed migration on target" clusterMoveSourceName=e-v2 err="..."`
+	if got, want := failedMigrations(out), []string{"e-c1", "e-v2"}; !slices.Equal(got, want) {
+		t.Errorf("failed %v, want %v", got, want)
 	}
-	out := "holder 4242 /snap/lxd/current/bin/lxd forkfile -- /var/snap/lxd/common/lxd/containers/e-c1 \nnoise\nholder 77 sftp-server\n"
-	if got, want := parseHolders(out), []string{"4242 /snap/lxd/current/bin/lxd forkfile -- /var/snap/lxd/common/lxd/containers/e-c1", "77 sftp-server"}; !slices.Equal(got, want) {
+	if got := failedMigrations("Error: timeout"); len(got) != 0 {
+		t.Errorf("none named: %v", got)
+	}
+}
+
+// TestSamples: the sampler's script is valid shell; its lines parse to
+// each dataset's holders, once per pid.
+func TestSamples(t *testing.T) {
+	if out, err := exec.Command("sh", "-n", "-c", samplerScript()).CombinedOutput(); err != nil {
+		t.Errorf("sampler script: %v %s", err, out)
+	}
+	out := "holder 100 4242 default/containers/e-c1 /snap/lxd/40916/bin/lxd forkfile -- 3 \n" +
+		"holder 101 4242 default/containers/e-c1 /snap/lxd/40916/bin/lxd forkfile -- 3\nnoise\n" +
+		"holder 101 77 default/containers/e-c2 sftp-server\n"
+	got := parseSamples(out)
+	want := map[string][]string{
+		"default/containers/e-c1": {"4242 /snap/lxd/40916/bin/lxd forkfile -- 3 (first seen at 100)"},
+		"default/containers/e-c2": {"77 sftp-server (first seen at 101)"},
+	}
+	if !maps.EqualFunc(got, want, slices.Equal) {
 		t.Errorf("holders %v, want %v", got, want)
 	}
 }

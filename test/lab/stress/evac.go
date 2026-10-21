@@ -45,10 +45,13 @@ type Placement struct {
 
 // EvacStep is an evacuate or a restore of a cycle (STR-71).
 type EvacStep struct {
-	OK         bool   `json:"ok"`
-	Error      string `json:"error,omitempty"`
-	Tries      int    `json:"tries"`
-	DurationMS int64  `json:"duration_ms"`
+	OK    bool   `json:"ok"`
+	Error string `json:"error,omitempty"`
+	// Failed are the instances LXD named as failing to migrate: it stops
+	// a step at its first failure, so the others may never be tried.
+	Failed     []string `json:"failed,omitempty"`
+	Tries      int      `json:"tries"`
+	DurationMS int64    `json:"duration_ms"`
 	// Placement is where each instance ended.
 	Placement map[string]Placement `json:"placement"`
 	// Orphans are the instance volumes without their instance after the
@@ -102,8 +105,12 @@ type EvacGroup struct {
 	EvacuateFailed    int    `json:"evacuate_failed"`
 	RestoreAttempted  int    `json:"restore_attempted"`
 	RestoreFailed     int    `json:"restore_failed"`
-	VolumesLeft       int    `json:"volumes_left"`
-	BusyErrors        int    `json:"busy_errors"`
+	// EvacuateSkipped and RestoreSkipped count the migrations a step that
+	// stopped at an earlier failure never tried: not attempted.
+	EvacuateSkipped int `json:"evacuate_skipped"`
+	RestoreSkipped  int `json:"restore_skipped"`
+	VolumesLeft     int `json:"volumes_left"`
+	BusyErrors      int `json:"busy_errors"`
 }
 
 // Rate is the failure rate of the group's migrations, both directions: the
@@ -168,12 +175,20 @@ func SummarizeEvac(cycles []EvacCycle, settings map[string]string) EvacSummary {
 		}
 		for name, typ := range c.Types {
 			g := group(typ)
+			if untried(c.Evacuate, name, c.Evacuee, true) {
+				g.EvacuateSkipped++
+				continue
+			}
 			g.EvacuateAttempted++
 			if !placed(c.Evacuate.Placement[name], c.Evacuee, false) {
 				g.EvacuateFailed++
 				continue
 			}
 			// only an instance the evacuation moved has a restore to make
+			if untried(c.Restore, name, c.Evacuee, false) {
+				g.RestoreSkipped++
+				continue
+			}
 			g.RestoreAttempted++
 			if !placed(c.Restore.Placement[name], c.Evacuee, true) {
 				g.RestoreFailed++
@@ -237,6 +252,14 @@ func placed(p Placement, evacuee string, onEvacuee bool) bool {
 	return p.Member != "" && (p.Member == evacuee) == onEvacuee && p.State == "RUNNING"
 }
 
+// untried reports whether a step that failed left an instance as it
+// was, running where it started (on the evacuee for an evacuation), and
+// did not name it as failed: LXD stopped before trying it.
+func untried(s EvacStep, name, evacuee string, onEvacuee bool) bool {
+	p := s.Placement[name]
+	return !s.OK && !slices.Contains(s.Failed, name) && p.State == "RUNNING" && (p.Member == evacuee) == onEvacuee
+}
+
 // DatasetInstance is the instance a ZFS dataset of LXD belongs to:
 // pool/containers/[project_]name, pool/virtual-machines/[project_]name
 // with a ".block" for a VM's disk, and "@snapshot" for a snapshot.
@@ -271,10 +294,10 @@ func (s EvacSummary) WriteMarkdown(w io.Writer) error {
 	for _, k := range slices.Sorted(maps.Keys(s.Settings)) {
 		fmt.Fprintf(&b, "- `%s` = `%s`\n", k, s.Settings[k])
 	}
-	b.WriteString("\n## Migrations\n\n| LXD | Arm | Type | Evacuate failed | Restore failed | Volumes left | Busy datasets | Failure rate |\n|---|---|---|---|---|---|---|---|\n")
+	b.WriteString("\n## Migrations\n\n| LXD | Arm | Type | Evacuate failed | Restore failed | Not attempted | Volumes left | Busy datasets | Failure rate |\n|---|---|---|---|---|---|---|---|---|\n")
 	for _, g := range s.Groups {
-		fmt.Fprintf(&b, "| %s | %s | %s | %d of %d | %d of %d | %d | %d | %s |\n", g.Version, g.Arm, g.Type,
-			g.EvacuateFailed, g.EvacuateAttempted, g.RestoreFailed, g.RestoreAttempted, g.VolumesLeft, g.BusyErrors, g.Rate())
+		fmt.Fprintf(&b, "| %s | %s | %s | %d of %d | %d of %d | %d | %d | %d | %s |\n", g.Version, g.Arm, g.Type,
+			g.EvacuateFailed, g.EvacuateAttempted, g.RestoreFailed, g.RestoreAttempted, g.EvacuateSkipped+g.RestoreSkipped, g.VolumesLeft, g.BusyErrors, g.Rate())
 	}
 	b.WriteString("\n## Cycles\n\n| LXD | Arm | Cycles | Blocked | Evacuate errors | Restore errors | Evacuate p50 | Evacuate max | Restore p50 | Restore max |\n|---|---|---|---|---|---|---|---|---|---|\n")
 	for _, c := range s.Cycles {

@@ -58,12 +58,14 @@ func TestSTR75Migrations(t *testing.T) {
 	bad.Evacuate.OK = false
 	bad.Evacuate.Error = "Failed deleting instance \"e-c1\": cannot destroy 'default/containers/e-c1': dataset is busy"
 	bad.Evacuate.Placement = placement("c5n2", "c5n3", "e-c1")
+	bad.Evacuate.Failed = []string{"e-c1"}
 	bad.Evacuate.Busy = []string{"default/containers/e-c1"}
 	bad.Evacuate.Holders = map[string][]string{"default/containers/e-c1": {"4242 sftp-server"}}
 	bad.Evacuate.Orphans = []string{"e-c2@c5n3"}
 	// the blocked restore brought none back: e-c1 never left, the others
 	// failed their restore
-	bad.Restore = EvacStep{Tries: 3, DurationMS: 90000, Error: "already exists on migration target storage", Placement: placement("c5n2", "c5n3", "e-c1")}
+	bad.Restore = EvacStep{Tries: 3, DurationMS: 90000, Error: "already exists on migration target storage", Placement: placement("c5n2", "c5n3", "e-c1"),
+		Failed: []string{"e-c2", "e-v1", "e-v2"}}
 	bad.Blocked, bad.Reset = true, true
 	stopped := cycle(2, ArmIdle)
 	// a VM back on the evacuee but stopped
@@ -125,6 +127,47 @@ func TestSTR75FailedSteps(t *testing.T) {
 	}
 }
 
+// TestSTR75AbortedStep: LXD stops an evacuation at its first failed
+// migration; the instances it never tried, still running on the evacuee,
+// are not attempted, not failed.
+func TestSTR75AbortedStep(t *testing.T) {
+	c := cycle(0, ArmFiles)
+	c.Evacuate.OK, c.Evacuate.Failed = false, []string{"e-c1"}
+	c.Evacuate.Placement = placement("c5n3", "c5n1", "e-c1")
+	stopped := c.Evacuate.Placement["e-c1"]
+	stopped.State = "STOPPED"
+	c.Evacuate.Placement["e-c1"] = stopped
+	c.Restore = EvacStep{Failed: []string{"e-c1"}, Placement: c.Evacuate.Placement}
+	c.Blocked = true
+	s := SummarizeEvac([]EvacCycle{c}, nil)
+	for _, g := range s.Groups {
+		switch g.Type {
+		case Container:
+			if g.EvacuateAttempted != 1 || g.EvacuateFailed != 1 || g.EvacuateSkipped != 1 || g.RestoreAttempted != 0 {
+				t.Errorf("containers %+v", g)
+			}
+		case VM:
+			if g.EvacuateAttempted != 0 || g.EvacuateSkipped != 2 || g.EvacuateFailed != 0 {
+				t.Errorf("VMs %+v", g)
+			}
+		}
+	}
+	// a restore that stops early leaves the instances it never tried
+	// elsewhere: skipped too
+	r := cycle(1, ArmIdle)
+	r.Restore.OK, r.Restore.Failed = false, []string{"e-v1"}
+	r.Restore.Placement = placement("c5n2", "")
+	s = SummarizeEvac([]EvacCycle{r}, nil)
+	for _, g := range s.Groups {
+		if g.Type == VM && (g.RestoreAttempted != 1 || g.RestoreFailed != 1 || g.RestoreSkipped != 1) {
+			t.Errorf("VM restores %+v", g)
+		}
+		if g.Type == Container && (g.RestoreAttempted != 0 || g.RestoreSkipped != 2) {
+			t.Errorf("container restores %+v", g)
+		}
+	}
+}
+
 // TestSTR76Verdict: only harness errors fail ST-6; the bound on the
 // failure rate is the rule of three without failures, the observed rate
 // with them.
@@ -165,8 +208,8 @@ func TestSTR75Report(t *testing.T) {
 	}
 	for _, want := range []string{
 		"# Evacuation reliability summary", "**No harness error.** 1 cycles, 0 blocked.", "- `cluster` = `c5`",
-		"| 5.21.8 | files | container | 0 of 2 | 0 of 2 | 0 | 0 | below 75.0 % (none failed of 4) |",
-		"| 5.21.8 | files | virtual-machine | 0 of 2 | 0 of 2 | 0 | 1 |",
+		"| 5.21.8 | files | container | 0 of 2 | 0 of 2 | 0 | 0 | 0 | below 75.0 % (none failed of 4) |",
+		"| 5.21.8 | files | virtual-machine | 0 of 2 | 0 of 2 | 0 | 0 | 1 |",
 		"| 5.21.8 | files | 1 | 0 | 0 | 0 | 60000 ms | 60000 ms | 90000 ms | 90000 ms |",
 		"cycle 0, c5n3, default/virtual-machines/e-v1.block: no holder found",
 	} {

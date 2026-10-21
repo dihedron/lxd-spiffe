@@ -32,11 +32,14 @@ type evacRun struct {
 	types   map[string]string
 }
 
-// evacReader marks the files arm's readers on the entry member;
-// evacReaders matches them for pkill -f but not the command that runs it.
+// evacReader marks the files arm's readers on the entry member, and
+// evacSampler the holder samplers on every member; evacReaders and
+// evacSamplers match them for pkill -f but not the command that runs it.
 const (
-	evacReader  = "evac-reader"
-	evacReaders = "'[e]vac-reader'"
+	evacReader   = "evac-reader"
+	evacReaders  = "'[e]vac-reader'"
+	evacSampler  = "evac-sampler"
+	evacSamplers = "'[e]vac-sampler'"
 )
 
 // newEvacRun picks the evacuee: neither the entry member nor the one
@@ -73,6 +76,9 @@ func (er *evacRun) remote(d time.Duration, command string) (string, error) {
 
 // teardown deletes the evacuation fleet and stops any reader (STR-02).
 func (er *evacRun) teardown() error {
+	for _, m := range er.l.members(er.cluster) {
+		_, _ = er.l.trySSH(m, "sudo pkill -f "+evacSamplers)
+	}
 	_, err := er.remote(5*time.Minute, `pkill -f `+evacReaders+`; for i in $(lxc list -c n -f csv '^e-[cv][0-9]+$'); do lxc delete --force "$i"; done; true`)
 	return err
 }
@@ -150,6 +156,36 @@ func poll(d time.Duration, check func() bool) bool {
 	}
 }
 
+// startStep starts what runs during a step: on every member the holder
+// sampler (STR-73), and in the files arm the readers (startReaders). The
+// returned function stops them and records the holders and the reads.
+func (er *evacRun) startStep(arm string) (stop func(*stress.EvacStep), err error) {
+	script := "rm -f /tmp/evac-holders.log; setsid nohup sh -c " + shellQuote(samplerScript()) + " " + evacSampler + " >/tmp/evac-holders.log 2>&1 </dev/null &"
+	for _, m := range er.l.members(er.cluster) {
+		if _, err := er.l.trySSH(m, "sudo sh -c "+shellQuote(script)); err != nil {
+			return nil, fmt.Errorf("starting the holder sampler on %s: %w", m, err)
+		}
+	}
+	stopReaders, err := er.startReaders(arm)
+	if err != nil {
+		return nil, err
+	}
+	return func(s *stress.EvacStep) {
+		stopReaders(s)
+		for _, m := range er.l.members(er.cluster) {
+			out, _ := er.l.trySSH(m, boundedRemote(time.Minute, "pkill -f "+evacSamplers+`; awk '!seen[$3" "$4]++' /tmp/evac-holders.log`))
+			for ds, hs := range parseSamples(out) {
+				if s.Holders == nil {
+					s.Holders = map[string][]string{}
+				}
+				for _, h := range hs {
+					s.Holders[ds] = append(s.Holders[ds], m+": "+h)
+				}
+			}
+		}
+	}, nil
+}
+
 // startReaders starts, in the files arm, one reader per instance on the
 // entry member, pulling /etc/hostname through the files API one request
 // at a time, as file_pull does (STR-72), on LXD's local socket (lxc query
@@ -173,18 +209,10 @@ func (er *evacRun) startReaders(arm string) (stop func(*stress.EvacStep), err er
 	}, nil
 }
 
-// diagnose records, after a step started at since, where the instances
-// are, the orphaned volumes, LXD's errors on every member, and for each
-// dataset LXD found busy the processes that still mount it (STR-71 step
-// 3, STR-73).
-func (er *evacRun) diagnose(s *stress.EvacStep, since time.Time, output string) error {
-	var err error
-	if s.Placement, err = er.placement(); err != nil {
-		return fmt.Errorf("listing the fleet: %w", err)
-	}
-	if s.Orphans, err = er.orphans(); err != nil {
-		return fmt.Errorf("listing the volumes: %w", err)
-	}
+// inspect records, after a step started at since, LXD's errors on every
+// member, the datasets it found busy, and the instances it names as
+// failing to migrate (STR-71 step 3).
+func (er *evacRun) inspect(s *stress.EvacStep, since time.Time, output string) {
 	journals := output
 	for _, m := range er.l.members(er.cluster) {
 		j, _ := er.l.trySSH(m, boundedRemote(time.Minute, fmt.Sprintf("journalctl -u snap.lxd.daemon --since @%d --no-pager -o cat", since.Unix())))
@@ -194,16 +222,26 @@ func (er *evacRun) diagnose(s *stress.EvacStep, since time.Time, output string) 
 		journals += "\n" + j
 	}
 	s.Busy = busyDatasets(journals)
-	for _, ds := range s.Busy {
-		if s.Holders == nil {
-			s.Holders = map[string][]string{}
-		}
-		for _, m := range er.l.members(er.cluster) {
-			out, _ := er.l.trySSH(m, boundedRemote(time.Minute, holdersScript(ds)))
-			for _, h := range parseHolders(out) {
-				s.Holders[ds] = append(s.Holders[ds], m+": "+h)
-			}
-		}
+	s.Failed = failedMigrations(journals)
+}
+
+// settle waits, after a step that succeeded, up to 5 minutes for the
+// instances to run where it should leave them (and, after a restore, for
+// the cluster's health); LXD stops a failed step, so nothing is waited
+// for. Then it records where the instances are and the orphaned volumes.
+func (er *evacRun) settle(s *stress.EvacStep, onEvacuee bool) error {
+	if s.OK {
+		poll(5*time.Minute, func() bool {
+			p, err := er.placement()
+			return err == nil && settled(p, er.names, er.evacuee, onEvacuee) && (!onEvacuee || er.healthy())
+		})
+	}
+	var err error
+	if s.Placement, err = er.placement(); err != nil {
+		return fmt.Errorf("listing the fleet: %w", err)
+	}
+	if s.Orphans, err = er.orphans(); err != nil {
+		return fmt.Errorf("listing the volumes: %w", err)
 	}
 	return nil
 }
@@ -215,19 +253,19 @@ func (er *evacRun) evacuate(arm string) (stress.EvacStep, error) {
 	if strings.HasPrefix(er.version, "5.") {
 		flag = "--force"
 	}
-	stop, err := er.startReaders(arm)
+	stop, err := er.startStep(arm)
 	if err != nil {
 		return stress.EvacStep{}, err
 	}
 	since := time.Now()
 	out, err := er.remote(15*time.Minute, "lxc cluster evacuate "+er.evacuee+" "+flag)
 	s := stress.EvacStep{OK: err == nil, Tries: 1, DurationMS: time.Since(since).Milliseconds()}
+	stop(&s)
 	if err != nil {
 		s.Error = lastLine(out)
 	}
-	poll(5*time.Minute, func() bool { p, err := er.placement(); return err == nil && settled(p, er.names, er.evacuee, false) })
-	stop(&s)
-	return s, er.diagnose(&s, since, out)
+	er.inspect(&s, since, out)
+	return s, er.settle(&s, false)
 }
 
 // restore is step 4: the evacuee restored, tried again for up to 5
@@ -235,7 +273,7 @@ func (er *evacRun) evacuate(arm string) (stress.EvacStep, error) {
 // then up to 5 minutes for the cluster's health and the instances to run
 // on the evacuee again.
 func (er *evacRun) restore(arm string) (s stress.EvacStep, blocked bool, err error) {
-	stop, err := er.startReaders(arm)
+	stop, err := er.startStep(arm)
 	if err != nil {
 		return s, false, err
 	}
@@ -262,14 +300,33 @@ func (er *evacRun) restore(arm string) (s stress.EvacStep, blocked bool, err err
 		}
 	}
 	s.DurationMS = time.Since(since).Milliseconds()
-	if s.OK {
-		poll(5*time.Minute, func() bool {
-			p, err := er.placement()
-			return er.healthy() && err == nil && settled(p, er.names, er.evacuee, true)
-		})
-	}
 	stop(&s)
-	return s, blocked, er.diagnose(&s, since, strings.Join(outputs, "\n"))
+	er.inspect(&s, since, strings.Join(outputs, "\n"))
+	return s, blocked, er.settle(&s, true)
+}
+
+// quiet waits up to 3 minutes until no LXD operation runs on the cluster
+// and every VM's agent answers: a VM still in its first-boot restart
+// refused its migration ("busy running a restart operation", smoke on
+// 6.9). It reports what it waited for in vain.
+func (er *evacRun) quiet() string {
+	var vms []string
+	for _, n := range er.names {
+		if er.types[n] == stress.VM {
+			vms = append(vms, n)
+		}
+	}
+	check := `lxc operation list -f csv | grep -q ',RUNNING,' && echo operations; for v in ` + strings.Join(vms, " ") +
+		`; do timeout -k 5 20 lxc exec "$v" -- true >/dev/null 2>&1 || echo "$v"; done; true`
+	var last string
+	if poll(3*time.Minute, func() bool {
+		out, err := er.remote(2*time.Minute, check)
+		last = strings.Join(strings.Fields(out), " ")
+		return err == nil && last == ""
+	}) {
+		return ""
+	}
+	return "not quiet after 3 minutes: " + last
 }
 
 // healthy reports whether every member is ONLINE and a database voter
@@ -323,6 +380,9 @@ func (er *evacRun) reset() error {
 func (er *evacRun) cycle(n int, arm string) (c stress.EvacCycle) {
 	c = stress.EvacCycle{N: n, Server: er.cluster, Version: er.version, Arm: arm, Evacuee: er.evacuee, Types: er.types, Start: time.Now()}
 	defer func() { c.End = time.Now() }()
+	if q := er.quiet(); q != "" {
+		c.Notes = append(c.Notes, q)
+	}
 	p, err := er.placement()
 	orphans, err2 := er.orphans()
 	if err != nil || err2 != nil || !settled(p, er.names, er.evacuee, true) || len(orphans) > 0 {
@@ -405,8 +465,9 @@ func TestST6Evacuation(t *testing.T) {
 					break
 				}
 			}
+			harness, _ := exec.Command("git", "-C", l.repo, "describe", "--always", "--dirty").Output()
 			settings := map[string]string{
-				"session": "ST-6", "cluster": cluster, "version": er.version, "evacuee": er.evacuee,
+				"session": "ST-6", "cluster": cluster, "version": er.version, "evacuee": er.evacuee, "harness": strings.TrimSpace(string(harness)),
 				"containers": strconv.Itoa(containers), "vms": strconv.Itoa(vms), "cycles": strconv.Itoa(cycles),
 			}
 			sum := stress.SummarizeEvac(out, settings)
