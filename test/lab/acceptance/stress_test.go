@@ -5,6 +5,7 @@ package acceptance
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -430,11 +431,19 @@ func (l *lab) buildFleets(t *testing.T, names []string) {
 // (STR-41, STR-42).
 func (l *lab) writeSummary(t *testing.T, name string, sum stress.Summary, results []stress.Result) {
 	t.Helper()
+	l.writeRun(t, name, sum.OK(), sum.WriteMarkdown, sum.WriteJSON, func(w io.Writer) error { return stress.WriteResults(w, results) })
+}
+
+// writeRun writes a run's summary.md, summary.json and results.jsonl
+// into its evidence directory and, with LAB_COLLECT=yes, when the run is
+// ok, copies them to docs/validation/<name>/.
+func (l *lab) writeRun(t *testing.T, name string, ok bool, md, js, results func(io.Writer) error) {
+	t.Helper()
 	dir := filepath.Join(l.evidence, name)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	write := func(file string, fn func(*os.File) error) {
+	write := func(file string, fn func(io.Writer) error) {
 		f, err := os.Create(filepath.Join(dir, file))
 		if err != nil {
 			t.Fatal(err)
@@ -444,14 +453,14 @@ func (l *lab) writeSummary(t *testing.T, name string, sum stress.Summary, result
 			t.Fatal(err)
 		}
 	}
-	write("summary.md", func(f *os.File) error { return sum.WriteMarkdown(f) })
-	write("summary.json", func(f *os.File) error { return sum.WriteJSON(f) })
-	write("results.jsonl", func(f *os.File) error { return stress.WriteResults(f, results) })
-	md, _ := os.ReadFile(filepath.Join(dir, "summary.md"))
-	t.Logf("summary in %s:\n%s", dir, md)
-	// a run that broke an invariant is not collected: it stays in the
-	// working evidence for analysis
-	if os.Getenv("LAB_COLLECT") == "yes" && !t.Failed() && sum.OK() {
+	write("summary.md", md)
+	write("summary.json", js)
+	write("results.jsonl", results)
+	text, _ := os.ReadFile(filepath.Join(dir, "summary.md"))
+	t.Logf("summary in %s:\n%s", dir, text)
+	// a run that is not ok is not collected: it stays in the working
+	// evidence for analysis
+	if os.Getenv("LAB_COLLECT") == "yes" && !t.Failed() && ok {
 		dst := filepath.Join(l.repo, "docs", "validation", name)
 		if err := copyTree(dir, dst, nil); err != nil {
 			t.Fatalf("collecting the summary: %v", err)
