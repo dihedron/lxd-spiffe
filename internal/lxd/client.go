@@ -12,10 +12,12 @@ import (
 	"cmp"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -23,6 +25,7 @@ import (
 
 	lxdclient "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/dihedron/lxd-spiffe/internal/limits"
 	"github.com/dihedron/lxd-spiffe/pkg/metadata"
@@ -36,9 +39,15 @@ type Config struct {
 	// Endpoint is https://host:port or unix:///path/to/unix.socket.
 	Endpoint string
 	// Pin is the SHA-256 fingerprint of the server certificate, in hex,
-	// optionally prefixed by "sha256:" or separated by colons. Mandatory
-	// for https.
+	// optionally prefixed by "sha256:" or separated by colons. For https,
+	// exactly one of Pin and CAFile, unless Insecure (SEC-07).
 	Pin string
+	// CAFile is a PEM bundle the server certificate chain is verified
+	// against, instead of a pin.
+	CAFile string
+	// Insecure (dev_mode) connects without verifying the server, logging a
+	// warning on every connection; a pin or CA bundle, if set, still holds.
+	Insecure bool
 	// ClientCertFile and ClientKeyFile hold the TLS identity; both or none.
 	ClientCertFile string
 	ClientKeyFile  string
@@ -103,7 +112,7 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 	var base *url.URL
 	switch endpoint.Scheme {
 	case "https":
-		pin, err := normalizePin(cfg.Pin)
+		pin, roots, err := serverVerification(cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -112,9 +121,21 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 			certs = &certLoader{certFile: cfg.ClientCertFile, keyFile: cfg.ClientKeyFile}
 		}
 		args.TransportWrapper = func(t *http.Transport) lxdclient.HTTPTransporter {
-			// pinned mode: chain verification is replaced by the pin
-			t.TLSClientConfig.InsecureSkipVerify = true
-			t.TLSClientConfig.VerifyConnection = pinVerifier(pin)
+			switch {
+			case pin != "":
+				// pinned mode: chain verification is replaced by the pin
+				t.TLSClientConfig.InsecureSkipVerify = true
+				t.TLSClientConfig.VerifyConnection = pinVerifier(pin)
+			case roots != nil:
+				t.TLSClientConfig.InsecureSkipVerify = false
+				t.TLSClientConfig.RootCAs = roots
+			default:
+				t.TLSClientConfig.InsecureSkipVerify = true
+				t.TLSClientConfig.VerifyConnection = func(tls.ConnectionState) error {
+					slog.Warn("lxd: dev_mode: the LXD server certificate is not verified", "endpoint", endpoint.Host)
+					return nil
+				}
+			}
 			t.TLSClientConfig.MinVersion = tls.VersionTLS13
 			if certs != nil {
 				t.TLSClientConfig.Certificates = nil
@@ -140,6 +161,49 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("lxd: endpoint %q: scheme must be https or unix", cfg.Endpoint)
 	}
 	return &Client{sdk: sdk.UseProject(cfg.Project), base: base, project: cfg.Project}, nil
+}
+
+// serverVerification returns how an https server is verified: by pin, by
+// a CA bundle, or, only when Insecure, not at all (SEC-07).
+func serverVerification(cfg Config) (string, *x509.CertPool, error) {
+	switch {
+	case cfg.Pin != "" && cfg.CAFile != "":
+		return "", nil, errors.New("lxd: a pin or a CA bundle, not both")
+	case cfg.Pin != "":
+		pin, err := normalizePin(cfg.Pin)
+		return pin, nil, err
+	case cfg.CAFile != "":
+		data, err := os.ReadFile(cfg.CAFile) //nolint:gosec // G304: the operator's CA bundle
+		if err != nil {
+			return "", nil, fmt.Errorf("lxd: CA bundle: %w", err)
+		}
+		roots := x509.NewCertPool()
+		if !roots.AppendCertsFromPEM(data) {
+			return "", nil, errors.New("lxd: the CA bundle holds no PEM certificate")
+		}
+		return "", roots, nil
+	case cfg.Insecure:
+		return "", nil, nil
+	}
+	return "", nil, errors.New("lxd: a pin or a CA bundle is required for https")
+}
+
+// CheckBearerToken refuses a bearer token that LXD would never issue: one
+// that is not a JWT, or has no signature (FR-S19). The client presents the
+// token and never trusts it: LXD verifies its signature on every call,
+// with a key the client does not have.
+func CheckBearerToken(token string) error {
+	parsed, parts, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{})
+	if err != nil {
+		return fmt.Errorf("the bearer token is not a JWT: %w", err)
+	}
+	if alg, _ := parsed.Header["alg"].(string); strings.EqualFold(alg, "none") || alg == "" {
+		return errors.New("the bearer token is unsigned (alg none): LXD never issues such a token")
+	}
+	if len(parts) != 3 || parts[2] == "" {
+		return errors.New("the bearer token has no signature: LXD never issues such a token")
+	}
+	return nil
 }
 
 // normalizePin returns a SHA-256 fingerprint as 64 lowercase hex digits.

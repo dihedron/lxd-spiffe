@@ -2,9 +2,8 @@
 // node attestor. It will verify the evidence an LXD instance's SPIRE Agent
 // presents, then return the agent's SPIFFE ID and selectors.
 //
-// This is a stub: it accepts an empty configuration and answers every
-// attestation with codes.Unimplemented, until the attestation mechanism is
-// specified in .specs/lxd-spire-plugins.md.
+// Configure is implemented (attestor spec, Configuration → Server);
+// attestation answers codes.Unimplemented until it is.
 package lxdinstance
 
 import (
@@ -21,20 +20,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Config is the plugin_data block of the plugin in the SPIRE Server
-// configuration.
-type Config struct{}
-
-// configKeys lists the keys Config accepts: any other key is an error.
-var configKeys = []string{}
-
 // Plugin is the server-side lxd_instance node attestor.
 type Plugin struct {
 	nodeattestorv1.UnimplementedNodeAttestorServer
 	configv1.UnimplementedConfigServer
 
-	mu     sync.RWMutex
-	config *Config
+	mu       sync.RWMutex
+	settings *settings
 }
 
 // New returns an unconfigured Plugin.
@@ -47,24 +39,33 @@ func (p *Plugin) SetLogger(logger hclog.Logger) {
 	slog.SetDefault(slog.New(logging.NewHandler(logger)))
 }
 
-// Configure validates and applies the plugin_data block.
+// Configure validates the plugin_data block and replaces the settings as a
+// whole; a refused configuration leaves the previous one in place.
 func (p *Plugin) Configure(ctx context.Context, req *configv1.ConfigureRequest) (*configv1.ConfigureResponse, error) {
 	var c Config
 	if err := config.Decode(req.GetHclConfiguration(), &c, configKeys); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	s, err := newSettings(ctx, &c, req.GetCoreConfiguration().GetTrustDomain())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 	p.mu.Lock()
-	p.config = &c
+	p.settings = s
 	p.mu.Unlock()
 	return &configv1.ConfigureResponse{}, nil
 }
 
+// current returns the settings in force, nil before Configure.
+func (p *Plugin) current() *settings {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.settings
+}
+
 // Attest is not implemented yet.
 func (p *Plugin) Attest(stream nodeattestorv1.NodeAttestor_AttestServer) error {
-	p.mu.RLock()
-	configured := p.config != nil
-	p.mu.RUnlock()
-	if !configured {
+	if p.current() == nil {
 		return status.Error(codes.FailedPrecondition, "not configured")
 	}
 	return status.Error(codes.Unimplemented, "lxd_instance: attestation is not implemented yet")

@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
@@ -377,5 +378,78 @@ func TestKindOf(t *testing.T) {
 	wrapped := errors.Join(errors.New("ctx"), &Error{Kind: KindAuth, Err: errors.New("denied")})
 	if KindOf(wrapped) != KindAuth {
 		t.Errorf("KindOf(wrapped) = %v", KindOf(wrapped))
+	}
+}
+
+// caFile writes the fake's certificate as a CA bundle.
+func caFile(t *testing.T, fake *fakelxd.Server) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "ca.pem")
+	data := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: fake.Certificate().Raw})
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// TestSEC07CABundle: with ca_bundle_file instead of a pin the server
+// certificate is verified against the bundle; another CA is refused.
+func TestSEC07CABundle(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	cfg := fakeConfig(t, fake)
+	cfg.Pin, cfg.CAFile = "", caFile(t, fake)
+	if _, err := connect(t, cfg).Server(context.Background()); err != nil {
+		t.Fatalf("verified against its CA: %v", err)
+	}
+	// every httptest server presents the same certificate: another CA is
+	// a certificate of the test's own
+	cfg.CAFile, _, _ = clientCert(t, t.TempDir(), "other-ca")
+	if _, err := connect(t, cfg).Server(context.Background()); KindOf(err) != KindConnection {
+		t.Errorf("another CA: kind %q (%v)", KindOf(err), err)
+	}
+}
+
+// TestSEC07OneVerification: a pin or a CA bundle, not both, and one of
+// them unless Insecure (dev_mode), which connects without either.
+func TestSEC07OneVerification(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	both := fakeConfig(t, fake)
+	both.CAFile = caFile(t, fake)
+	if _, err := Connect(context.Background(), both); err == nil {
+		t.Error("pin and CA bundle accepted together")
+	}
+	neither := fakeConfig(t, fake)
+	neither.Pin = ""
+	if _, err := Connect(context.Background(), neither); err == nil {
+		t.Error("neither pin nor CA bundle accepted")
+	}
+	neither.Insecure = true
+	if _, err := connect(t, neither).Server(context.Background()); err != nil {
+		t.Errorf("dev_mode without verification: %v", err)
+	}
+	missing := fakeConfig(t, fake)
+	missing.Pin, missing.CAFile = "", filepath.Join(t.TempDir(), "absent.pem")
+	if _, err := Connect(context.Background(), missing); err == nil {
+		t.Error("a missing CA bundle accepted")
+	}
+}
+
+// TestFRS19CheckBearerToken: LXD never issues an unsigned token, so one is
+// refused before any request; the signature itself is LXD's to verify.
+func TestFRS19CheckBearerToken(t *testing.T) {
+	if err := CheckBearerToken(testToken); err != nil {
+		t.Errorf("signed token: %v", err)
+	}
+	// unsigned tokens are built here, not written out, so that no token
+	// outside the scanners' allowlist appears in the source
+	unsigned := testToken[:strings.LastIndex(testToken, ".")+1]
+	for name, token := range map[string]string{
+		"alg none":     base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none","typ":"JWT"}`)) + unsigned[strings.Index(unsigned, "."):],
+		"no signature": unsigned,
+		"not a JWT":    "opaque-token",
+	} {
+		if err := CheckBearerToken(token); err == nil {
+			t.Errorf("%s: accepted", name)
+		}
 	}
 }
