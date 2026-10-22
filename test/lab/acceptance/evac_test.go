@@ -186,19 +186,21 @@ func (er *evacRun) startStep(arm string) (stop func(*stress.EvacStep), err error
 	}, nil
 }
 
-// startReaders starts, in the files arm, one reader per instance on the
-// entry member, pulling /etc/hostname through the files API one request
-// at a time, as file_pull does (STR-72), on LXD's local socket (lxc query
-// wants JSON, the files API answers the file); each stops by itself after
-// 20 minutes. The returned function stops them and counts their reads.
+// startReaders starts, in the files arms, one reader per instance (per VM
+// in files-vm) on the entry member, pulling /etc/hostname through the
+// files API one request at a time, as file_pull does (STR-72), on LXD's
+// local socket (lxc query wants JSON, the files API answers the file);
+// each stops by itself after 20 minutes. The returned function stops them
+// and counts their reads.
 func (er *evacRun) startReaders(arm string) (stop func(*stress.EvacStep), err error) {
-	if arm != stress.ArmFiles {
+	names := er.read(arm)
+	if len(names) == 0 {
 		return func(*stress.EvacStep) {}, nil
 	}
 	reader := `end=$(($(date +%s)+1200)); while [ $(date +%s) -lt $end ]; do ` +
 		`if curl -sf -m 30 -o /dev/null --unix-socket /var/snap/lxd/common/lxd/unix.socket "http://lxd/1.0/instances/$1/files?path=/etc/hostname"; then echo o; else echo f; sleep 1; fi; ` +
 		`done >>/tmp/evac-reads-$1`
-	script := "rm -f /tmp/evac-reads-*; for n in " + strings.Join(er.names, " ") + "; do " +
+	script := "rm -f /tmp/evac-reads-*; for n in " + strings.Join(names, " ") + "; do " +
 		"setsid nohup sh -c " + shellQuote(reader) + " " + evacReader + ` "$n" >/dev/null 2>&1 </dev/null & done`
 	if _, err := er.l.trySSH(er.entry, "sudo sh -c "+shellQuote(script)); err != nil {
 		return nil, fmt.Errorf("starting the readers: %w", err)
@@ -207,6 +209,17 @@ func (er *evacRun) startReaders(arm string) (stop func(*stress.EvacStep), err er
 		out, _ := er.remote(time.Minute, `pkill -f `+evacReaders+`; for f in /tmp/evac-reads-*; do echo "reads $f $(grep -c o "$f") $(grep -c f "$f")"; done`)
 		s.Reads, s.ReadErrors = parseReads(out)
 	}, nil
+}
+
+// read is the instances the arm reads files of.
+func (er *evacRun) read(arm string) []string {
+	var names []string
+	for _, n := range er.names {
+		if arm == stress.ArmFiles || arm == stress.ArmFilesVM && er.types[n] == stress.VM {
+			names = append(names, n)
+		}
+	}
+	return names
 }
 
 // inspect records, after a step started at since, LXD's errors on every
@@ -439,6 +452,10 @@ func TestST6Evacuation(t *testing.T) {
 	if containers+vms == 0 || cycles == 0 {
 		t.Fatal("ST-6 needs instances and cycles: check LAB_EVAC_*")
 	}
+	arms, err := stress.ParseEvacArms(setting("LAB_EVAC_ARMS", ""))
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, cluster := range clusters {
 		t.Run(cluster, func(t *testing.T) {
 			er := newEvacRun(t, l, cluster, containers, vms)
@@ -454,7 +471,7 @@ func TestST6Evacuation(t *testing.T) {
 			t.Logf("%s: %d containers and %d VMs on %s in %s", cluster, containers, vms, er.evacuee, time.Since(start).Round(time.Second))
 			stamp := time.Now().UTC().Format("20060102T150405Z")
 			var out []stress.EvacCycle
-			for n, arm := range stress.EvacArms(cycles) {
+			for n, arm := range stress.EvacArms(cycles, arms) {
 				c := er.cycle(n, arm)
 				out = append(out, c)
 				t.Logf("cycle %d (%s): evacuate ok %t in %d ms, restore ok %t in %d ms (%d tries), orphans %v, busy %v, blocked %t, reset %t %s",
@@ -469,6 +486,7 @@ func TestST6Evacuation(t *testing.T) {
 			settings := map[string]string{
 				"session": "ST-6", "cluster": cluster, "version": er.version, "evacuee": er.evacuee, "harness": strings.TrimSpace(string(harness)),
 				"containers": strconv.Itoa(containers), "vms": strconv.Itoa(vms), "cycles": strconv.Itoa(cycles),
+				"arms": strings.Join(arms, ","),
 			}
 			sum := stress.SummarizeEvac(out, settings)
 			l.writeRun(t, stamp+"-st-6-"+cluster+"-summary", sum.OK(), sum.WriteMarkdown, sum.WriteJSON,

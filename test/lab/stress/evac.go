@@ -18,6 +18,9 @@ import (
 const (
 	ArmIdle  = "idle"  // no traffic during the cycle
 	ArmFiles = "files" // file-API reads during evacuate and restore
+	// ArmFilesVM reads the VMs' files only: LXD stops a step at its first
+	// failure, and in the files arm a container fails before any VM is tried.
+	ArmFilesVM = "files-vm"
 )
 
 // The instance types, as LXD names them.
@@ -26,14 +29,31 @@ const (
 	VM        = "virtual-machine"
 )
 
-// EvacArms is the order of the cycles: the arms alternate, idle first,
-// cycles times each, so that drift over time hits both alike.
-func EvacArms(cycles int) []string {
-	out := make([]string, 0, 2*cycles)
+// EvacArms is the order of the cycles: the arms alternate in the order
+// given, cycles times each, so that drift over time hits all alike.
+func EvacArms(cycles int, arms []string) []string {
+	out := make([]string, 0, len(arms)*cycles)
 	for range cycles {
-		out = append(out, ArmIdle, ArmFiles)
+		out = append(out, arms...)
 	}
 	return out
+}
+
+// ParseEvacArms reads LAB_EVAC_ARMS, arms separated by commas; empty is
+// every arm.
+func ParseEvacArms(s string) ([]string, error) {
+	if s == "" {
+		return []string{ArmIdle, ArmFiles, ArmFilesVM}, nil
+	}
+	var arms []string
+	for a := range strings.SplitSeq(s, ",") {
+		a = strings.TrimSpace(a)
+		if !slices.Contains([]string{ArmIdle, ArmFiles, ArmFilesVM}, a) || slices.Contains(arms, a) {
+			return nil, fmt.Errorf("LAB_EVAC_ARMS: %q is not an arm or comes twice (idle, files, files-vm)", a)
+		}
+		arms = append(arms, a)
+	}
+	return arms, nil
 }
 
 // Placement is where an instance is after a step, and in which state.

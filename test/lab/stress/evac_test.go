@@ -9,14 +9,26 @@ import (
 	"time"
 )
 
-// TestSTR72Arms: the arms alternate, idle first, each as many times as
-// asked.
+// TestSTR72Arms: the arms alternate in the order given, each as many
+// times as asked; the default is idle, files, files-vm, and an unknown
+// arm is refused.
 func TestSTR72Arms(t *testing.T) {
-	if got, want := EvacArms(3), []string{ArmIdle, ArmFiles, ArmIdle, ArmFiles, ArmIdle, ArmFiles}; !slices.Equal(got, want) {
+	if got, want := EvacArms(2, []string{ArmIdle, ArmFiles}), []string{ArmIdle, ArmFiles, ArmIdle, ArmFiles}; !slices.Equal(got, want) {
 		t.Errorf("arms %v, want %v", got, want)
 	}
-	if got := EvacArms(0); len(got) != 0 {
+	if got := EvacArms(0, []string{ArmIdle}); len(got) != 0 {
 		t.Errorf("no cycles: %v", got)
+	}
+	if got, err := ParseEvacArms(""); err != nil || !slices.Equal(got, []string{ArmIdle, ArmFiles, ArmFilesVM}) {
+		t.Errorf("default arms %v %v", got, err)
+	}
+	if got, err := ParseEvacArms(" files-vm "); err != nil || !slices.Equal(got, []string{ArmFilesVM}) {
+		t.Errorf("one arm %v %v", got, err)
+	}
+	for _, bad := range []string{"files,vm", "idle,,files", "idle,idle"} {
+		if _, err := ParseEvacArms(bad); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
 	}
 }
 
