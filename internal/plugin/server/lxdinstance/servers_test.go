@@ -22,7 +22,7 @@ func fakeServer(t *testing.T, fake *fakelxd.Server, f testFiles, bearer bool) *l
 	} else {
 		sc.ClientCertFile, sc.ClientKeyFile = f.cert, f.key
 	}
-	s, err := newLXDServer(context.Background(), "lab", sc, false)
+	s, err := newLXDServer(context.Background(), "lab", sc, false, breakerSettings{threshold: 5, open: 5 * time.Second, maxOpen: time.Minute})
 	if err != nil {
 		t.Fatal(err)
 	}

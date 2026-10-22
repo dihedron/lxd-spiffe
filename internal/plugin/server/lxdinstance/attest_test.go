@@ -428,3 +428,91 @@ func TestL16NetworkSelector(t *testing.T) {
 		}
 	}
 }
+
+// TestSEC09InflightRefused: with max_inflight = 1, an attestation while
+// another runs is refused before any LXD call.
+func TestSEC09InflightRefused(t *testing.T) {
+	h := newHarness(t, "limits {\n  max_inflight = 1\n}")
+	h.addInstance("default", "c1", "container", uuidA)
+	h.addInstance("default", "c2", "container", uuidB)
+	challenged, release := make(chan struct{}), make(chan struct{})
+	first := newAgent("c1")
+	first.answer = func(h *harness, a *agent, c *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse {
+		close(challenged)
+		<-release
+		h.writeProof("default", a, c, 0, 0o600, a.rightProof(c))
+		return done
+	}
+	errs := make(chan error, 1)
+	go func() {
+		_, err := h.attest("default", first)
+		errs <- err
+	}()
+	<-challenged
+	before := len(h.fake.Requests())
+	_, err := h.attest("default", newAgent("c2"))
+	checkRefusedWith(t, h, err, "rate_limited")
+	if len(h.fake.Requests()) != before {
+		t.Error("the refused attestation reached LXD")
+	}
+	close(release)
+	if err := <-errs; err != nil {
+		t.Errorf("the first attestation: %v", err)
+	}
+}
+
+// TestSEC09CooldownAttest: a claim that failed is refused until its
+// cooldown ends, then tried again.
+func TestSEC09CooldownAttest(t *testing.T) {
+	h := newHarness(t, "limits {\n  failure_cooldown = \"200ms\"\n}")
+	_, err := h.attest("default", newAgent("nobody"))
+	checkRefusedWith(t, h, err, "instance_not_found")
+	_, err = h.attest("default", newAgent("nobody"))
+	checkRefusedWith(t, h, err, "rate_limited")
+	time.Sleep(250 * time.Millisecond)
+	h.addInstance("default", "nobody", "container", uuidA)
+	if _, err := h.attest("default", newAgent("nobody")); err != nil {
+		t.Errorf("after the cooldown: %v\n%s", err, h.log)
+	}
+}
+
+// TestFRS15Breaker: transport failures in a row open the server's breaker;
+// while open, attestations fail without calling LXD; after breaker_open a
+// trial goes through, and its success closes it.
+func TestFRS15Breaker(t *testing.T) {
+	h := newHarness(t, "limits {\n  breaker_threshold = 2\n  breaker_open = \"1s\"\n}")
+	h.addInstance("default", "c4", "container", uuidA)
+	h.fake.FailAll(500, "database is not available")
+	for _, name := range []string{"c1", "c2"} {
+		_, err := h.attest("default", newAgent(name))
+		checkRefusedWith(t, h, err, "lxd_unavailable")
+	}
+	before := len(h.fake.Requests())
+	_, err := h.attest("default", newAgent("c3"))
+	checkRefusedWith(t, h, err, "lxd_unavailable")
+	if len(h.fake.Requests()) != before || !strings.Contains(h.log.String(), "circuit breaker is open") {
+		t.Fatalf("FR-S15: an open breaker let %d requests through:\n%s", len(h.fake.Requests())-before, h.log)
+	}
+	h.fake.FailAll(0, "")
+	// another claim than the trial's: a failure starts its claim's cooldown
+	if _, err := h.attest("default", newAgent("c5")); err == nil {
+		t.Fatal("FR-S15: an attestation got through before breaker_open ended")
+	}
+	time.Sleep(1100 * time.Millisecond)
+	if _, err := h.attest("default", newAgent("c4")); err != nil {
+		t.Fatalf("the trial after breaker_open: %v\n%s", err, h.log)
+	}
+}
+
+// checkRefusedWith is checkRefused for a harness that ran several
+// attestations: the last reason logged must be reason.
+func checkRefusedWith(t *testing.T, h *harness, err error, reason string) {
+	t.Helper()
+	if status.Code(err) != codes.PermissionDenied || status.Convert(err).Message() != "attestation failed" {
+		t.Fatalf("SEC-10: %v, want PermissionDenied: attestation failed", err)
+	}
+	log := h.log.String()
+	if i := strings.LastIndex(log, "reason_code="); i < 0 || !strings.HasPrefix(log[i:], "reason_code="+reason) {
+		t.Errorf("last reason is not %s:\n%s", reason, log)
+	}
+}

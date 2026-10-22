@@ -62,11 +62,15 @@ type SelectorsConfig struct {
 	UserKeys   []string `hcl:"user_keys"`
 }
 
-// LimitsConfig is the limits block (SEC-09); zero means the default.
+// LimitsConfig is the limits block (SEC-09, FR-S15); zero means the
+// default.
 type LimitsConfig struct {
-	MaxInflight     int    `hcl:"max_inflight"`
-	RatePerSec      int    `hcl:"rate_per_sec"`
-	FailureCooldown string `hcl:"failure_cooldown"`
+	MaxInflight      int    `hcl:"max_inflight"`
+	RatePerSec       int    `hcl:"rate_per_sec"`
+	FailureCooldown  string `hcl:"failure_cooldown"`
+	BreakerThreshold int    `hcl:"breaker_threshold"`
+	BreakerOpen      string `hcl:"breaker_open"`
+	BreakerMaxOpen   string `hcl:"breaker_max_open"`
 }
 
 // configKeys lists the keys Config accepts: any other key is an error.
@@ -77,6 +81,7 @@ var configKeys = []string{
 	"servers.*.server_cert_fingerprint", "servers.*.ca_bundle_file", "servers.*.projects",
 	"selectors.enable", "selectors.config_keys", "selectors.user_keys",
 	"limits.max_inflight", "limits.rate_per_sec", "limits.failure_cooldown",
+	"limits.breaker_threshold", "limits.breaker_open", "limits.breaker_max_open",
 }
 
 // pluginName is the attestor's name, the first segment of the agent path.
@@ -102,6 +107,14 @@ type limitSettings struct {
 	maxInflight     int
 	ratePerSec      int
 	failureCooldown time.Duration
+	breaker         breakerSettings
+}
+
+// breakerSettings are a server's circuit breaker's (FR-S15): it opens after
+// threshold transport failures in a row, for open, doubling up to maxOpen.
+type breakerSettings struct {
+	threshold     int
+	open, maxOpen time.Duration
 }
 
 // settings is a validated configuration; Configure replaces it as a whole.
@@ -118,6 +131,7 @@ type settings struct {
 	limits    limitSettings
 	devMode   bool
 	servers   []*lxdServer // sorted by id
+	limiter   *limiter
 }
 
 // pathData is what agent_path_template may use: configured and LXD-sourced
@@ -189,6 +203,7 @@ func newSettings(ctx context.Context, c *Config, trustDomain string) (*settings,
 	if s.servers, err = serverSettings(ctx, c, s); err != nil {
 		return nil, err
 	}
+	s.limiter = newLimiter(s.limits, time.Now)
 	if c.DevMode {
 		slog.Warn("dev_mode is on: LXD servers without a pin or CA bundle are not verified (SEC-07)")
 	}
@@ -268,7 +283,17 @@ func limitsSettings(c *LimitsConfig) (limitSettings, error) {
 	if l.ratePerSec, err = bounded("rate_per_sec", c.RatePerSec, 20, 10000); err != nil {
 		return l, err
 	}
-	l.failureCooldown, err = config.Duration("limits.failure_cooldown", c.FailureCooldown, 5*time.Second, 100*time.Millisecond, 5*time.Minute)
+	if l.failureCooldown, err = config.Duration("limits.failure_cooldown", c.FailureCooldown, 5*time.Second, 100*time.Millisecond, 5*time.Minute); err != nil {
+		return l, err
+	}
+	b := &l.breaker
+	if b.threshold, err = bounded("breaker_threshold", c.BreakerThreshold, 5, 100); err != nil {
+		return l, err
+	}
+	if b.open, err = config.Duration("limits.breaker_open", c.BreakerOpen, 5*time.Second, time.Second, 5*time.Minute); err != nil {
+		return l, err
+	}
+	b.maxOpen, err = config.Duration("limits.breaker_max_open", c.BreakerMaxOpen, max(time.Minute, b.open), b.open, time.Hour)
 	return l, err
 }
 
@@ -292,7 +317,7 @@ func serverSettings(ctx context.Context, c *Config, s *settings) ([]*lxdServer, 
 		if _, err := s.agentPath(id, sampleUUID); err != nil {
 			return nil, invalid("server %s: %v", id, err)
 		}
-		srv, err := newLXDServer(ctx, id, sc, c.DevMode)
+		srv, err := newLXDServer(ctx, id, sc, c.DevMode, s.limits.breaker)
 		if err != nil {
 			return nil, invalid("server %s: %v", id, err)
 		}

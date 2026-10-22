@@ -11,6 +11,7 @@ import (
 	"errors"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/dihedron/lxd-spiffe/internal/plugin/config"
 	"github.com/dihedron/lxd-spiffe/internal/plugin/logging"
@@ -72,15 +73,31 @@ func (p *Plugin) Attest(stream nodeattestorv1.NodeAttestor_AttestServer) error {
 	if s == nil {
 		return status.Error(codes.FailedPrecondition, "not configured")
 	}
-	a := &attestation{s: s, stream: stream, log: slog.Default().With("correlation_id", newCorrelationID())}
+	start := time.Now()
+	log := slog.Default().With("correlation_id", newCorrelationID())
+	release, ok := s.limiter.acquire()
+	if !ok {
+		// before any LXD call (SEC-09)
+		log.Error("attestation refused", "outcome", "failure", "reason_code", reasonRateLimited, "inflight", s.limiter.inflight())
+		return status.Error(codes.PermissionDenied, "attestation failed")
+	}
+	defer release()
+	a := &attestation{s: s, stream: stream, log: log.With("inflight", s.limiter.inflight()), start: start}
 	attrs, err := a.run(stream.Context())
+	reason := reasonOK
 	if err != nil {
-		reason := reasonPolicyDenied
+		reason = reasonPolicyDenied
 		var f *failure
 		if errors.As(err, &f) {
 			reason = f.reason
 		}
-		a.log.Error("attestation refused", "outcome", "failure", "reason_code", reason, "error", err.Error())
+		a.log.Error("attestation refused", "outcome", "failure", "reason_code", reason, "error", err.Error(),
+			"duration_ms", time.Since(start).Milliseconds(), "proof_ms", a.proof.Milliseconds())
+	}
+	if a.claimKey != "" && reason != reasonRateLimited {
+		s.limiter.outcome(a.claimKey, err == nil)
+	}
+	if err != nil {
 		return status.Error(codes.PermissionDenied, "attestation failed")
 	}
 	return stream.Send(&nodeattestorv1.AttestResponse{Response: &nodeattestorv1.AttestResponse_AgentAttributes{AgentAttributes: attrs}})

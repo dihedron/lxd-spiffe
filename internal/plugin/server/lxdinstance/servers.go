@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/canonical/lxd/shared/api"
+
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
 )
 
@@ -27,6 +29,8 @@ type lxdServer struct {
 	tokenStamp fileStamp
 	// lastErr is the last refusal logged, so that it is logged once.
 	lastErr string
+
+	breaker breaker
 }
 
 // fileStamp tells whether a file changed.
@@ -35,8 +39,9 @@ type fileStamp struct {
 	size int64
 }
 
-func newLXDServer(ctx context.Context, id string, sc ServerConfig, devMode bool) (*lxdServer, error) {
+func newLXDServer(ctx context.Context, id string, sc ServerConfig, devMode bool, b breakerSettings) (*lxdServer, error) {
 	s := &lxdServer{
+		breaker:  breaker{breakerSettings: b, now: time.Now, wait: b.open},
 		id:       id,
 		projects: sc.Projects,
 		conn: lxd.Config{
@@ -66,8 +71,19 @@ func newLXDServer(ctx context.Context, id string, sc ServerConfig, devMode bool)
 // server fails closed, logged once. A bearer token is re-read when its
 // file changes, and once after a 403 before failing (FR-S19).
 func (s *lxdServer) checked(ctx context.Context) (*lxd.Client, error) {
+	trial, err := s.breaker.allow()
+	if err != nil {
+		return nil, fmt.Errorf("server %s: %w", s.id, err)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if trial {
+		// the trial after an open breaker starts from a new connection
+		if err := s.reconnect(ctx); err != nil {
+			s.breaker.observe(err)
+			return nil, s.refuse(err)
+		}
+	}
 	if s.tokenFile != "" && s.tokenChanged() {
 		if err := s.rotate(ctx); err != nil {
 			return nil, s.refuse(err)
@@ -76,7 +92,7 @@ func (s *lxdServer) checked(ctx context.Context) (*lxd.Client, error) {
 	if s.ready {
 		return s.client, nil
 	}
-	err := s.check(ctx)
+	err = s.check(ctx)
 	if err != nil && s.tokenFile != "" && lxd.KindOf(err) == lxd.KindAuth {
 		// issuing a new token revokes the old one at once
 		if err = s.rotate(ctx); err == nil {
@@ -87,13 +103,63 @@ func (s *lxdServer) checked(ctx context.Context) (*lxd.Client, error) {
 		return nil, s.refuse(err)
 	}
 	s.ready, s.lastErr = true, ""
+	s.warnIdentity(ctx)
 	return s.client, nil
+}
+
+// observe tells the breaker how an LXD call through this server went; a
+// call cut short by the attestation's own deadline says nothing of LXD.
+func (s *lxdServer) observe(ctx context.Context, err error) {
+	if ctx.Err() == nil {
+		s.breaker.observe(err)
+	}
+}
+
+// warnIdentity warns, after a server's check, when the plugin's LXD identity
+// appears to hold server administrator rights (SEC-16, gate L9); a server
+// without the endpoint is skipped.
+func (s *lxdServer) warnIdentity(ctx context.Context) {
+	info, err := s.client.CurrentIdentity(ctx)
+	if err != nil {
+		return
+	}
+	for _, w := range identityWarnings(info) {
+		slog.Warn("the LXD identity has more rights than the attestor needs (SEC-16)", "server_id", s.id, "finding", w)
+	}
+}
+
+// identityWarnings lists what makes an identity look like a server
+// administrator: not fine-grained (a legacy trusted certificate has every
+// right) or an admin entitlement on the server.
+func identityWarnings(info *api.IdentityInfo) []string {
+	var out []string
+	if !info.FineGrained {
+		out = append(out, "the identity is not fine-grained: it has every right on the server")
+	}
+	for _, p := range info.EffectivePermissions {
+		if p.EntityType == "server" && p.Entitlement == "admin" {
+			out = append(out, "the identity has the server's admin entitlement")
+		}
+	}
+	return out
+}
+
+// reconnect makes a new client, to be checked again.
+func (s *lxdServer) reconnect(ctx context.Context) error {
+	client, err := lxd.Connect(ctx, s.conn)
+	if err != nil {
+		return err
+	}
+	s.client, s.ready = client, false
+	return nil
 }
 
 // check reads GET /1.0 and requires trust and the API extensions, with
 // auth_bearer for a bearer entry.
 func (s *lxdServer) check(ctx context.Context) error {
 	srv, err := s.client.Server(ctx)
+	// only the call tells of LXD's health; the verdict below is about trust
+	s.breaker.observe(err)
 	if err != nil {
 		return err
 	}
@@ -118,12 +184,7 @@ func (s *lxdServer) rotate(ctx context.Context) error {
 	if err := s.readToken(); err != nil {
 		return err
 	}
-	client, err := lxd.Connect(ctx, s.conn)
-	if err != nil {
-		return err
-	}
-	s.client, s.ready = client, false
-	return nil
+	return s.reconnect(ctx)
 }
 
 // readToken reads the bearer token (SEC-08) and refuses an unsigned one.

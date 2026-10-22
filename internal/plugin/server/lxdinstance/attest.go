@@ -36,6 +36,7 @@ const (
 	reasonExtensionMissing  = "extension_missing"
 	reasonInstanceMoved     = "instance_moved"
 	reasonProjectUnreadable = "project_unreadable"
+	reasonRateLimited       = "rate_limited"
 )
 
 const (
@@ -67,6 +68,11 @@ type attestation struct {
 	s      *settings
 	stream nodeattestorv1.NodeAttestor_AttestServer
 	log    *slog.Logger
+	// claimKey is the claim's cooldown key (SEC-09), once it is decoded.
+	claimKey string
+	// proof is how long the challenge took, sent to proof read back.
+	proof time.Duration
+	start time.Time
 }
 
 // match is the one instance the claim resolved to (FR-S3).
@@ -96,6 +102,10 @@ func (a *attestation) run(ctx context.Context) (*nodeattestorv1.AgentAttributes,
 	r, err := lxdinstancev1.DecodeAttestRequest(req.GetPayload())
 	if err != nil {
 		return nil, fail(reasonPayloadInvalid, "%v", err)
+	}
+	a.claimKey = r.GetClaim().GetProject() + "/" + r.GetClaim().GetInstanceName()
+	if a.s.limiter.cooling(a.claimKey) {
+		return nil, fail(reasonRateLimited, "the claim is cooling down after a failure")
 	}
 	mode, err := a.chooseMode(r.GetProofModes())
 	if err != nil {
@@ -193,6 +203,7 @@ func (a *attestation) resolve(ctx context.Context, c *lxdinstancev1.Claim) (*mat
 		}
 		for _, p := range projects {
 			inst, _, err := cl.Instance(ctx, p, c.GetInstanceName())
+			srv.observe(ctx, err)
 			switch {
 			case lxd.KindOf(err) == lxd.KindNotFound:
 				continue
@@ -226,6 +237,7 @@ func (a *attestation) unique(ctx context.Context, m *match, uuid string) error {
 		}
 		for _, p := range srv.projects {
 			names, err := cl.InstancesByUUID(ctx, p, uuid)
+			srv.observe(ctx, err)
 			if err != nil {
 				return fail(reasonLXDUnavailable, "server %s, project %s: listing by uuid: %v", srv.id, p, err)
 			}
@@ -256,7 +268,9 @@ func (a *attestation) filePull(ctx context.Context, m *match, r *lxdinstancev1.A
 	if err != nil {
 		return fail(reasonPayloadInvalid, "%v", err)
 	}
-	deadline := time.Now().Add(a.s.proofTimeout)
+	start := time.Now()
+	defer func() { a.proof = time.Since(start) }()
+	deadline := start.Add(a.s.proofTimeout)
 	challenge := &lxdinstancev1.Challenge{
 		Version:     lxdinstancev1.Version,
 		Mode:        lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL,
@@ -281,7 +295,7 @@ func (a *attestation) filePull(ctx context.Context, m *match, r *lxdinstancev1.A
 	pctx, cancel := context.WithDeadline(ctx, deadline)
 	defer cancel()
 	isVM := m.inst.Type == string(api.InstanceTypeVM)
-	file, err := readProof(pctx, m.client, m.inst.Project, m.instance, path, isVM)
+	file, err := readProof(pctx, m, path, isVM)
 	if err != nil {
 		return err
 	}
@@ -294,6 +308,7 @@ func (a *attestation) filePull(ctx context.Context, m *match, r *lxdinstancev1.A
 		return fail(reasonProofMismatch, "the proof's content is not the expected proof")
 	}
 	dir, err := m.client.File(pctx, m.inst.Project, m.instance, a.s.proofDir)
+	m.srv.observe(pctx, err)
 	switch {
 	case err != nil:
 		return fail(reasonProofMismatch, "reading the proof directory: %v", err)
@@ -336,11 +351,12 @@ func (a *attestation) receive(deadline time.Time) (*lxdinstancev1.ChallengeRespo
 // its 500 and, for a VM, a 404 just after (gate L7), with a backoff of
 // 250 ms doubling up to 2 s, until ctx's deadline. Any other error fails
 // at once.
-func readProof(ctx context.Context, c *lxd.Client, project, name, path string, isVM bool) (*lxd.File, error) {
+func readProof(ctx context.Context, m *match, path string, isVM bool) (*lxd.File, error) {
 	wait := 250 * time.Millisecond
 	reason := reasonProofTimeout
 	for {
-		file, err := c.File(ctx, project, name, path)
+		file, err := m.client.File(ctx, m.inst.Project, m.instance, path)
+		m.srv.observe(ctx, err)
 		kind := lxd.KindOf(err)
 		switch {
 		case err == nil:
@@ -370,6 +386,7 @@ func readProof(ctx context.Context, c *lxd.Client, project, name, path string, i
 // SEC-06).
 func (a *attestation) reverify(ctx context.Context, m *match) error {
 	again, _, err := m.client.Instance(ctx, m.inst.Project, m.instance)
+	m.srv.observe(ctx, err)
 	switch {
 	case lxd.KindOf(err) == lxd.KindNotFound:
 		return fail(reasonNotFound, "the instance is gone after the proof")
@@ -396,6 +413,7 @@ func (a *attestation) identity(ctx context.Context, m *match, uuid string) (*nod
 	in := selectors.Input{ServerID: m.srv.id, Instance: m.inst}
 	if selectors.NeedsNetworkProject(a.s.selectors, m.inst) {
 		p, _, err := m.client.Project(ctx, m.inst.Project)
+		m.srv.observe(ctx, err)
 		if err != nil {
 			return nil, fail(reasonProjectUnreadable, "reading project %s: %v", m.inst.Project, err)
 		}
@@ -416,7 +434,8 @@ func (a *attestation) identity(ctx context.Context, m *match, uuid string) (*nod
 		return nil, fail(reasonPolicyDenied, "%v", err)
 	}
 	a.log = a.log.With("instance_uuid", uuid)
-	a.log.Info("attestation succeeded", "outcome", "success", "reason_code", reasonOK, "selectors", values)
+	a.log.Info("attestation succeeded", "outcome", "success", "reason_code", reasonOK, "selectors", values,
+		"duration_ms", time.Since(a.start).Milliseconds(), "proof_ms", a.proof.Milliseconds())
 	return &nodeattestorv1.AgentAttributes{
 		SpiffeId:       "spiffe://" + a.s.trustDomain + "/spire/agent/" + path,
 		SelectorValues: values,

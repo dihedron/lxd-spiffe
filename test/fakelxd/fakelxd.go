@@ -58,8 +58,12 @@ type Server struct {
 	hidden    []string                     // projects answered with 404
 	exts      []string                     // api_extensions of GET /1.0
 	member    string                       // server_name of GET /1.0 when clustered
-	nextOp    int
-	replay    map[string][]evidence.Fixture
+	// failAll, when non-zero, answers every request with that status, as
+	// an LXD that is down would.
+	failAll    int
+	failAllMsg string
+	nextOp     int
+	replay     map[string][]evidence.Fixture
 	// bearerExpiry, when set, refuses bearer tokens from then on, as LXD
 	// refuses an expired token (lab, LXD 6.9).
 	bearerExpiry time.Time
@@ -220,6 +224,14 @@ func (s *Server) ExpireBearerAt(at time.Time) {
 	s.bearerExpiry = at
 }
 
+// FailAll answers every request with status and msg until it is called
+// with status 0.
+func (s *Server) FailAll(status int, msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.failAll, s.failAllMsg = status, msg
+}
+
 // SetExtensions replaces the api_extensions the fake reports; the
 // extensions do not change what the fake serves.
 func (s *Server) SetExtensions(extensions ...string) {
@@ -375,6 +387,10 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 	defer s.mu.Unlock()
 	if !s.bearerExpiry.IsZero() && strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") && !time.Now().Before(s.bearerExpiry) {
 		writeError(w, http.StatusForbidden, "Failed verifying bearer token: Failed authenticating bearer token: Token is not valid: token has invalid claims: token is expired")
+		return
+	}
+	if s.failAll != 0 {
+		writeError(w, s.failAll, s.failAllMsg)
 		return
 	}
 	for _, prefix := range s.deny {

@@ -92,6 +92,9 @@ func TestConfigureDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := p.current()
+	if b := s.limits.breaker; b.threshold != 5 || b.open != 5*time.Second || b.maxOpen != time.Minute {
+		t.Errorf("FR-S15 breaker defaults: %+v", b)
+	}
 	if s.mode != "file_pull" || s.proofTimeout != 10*time.Second || s.proofDir != "/run/spire/lxd" || !s.reattest ||
 		s.limits.maxInflight != 16 || s.limits.ratePerSec != 20 || s.limits.failureCooldown != 5*time.Second ||
 		s.selectors.Enable != nil || s.trustDomain != "example.org" || s.devMode {
@@ -209,7 +212,12 @@ func TestConfigureRefuses(t *testing.T) {
 		"empty deny key":                  hclConfig(f, "policy {\n  deny_config_keys = [\"\"]\n}", ""),
 		"SEC-09 max_inflight negative":    hclConfig(f, "limits {\n  max_inflight = -1\n}", ""),
 		"SEC-09 rate too high":            hclConfig(f, "limits {\n  rate_per_sec = 100000\n}", ""),
-		"SEC-09 cooldown too long":        hclConfig(f, "limits {\n  failure_cooldown = \"1h\"\n}", ""),
+		"FR-S15 breaker threshold zero is the default, negative refused": hclConfig(f, "limits {\n  breaker_threshold = -1\n}", ""),
+		"FR-S15 breaker threshold too high":                              hclConfig(f, "limits {\n  breaker_threshold = 101\n}", ""),
+		"FR-S15 breaker open too short":                                  hclConfig(f, "limits {\n  breaker_open = \"100ms\"\n}", ""),
+		"FR-S15 breaker max open below open":                             hclConfig(f, "limits {\n  breaker_open = \"30s\"\n  breaker_max_open = \"10s\"\n}", ""),
+		"FR-S15 breaker max open too long":                               hclConfig(f, "limits {\n  breaker_max_open = \"2h\"\n}", ""),
+		"SEC-09 cooldown too long":                                       hclConfig(f, "limits {\n  failure_cooldown = \"1h\"\n}", ""),
 	}
 	for name, hcl := range cases {
 		if _, err := configure(t, hcl); status.Code(err) != codes.InvalidArgument {
