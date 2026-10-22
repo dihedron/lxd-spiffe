@@ -28,8 +28,11 @@ type evacRun struct {
 	entry   string
 	evacuee string
 	version string
-	names   []string
-	types   map[string]string
+	// sparse is the files-sparse arm's period between two reads of an
+	// instance, in seconds.
+	sparse int
+	names  []string
+	types  map[string]string
 }
 
 // evacReader marks the files arm's readers on the entry member, and
@@ -190,15 +193,24 @@ func (er *evacRun) startStep(arm string) (stop func(*stress.EvacStep), err error
 // in files-vm) on the entry member, pulling /etc/hostname through the
 // files API one request at a time, as file_pull does (STR-72), on LXD's
 // local socket (lxc query wants JSON, the files API answers the file);
-// each stops by itself after 20 minutes. The returned function stops them
-// and counts their reads.
+// each stops by itself after 20 minutes. In files-sparse a reader starts
+// after a random delay within the period and waits a period between two
+// requests (LXD's file helper lives about 15 s after a request, so a period
+// of that order or less is a continuous read). The returned function stops
+// them and counts their reads.
 func (er *evacRun) startReaders(arm string) (stop func(*stress.EvacStep), err error) {
 	names := er.read(arm)
 	if len(names) == 0 {
 		return func(*stress.EvacStep) {}, nil
 	}
-	reader := `end=$(($(date +%s)+1200)); while [ $(date +%s) -lt $end ]; do ` +
-		`if curl -sf -m 30 -o /dev/null --unix-socket /var/snap/lxd/common/lxd/unix.socket "http://lxd/1.0/instances/$1/files?path=/etc/hostname"; then echo o; else echo f; sleep 1; fi; ` +
+	ok, failed, first := "echo o", "echo f; sleep 1", ""
+	if arm == stress.ArmFilesSparse {
+		pause := "sleep " + strconv.Itoa(er.sparse)
+		ok, failed = "echo o; "+pause, "echo f; "+pause
+		first = fmt.Sprintf(`sleep $(awk -v s=$$ 'BEGIN{srand(s); print rand()*%d}'); `, er.sparse)
+	}
+	reader := first + `end=$(($(date +%s)+1200)); while [ $(date +%s) -lt $end ]; do ` +
+		`if curl -sf -m 30 -o /dev/null --unix-socket /var/snap/lxd/common/lxd/unix.socket "http://lxd/1.0/instances/$1/files?path=/etc/hostname"; then ` + ok + `; else ` + failed + `; fi; ` +
 		`done >>/tmp/evac-reads-$1`
 	script := "rm -f /tmp/evac-reads-*; for n in " + strings.Join(names, " ") + "; do " +
 		"setsid nohup sh -c " + shellQuote(reader) + " " + evacReader + ` "$n" >/dev/null 2>&1 </dev/null & done`
@@ -215,7 +227,7 @@ func (er *evacRun) startReaders(arm string) (stop func(*stress.EvacStep), err er
 func (er *evacRun) read(arm string) []string {
 	var names []string
 	for _, n := range er.names {
-		if arm == stress.ArmFiles || arm == stress.ArmFilesVM && er.types[n] == stress.VM {
+		if arm == stress.ArmFiles || arm == stress.ArmFilesSparse || arm == stress.ArmFilesVM && er.types[n] == stress.VM {
 			names = append(names, n)
 		}
 	}
@@ -456,9 +468,14 @@ func TestST6Evacuation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	sparse := count("LAB_EVAC_SPARSE", "60")
+	if sparse == 0 {
+		t.Fatal("LAB_EVAC_SPARSE: the period is at least 1 second")
+	}
 	for _, cluster := range clusters {
 		t.Run(cluster, func(t *testing.T) {
 			er := newEvacRun(t, l, cluster, containers, vms)
+			er.sparse = sparse
 			t.Cleanup(func() {
 				if err := er.teardown(); err != nil {
 					t.Errorf("deleting the fleet: %v", err)
@@ -486,7 +503,7 @@ func TestST6Evacuation(t *testing.T) {
 			settings := map[string]string{
 				"session": "ST-6", "cluster": cluster, "version": er.version, "evacuee": er.evacuee, "harness": strings.TrimSpace(string(harness)),
 				"containers": strconv.Itoa(containers), "vms": strconv.Itoa(vms), "cycles": strconv.Itoa(cycles),
-				"arms": strings.Join(arms, ","),
+				"arms": strings.Join(arms, ","), "sparse_period": strconv.Itoa(sparse),
 			}
 			sum := stress.SummarizeEvac(out, settings)
 			l.writeRun(t, stamp+"-st-6-"+cluster+"-summary", sum.OK(), sum.WriteMarkdown, sum.WriteJSON,

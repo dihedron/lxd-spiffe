@@ -21,6 +21,9 @@ const (
 	// ArmFilesVM reads the VMs' files only: LXD stops a step at its first
 	// failure, and in the files arm a container fails before any VM is tried.
 	ArmFilesVM = "files-vm"
+	// ArmFilesSparse reads every instance's files once per period (a few
+	// attestations' worth) instead of back to back.
+	ArmFilesSparse = "files-sparse"
 )
 
 // The instance types, as LXD names them.
@@ -40,7 +43,7 @@ func EvacArms(cycles int, arms []string) []string {
 }
 
 // ParseEvacArms reads LAB_EVAC_ARMS, arms separated by commas; empty is
-// every arm.
+// idle, files and files-vm (files-sparse is asked for by name).
 func ParseEvacArms(s string) ([]string, error) {
 	if s == "" {
 		return []string{ArmIdle, ArmFiles, ArmFilesVM}, nil
@@ -48,8 +51,8 @@ func ParseEvacArms(s string) ([]string, error) {
 	var arms []string
 	for a := range strings.SplitSeq(s, ",") {
 		a = strings.TrimSpace(a)
-		if !slices.Contains([]string{ArmIdle, ArmFiles, ArmFilesVM}, a) || slices.Contains(arms, a) {
-			return nil, fmt.Errorf("LAB_EVAC_ARMS: %q is not an arm or comes twice (idle, files, files-vm)", a)
+		if !slices.Contains([]string{ArmIdle, ArmFiles, ArmFilesVM, ArmFilesSparse}, a) || slices.Contains(arms, a) {
+			return nil, fmt.Errorf("LAB_EVAC_ARMS: %q is not an arm or comes twice (idle, files, files-vm, files-sparse)", a)
 		}
 		arms = append(arms, a)
 	}

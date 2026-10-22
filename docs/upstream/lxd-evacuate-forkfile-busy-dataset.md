@@ -53,7 +53,7 @@ The same on 6.9 and on 5.21.8. A sampler, run once a second on every member duri
 
 ## Cause
 
-Not established. What the evidence shows: a `forkfile` process in the container's mount namespace is present while the files API is being read, and the unmount of the dataset fails while it is. We have not looked at when `forkfile` exits, or whether one request is enough.
+Not established. What the evidence shows: a `forkfile` process in the container's mount namespace is present while the files API is being read, and the unmount of the dataset fails while it is. The process does not end with the request: after a single read of one idle container (`GET …/files?path=/etc/hostname`, answered 200 in 35 ms) one `lxd forkfile` stayed for 15.5 s and then exited (sampled every 0.5 s, LXD 5.21.8). So a read within about 15 s before LXD unmounts the dataset is enough to make the unmount fail, and reads more often than that keep the process alive. Measured on 5.21.8 only.
 
 ## Impact
 
@@ -61,7 +61,8 @@ An operator evacuating a member for maintenance, while anything reads the files 
 
 ## Not tested
 
-- Sparse reads: ours were back to back, which is the worst case. We do not know whether a single read during an evacuation is enough.
+- Sparse reads during an evacuation: ours were back to back, which is the worst case. Given the 15 s above, a read within about 15 s before the unmount should be enough; an arm of ST-6 (reads every 60 s) is meant to measure how often that happens.
+- The 15.5 s on 6.9, and what ends the process.
 - `lxc file pull` and `lxc file push` instead of the raw API, and writes through the files API.
 - Storage drivers other than ZFS, and LXD versions other than the two above.
 - Live migration (`migration.stateful`).

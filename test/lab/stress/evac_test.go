@@ -25,6 +25,10 @@ func TestSTR72Arms(t *testing.T) {
 	if got, err := ParseEvacArms(" files-vm "); err != nil || !slices.Equal(got, []string{ArmFilesVM}) {
 		t.Errorf("one arm %v %v", got, err)
 	}
+	// files-sparse is asked for by name, never part of the default
+	if got, err := ParseEvacArms("files-sparse,idle"); err != nil || !slices.Equal(got, []string{ArmFilesSparse, ArmIdle}) {
+		t.Errorf("sparse arm %v %v", got, err)
+	}
 	for _, bad := range []string{"files,vm", "idle,,files", "idle,idle"} {
 		if _, err := ParseEvacArms(bad); err == nil {
 			t.Errorf("%q accepted", bad)
