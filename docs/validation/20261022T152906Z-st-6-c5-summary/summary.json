@@ -1,0 +1,71 @@
+{
+  "settings": {
+    "arms": "files-sparse",
+    "cluster": "c5",
+    "containers": "3",
+    "cycles": "10",
+    "evacuee": "c5n3",
+    "harness": "e25bdf7",
+    "session": "ST-6",
+    "sparse_period": "60",
+    "version": "5.21.8",
+    "vms": "3"
+  },
+  "groups": [
+    {
+      "version": "5.21.8",
+      "arm": "files-sparse",
+      "type": "container",
+      "evacuate_attempted": 29,
+      "evacuate_failed": 2,
+      "restore_attempted": 27,
+      "restore_failed": 3,
+      "evacuate_skipped": 1,
+      "restore_skipped": 0,
+      "volumes_left": 2,
+      "busy_errors": 2
+    },
+    {
+      "version": "5.21.8",
+      "arm": "files-sparse",
+      "type": "virtual-machine",
+      "evacuate_attempted": 24,
+      "evacuate_failed": 0,
+      "restore_attempted": 24,
+      "restore_failed": 0,
+      "evacuate_skipped": 6,
+      "restore_skipped": 0,
+      "volumes_left": 0,
+      "busy_errors": 0
+    }
+  ],
+  "cycles": [
+    {
+      "version": "5.21.8",
+      "arm": "files-sparse",
+      "cycles": 10,
+      "blocked": 0,
+      "evacuate_errors": 2,
+      "restore_errors": 0,
+      "evacuate": {
+        "count": 10,
+        "p50_ms": 113388,
+        "p95_ms": 114973,
+        "p99_ms": 114973,
+        "max_ms": 114973
+      },
+      "restore": {
+        "count": 10,
+        "p50_ms": 114046,
+        "p95_ms": 134083,
+        "p99_ms": 134083,
+        "max_ms": 134083
+      }
+    }
+  ],
+  "holders": [
+    "cycle 3, c5n3, default/containers/e-c3: no holder found",
+    "cycle 6, c5n3, default/containers/e-c2: no holder found"
+  ],
+  "harness_errors": []
+}

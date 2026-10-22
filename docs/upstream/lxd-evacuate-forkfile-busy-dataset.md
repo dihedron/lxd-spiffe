@@ -49,11 +49,13 @@ Ten evacuate and restore cycles per arm, on each version:
 | files API read for every instance | 10 of 10 evacuations failed (one container each) | never tried: LXD stops at the first failure |
 | files API read for the VMs only | 0 of 60 failed (idle) | 0 of 60 failed |
 
-The same on 6.9 and on 5.21.8. A sampler, run once a second on every member during each step, recorded the processes in another mount namespace than LXD's that mount an instance's dataset. In the cycles with reads it found, for every container, `/snap/lxd/current/sbin/lxd forkfile -- 3 4 5 <pid>`, the helper of the files API, first seen at the same second for the three containers, shortly after the reads began. It never found a `forkfile` in the idle cycles or in the cycles that read only the VMs. The other process it found, `virtiofsd` for each VM's config share, was there in every cycle, those that succeeded included.
+The same on 6.9 and on 5.21.8 for these three arms.
+
+A fourth arm read every instance's file once every 60 s (each reader starting at a random moment), 10 cycles on 5.21.8 (`docs/validation/20261022T152906Z-st-6-c5-summary`): the evacuation failed in 2 of the 10 cycles, on a busy container dataset after 17 and 21 s, with a volume left behind each time; the other 8 cycles (evacuation and restore) were clean, and the VMs, read throughout, never failed (0 of 24 evacuations and 0 of 24 restores). A trial run of the same arm (2 cycles, not kept) had a restore, not an evacuation, fail the same way. In the two failures of the 10 cycles the sampler found no process holding the busy dataset, though it found `forkfile` on other containers in one of them, so `forkfile` is not shown to be the holder when reads are sparse. A sampler, run once a second on every member during each step, recorded the processes in another mount namespace than LXD's that mount an instance's dataset. In the cycles with reads it found, for every container, `/snap/lxd/current/sbin/lxd forkfile -- 3 4 5 <pid>`, the helper of the files API, first seen at the same second for the three containers, shortly after the reads began. It never found a `forkfile` in the idle cycles or in the cycles that read only the VMs. The other process it found, `virtiofsd` for each VM's config share, was there in every cycle, those that succeeded included.
 
 ## Cause
 
-Not established. What the evidence shows: a `forkfile` process in the container's mount namespace is present while the files API is being read, and the unmount of the dataset fails while it is. The process does not end with the request: after a single read of one idle container (`GET …/files?path=/etc/hostname`, answered 200 in 35 ms) one `lxd forkfile` stayed for 15.5 s and then exited (sampled every 0.5 s, LXD 5.21.8). So a read within about 15 s before LXD unmounts the dataset is enough to make the unmount fail, and reads more often than that keep the process alive. Measured on 5.21.8 only.
+Not established. What the evidence shows: a `forkfile` process in the container's mount namespace is present while the files API is being read, and the unmount of the dataset fails while it is. The process does not end with the request: after a single read of one idle container (`GET …/files?path=/etc/hostname`, answered 200 in 35 ms) one `lxd forkfile` stayed for 15.5 s and then exited (sampled every 0.5 s, LXD 5.21.8). If LXD unmounts the dataset while such a process is alive, the unmount would fail, and reads more often than every 15 s keep the process alive: that fits the continuous reads above. It is a hypothesis for the sparse reads below, where no holder was sampled in the two failures. Measured on 5.21.8 only.
 
 ## Impact
 
@@ -61,7 +63,7 @@ An operator evacuating a member for maintenance, while anything reads the files 
 
 ## Not tested
 
-- Sparse reads during an evacuation: ours were back to back, which is the worst case. Given the 15 s above, a read within about 15 s before the unmount should be enough; an arm of ST-6 (reads every 60 s) is meant to measure how often that happens.
+- Sparse reads on 6.9, and sparse reads other than one request per instance every 60 s; why the sampler found no holder in the two sparse failures.
 - The 15.5 s on 6.9, and what ends the process.
 - `lxc file pull` and `lxc file push` instead of the raw API, and writes through the files API.
 - Storage drivers other than ZFS, and LXD versions other than the two above.
