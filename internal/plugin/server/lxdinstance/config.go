@@ -157,7 +157,8 @@ func newSettings(ctx context.Context, c *Config, trustDomain string) (*settings,
 	if s.mode, err = proofMode(c); err != nil {
 		return nil, err
 	}
-	if s.proofTimeout, err = config.Duration("proof_timeout", c.ProofTimeout, 10*time.Second, time.Second, 5*time.Minute); err != nil {
+	// the proof timeout is also the server nonce's lifetime (SEC-03)
+	if s.proofTimeout, err = config.Duration("proof_timeout", c.ProofTimeout, 10*time.Second, time.Second, 2*time.Minute); err != nil {
 		return nil, err
 	}
 	if s.proofDir, err = proofDir(c.ProofDir); err != nil {
@@ -205,7 +206,9 @@ func cmpOr(v, def string) string {
 func proofMode(c *Config) (string, error) {
 	mode := cmpOr(c.ProofMode, modeFilePull)
 	switch mode {
-	case modeFilePull, modeConfigPush, modeAuto:
+	case modeFilePull, modeAuto:
+	case modeConfigPush:
+		return "", invalid(`proof_mode "config_push" is not implemented in this version: use file_pull or auto`)
 	case modeNone:
 		if !c.ClaimOnlyAck {
 			return "", invalid(`proof_mode "none" issues identities on a claim alone: it needs i_understand_claim_only_is_insecure = true (SEC-02)`)

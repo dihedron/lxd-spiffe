@@ -24,6 +24,10 @@ import (
 // RequiredExtensions are the API extensions the attestor uses (FR-S12).
 var RequiredExtensions = []string{"projects", "instance_generation_id", "api_filtering"}
 
+// ErrMissingExtensions wraps CheckServer's error for a server that lacks a
+// required API extension (reason extension_missing).
+var ErrMissingExtensions = errors.New("lxd: the server lacks API extensions")
+
 // agentNotRunning is LXD's error while a VM's lxd-agent is not up (L7).
 const agentNotRunning = "LXD VM agent is not currently running"
 
@@ -50,7 +54,7 @@ func CheckServer(srv *api.Server, extensions ...string) error {
 		}
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("lxd: the server lacks API extensions %s", strings.Join(missing, ", "))
+		return fmt.Errorf("%w %s", ErrMissingExtensions, strings.Join(missing, ", "))
 	}
 	return nil
 }

@@ -2,12 +2,13 @@
 // node attestor. It will verify the evidence an LXD instance's SPIRE Agent
 // presents, then return the agent's SPIFFE ID and selectors.
 //
-// Configure is implemented (attestor spec, Configuration → Server);
-// attestation answers codes.Unimplemented until it is.
+// It attests with file_pull, or on the claim alone when proof_mode is none;
+// config_push comes later.
 package lxdinstance
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 
@@ -63,10 +64,24 @@ func (p *Plugin) current() *settings {
 	return p.settings
 }
 
-// Attest is not implemented yet.
+// Attest runs one attestation (FR-S1). Every failure answers the agent with
+// the same PermissionDenied (SEC-10); the server's log has the reason code
+// and the detail, under a correlation ID.
 func (p *Plugin) Attest(stream nodeattestorv1.NodeAttestor_AttestServer) error {
-	if p.current() == nil {
+	s := p.current()
+	if s == nil {
 		return status.Error(codes.FailedPrecondition, "not configured")
 	}
-	return status.Error(codes.Unimplemented, "lxd_instance: attestation is not implemented yet")
+	a := &attestation{s: s, stream: stream, log: slog.Default().With("correlation_id", newCorrelationID())}
+	attrs, err := a.run(stream.Context())
+	if err != nil {
+		reason := reasonPolicyDenied
+		var f *failure
+		if errors.As(err, &f) {
+			reason = f.reason
+		}
+		a.log.Error("attestation refused", "outcome", "failure", "reason_code", reason, "error", err.Error())
+		return status.Error(codes.PermissionDenied, "attestation failed")
+	}
+	return stream.Send(&nodeattestorv1.AttestResponse{Response: &nodeattestorv1.AttestResponse_AgentAttributes{AgentAttributes: attrs}})
 }

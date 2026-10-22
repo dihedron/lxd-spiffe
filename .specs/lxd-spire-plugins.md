@@ -51,6 +51,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Oct 22, 2026 (ST-6 and the two modes) | *Operational guidance* item 15 now says how an evacuation fails with each proof mode and how to restore a clean state (tested in the lab on both versions: the leftover volume of `file_pull` needs its dataset destroyed and its database row deleted, LXD refuses to delete a container volume; `config_push` collisions fail with `Instance is busy running a "update" operation`, retry); new subsection *Choosing the proof mode*: the measurements of both modes (latency, chaos, evacuation), when to use which, and what the current setup is not compatible with. The sparse reads of ST-6 failed 3 of 20 evacuation cycles with `file_pull`; VMs never failed. |
 | Oct 22, 2026 (plugins, chunk 1) | FR-S17 (9): the files API goes through the client's raw request, like the `PATCH` and the filtered list, because the SDK's `GetInstanceFile` ignores the connection's context and its body limit, and its header parser is lenient (a missing type is a file, the mode loses its setuid, setgid and sticky bits); the client's parser is strict. FR-S3: the plain instance read carries `expanded_config` and `expanded_devices` (no recursion is needed), as the fixtures of both versions show. |
 | Oct 22, 2026 (plugins, chunk 2) | FR-S11: the key of a `servers` entry is its `server_id`, a SPIFFE ID path segment. FR-S12: the capability check runs on the first use of a server's client and after every reconnect; `Configure` contacts no server. |
+| Oct 23, 2026 (plugins, chunk 3) | SEC-03: a server nonce lives as long as its challenge's `proof_timeout`, at most 2 min, instead of 30 s, which would have contradicted the 90 s that item 10 recommends for slow VMs; `proof_timeout` is bounded to 2 min accordingly. |
 
 ## Overview
 
@@ -468,7 +469,7 @@ Recommendations (SEC-16, *Configuration → Operational guidance*):
 |---|---|
 | SEC-01 | Identity MUST NOT be issued on a claim alone; a co-location proof is mandatory unless SEC-02 is overridden. |
 | SEC-02 | `proof_mode = "none"` is rejected at `Configure` unless `i_understand_claim_only_is_insecure = true`; WARN on every attestation and a metric while active. |
-| SEC-03 | Nonces: 32 bytes from `crypto/rand`, single use, compared in constant time, TTL ≤ 30 s. |
+| SEC-03 | Nonces: 32 bytes from `crypto/rand`, single use, compared in constant time; a server nonce is valid for its challenge's `proof_timeout` only, at most 2 min (VMs may need up to 90 s while `lxd-agent` starts, *Operational guidance* item 10). |
 | SEC-04 | Proof paths and keys MUST be derived as `...<hex(SHA-256(agent_nonce))[:16]>`; no client-chosen names. |
 | SEC-05 | Zero or multiple instance matches MUST fail closed with the uniform error, including more than one instance with the resolved `volatile.uuid` (FR-S18). |
 | SEC-06 | Instance state, identity and generation MUST be re-verified after the proof and before returning the response. |

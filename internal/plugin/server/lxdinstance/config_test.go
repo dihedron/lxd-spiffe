@@ -193,6 +193,8 @@ func TestConfigureRefuses(t *testing.T) {
 		"SEC-02 none unacknowledged":      hclConfig(f, `proof_mode = "none"`, ""),
 		"proof_timeout too short":         hclConfig(f, `proof_timeout = "0s"`, ""),
 		"proof_timeout too long":          hclConfig(f, `proof_timeout = "1h"`, ""),
+		"SEC-03 proof_timeout over 2m":    hclConfig(f, `proof_timeout = "121s"`, ""),
+		"config_push not implemented yet": hclConfig(f, `proof_mode = "config_push"`, ""),
 		"proof_timeout not a duration":    hclConfig(f, `proof_timeout = "ten"`, ""),
 		"proof_dir relative":              hclConfig(f, `proof_dir = "run/spire"`, ""),
 		"proof_dir root":                  hclConfig(f, `proof_dir = "/"`, ""),

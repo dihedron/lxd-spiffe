@@ -23,15 +23,7 @@ func TestConfigure(t *testing.T) {
 }
 
 func TestAttest(t *testing.T) {
-	p := New()
-	if err := p.Attest(nil); status.Code(err) != codes.FailedPrecondition {
+	if err := New().Attest(nil); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("Attest before Configure = %v; want FailedPrecondition", err)
-	}
-	if _, err := configure(t, hclConfig(newTestFiles(t), "", "")); err != nil {
-		t.Fatalf("Configure: %v", err)
-	}
-	p, _ = configure(t, hclConfig(newTestFiles(t), "", ""))
-	if err := p.Attest(nil); status.Code(err) != codes.Unimplemented {
-		t.Fatalf("Attest = %v; want Unimplemented", err)
 	}
 }
