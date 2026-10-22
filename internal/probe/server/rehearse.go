@@ -461,6 +461,11 @@ func (cmd *RehearseConfigPush) run(ctx context.Context, r *rehearsal, agentNonce
 		return err
 	}
 	value := hex.EncodeToString(serverNonce)
+	// the key goes on record before the write: a write that failed may
+	// still have been applied (a forwarded PATCH whose connection was reset
+	// after the holding member applied it, ST-4 on 6.9), and a harness or
+	// an operator looks for it by this name
+	s.observe("challenge-write.key", key)
 	exp := writeExpectation(http.MethodPatch, cmd.ExpectFail == "write")
 	resp, err := write(ctx, s, cmd.stderr, "challenge-write", http.MethodPatch, cmd.Args.Name, patchBody(key, &value), first.etag, false, exp)
 	if err != nil {

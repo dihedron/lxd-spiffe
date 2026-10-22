@@ -88,17 +88,19 @@ func Summarize(results []Result, settings map[string]string, b Bounds) Summary {
 			continue
 		}
 		s.count(r)
-		// a must-fail fault never passes; under the others (LXD crashed or
-		// cut off, a cluster member down, a concurrent writer) a pass is
-		// legitimate, since it ends with a fresh read compared with the
-		// first, and none of them changes an instance's identity
-		for _, w := range hits {
-			if f, _ := Lookup(w.Fault); f.MustFail && r.Outcome == Pass {
+		// a must-fail fault never passes the iteration it targets; any other
+		// pass is legitimate (LXD crashed or cut off, a member down, a
+		// concurrent writer, or another instance's fault overlapping): it
+		// ends with a fresh read compared with the first, location included
+		if r.Window != nil && r.Outcome == Pass {
+			if f, _ := Lookup(r.Window.Fault); f.MustFail {
 				s.violate("INV-1", r, fmt.Sprintf("passed although hit by %s (%s)", f.ID, f.Name))
 			}
 		}
-		if b.Iteration > 0 && r.Duration() > b.Iteration {
-			s.violate("INV-2", r, fmt.Sprintf("took %s, over %s", r.Duration().Round(time.Millisecond), b.Iteration))
+		// the attestor's own time: the server half, which the probe bounds;
+		// the guest half's transport (SSH, lxc exec) is the harness's
+		if d := r.serverDuration(); b.Iteration > 0 && d > b.Iteration {
+			s.violate("INV-2", r, fmt.Sprintf("server half took %s, over %s", d.Round(time.Millisecond), b.Iteration))
 		}
 		s.leftovers(r, hits)
 	}
@@ -185,7 +187,14 @@ func hitBy(r Result, windows []Window) []Window {
 func (s *Summary) checkRecovery(results []Result, windows []Window, b Bounds) {
 	for _, w := range windows {
 		f, _ := Lookup(w.Fault)
-		quiet := quietFrom(w.End, w.Server, windows, b.Recovery)
+		// recovery is measured once the clean-up is over (INV-3): the
+		// clean-up of a power-off still starts the instances it left
+		// stopped after the fault stopped acting
+		from := w.End
+		if w.CleanedUp.After(from) {
+			from = w.CleanedUp
+		}
+		quiet := quietFrom(from, w.Server, windows, b.Recovery)
 		recovered := false
 		for _, r := range results {
 			if !r.Recovery || r.Outcome != Pass || r.Fault != w.Fault || r.Target.Server != w.Server {
@@ -354,6 +363,10 @@ func (s Summary) WriteMarkdown(w io.Writer) error {
 	}
 	b.WriteString("\n## Latency of the attestor's steps (passes without faults)\n\n| Load | Mode | Iterations | Per second | p50 | p95 | p99 | max |\n|---|---|---|---|---|---|---|---|\n")
 	for _, l := range s.Load {
+		if l.Attestor.Count == 0 {
+			fmt.Fprintf(&b, "| %s | %s | %d | %.1f | n/a | n/a | n/a | n/a |\n", l.Label, l.Mode, l.Iterations, l.PerSecond)
+			continue
+		}
 		fmt.Fprintf(&b, "| %s | %s | %d | %.1f | %d ms | %d ms | %d ms | %d ms |\n",
 			l.Label, l.Mode, l.Iterations, l.PerSecond, l.Attestor.P50, l.Attestor.P95, l.Attestor.P99, l.Attestor.Max)
 	}

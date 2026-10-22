@@ -170,7 +170,7 @@ func TestLAB3Baseline(t *testing.T) {
 					t.Errorf("%s: eth0 on %q; want %s", where, n, bridge)
 				}
 				if mode, ok := selinuxModes[want.name]; ok {
-					got := strings.TrimSpace(l.ssh(t, server, "sudo timeout 60 lxc exec "+want.name+" -- sh -c "+
+					got := strings.TrimSpace(l.ssh(t, server, "sudo timeout -k 5 60 lxc exec "+want.name+" -- sh -c "+
 						shellQuote("echo $(getenforce) $(ps -eo label,comm | awk '$2 == \"lxd-agent\" { print $1 }')")))
 					if !strings.HasPrefix(got, mode) || (mode == "Enforcing" && !strings.Contains(got, ":unconfined_service_t:")) {
 						t.Errorf("%s: SELinux and lxd-agent %q; want %s (with lxd-agent in unconfined_service_t when enforcing)", where, got, mode)

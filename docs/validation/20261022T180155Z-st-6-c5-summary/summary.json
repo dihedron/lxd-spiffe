@@ -1,0 +1,68 @@
+{
+  "settings": {
+    "arms": "config",
+    "cluster": "c5",
+    "containers": "3",
+    "cycles": "10",
+    "evacuee": "c5n3",
+    "harness": "7e7deba",
+    "session": "ST-6",
+    "sparse_period": "60",
+    "version": "5.21.8",
+    "vms": "3"
+  },
+  "groups": [
+    {
+      "version": "5.21.8",
+      "arm": "config",
+      "type": "container",
+      "evacuate_attempted": 6,
+      "evacuate_failed": 3,
+      "restore_attempted": 3,
+      "restore_failed": 3,
+      "evacuate_skipped": 24,
+      "restore_skipped": 0,
+      "volumes_left": 0,
+      "busy_errors": 0
+    },
+    {
+      "version": "5.21.8",
+      "arm": "config",
+      "type": "virtual-machine",
+      "evacuate_attempted": 0,
+      "evacuate_failed": 0,
+      "restore_attempted": 0,
+      "restore_failed": 0,
+      "evacuate_skipped": 30,
+      "restore_skipped": 0,
+      "volumes_left": 0,
+      "busy_errors": 0
+    }
+  ],
+  "cycles": [
+    {
+      "version": "5.21.8",
+      "arm": "config",
+      "cycles": 10,
+      "blocked": 0,
+      "evacuate_errors": 10,
+      "restore_errors": 0,
+      "evacuate": {
+        "count": 10,
+        "p50_ms": 4030,
+        "p95_ms": 5752,
+        "p99_ms": 5752,
+        "max_ms": 5752
+      },
+      "restore": {
+        "count": 10,
+        "p50_ms": 480,
+        "p95_ms": 528,
+        "p99_ms": 528,
+        "max_ms": 528
+      }
+    }
+  ],
+  "holders": [],
+  "harness_errors": []
+}

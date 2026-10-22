@@ -273,6 +273,22 @@ func TestINV3QuietServer(t *testing.T) {
 	}
 }
 
+// TestINV3AfterCleanup: recovery is measured from the end of the clean-up
+// when it ends after the window (a power-off's clean-up starts the
+// instances again after the cluster is healthy), as INV-3 says.
+func TestINV3AfterCleanup(t *testing.T) {
+	hit := withWindow(res(1, targets[0], FilePull, "C1", Fail, 0, 5), 0, 10)
+	hit.Window.CleanedUp = at(130)
+	late := recovery(hit, 150) // 140 s after the window, 20 s after the clean-up
+	if v := violations(Summarize([]Result{hit, late}, nil, bounds), "INV-3"); len(v) != 0 {
+		t.Errorf("INV-3 from the clean-up %+v", v)
+	}
+	hit.Window.CleanedUp = time.Time{}
+	if v := violations(Summarize([]Result{hit, late}, nil, bounds), "INV-3"); len(v) != 1 {
+		t.Errorf("INV-3 without a clean-up time %+v", v)
+	}
+}
+
 // TestINV4Attributed: leftovers under a server-wide fault are its orphans.
 func TestINV4Attributed(t *testing.T) {
 	a, b := targets[0], targets[1]
@@ -308,5 +324,30 @@ func TestLeftoverCause(t *testing.T) {
 	s := Summarize([]Result{c3, recovery(c3, 30), c10, recovery(c10, 31)}, nil, bounds)
 	if s.Orphans["C3"] != 1 || s.Orphans["C10"] != 0 {
 		t.Errorf("orphans %v", s.Orphans)
+	}
+}
+
+// A must-fail fault fails the iteration it targets only: another instance
+// overlapping it may pass (C8b evacuates one member, not the cluster).
+func TestINV1MustFailTargetsOnly(t *testing.T) {
+	a, b := targets[0], targets[1]
+	c8b := withWindow(res(1, a, FilePull, "C8b", Fail, 10, 20), 10, 20)
+	other := res(2, b, FilePull, "", Pass, 11, 15)
+	own := withWindow(res(3, a, FilePull, "C8b", Pass, 30, 35), 30, 35)
+	s := Summarize([]Result{c8b, recovery(c8b, 25), other, own, recovery(own, 40)}, nil, bounds)
+	if v := violations(s, "INV-1"); len(v) != 1 || v[0].Iteration != 3 {
+		t.Errorf("INV-1 %+v", v)
+	}
+}
+
+// INV-2 measures the server half: a slow guest half is the harness's.
+func TestINV2ServerHalf(t *testing.T) {
+	slowGuest := res(1, targets[0], FilePull, "", Pass, 0, 55)
+	slowGuest.ServerEnd = at(20)
+	slowServer := res(2, targets[1], FilePull, "", Pass, 0, 55)
+	slowServer.ServerEnd = at(50)
+	s := Summarize([]Result{slowGuest, slowServer}, nil, bounds)
+	if v := violations(s, "INV-2"); len(v) != 1 || v[0].Iteration != 2 {
+		t.Errorf("INV-2 %+v", v)
 	}
 }

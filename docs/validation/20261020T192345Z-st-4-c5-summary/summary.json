@@ -1,0 +1,237 @@
+{
+  "settings": {
+    "cluster": "c5",
+    "fault_rate": "0.25",
+    "faults": "C3,C6,C7a,C7b,C8a,C9,C10",
+    "fleet": "9",
+    "iterations": "200",
+    "seed": "1792524204701214188",
+    "session": "ST-4",
+    "workers": "10"
+  },
+  "outcomes": {
+    "config_push": {
+      "C10": {
+        "fail at compare": 6
+      },
+      "C3": {
+        "fail at answer": 3,
+        "fail at policy": 1,
+        "fail at resolve": 1,
+        "pass": 8
+      },
+      "C6": {
+        "fail at answer": 2,
+        "fail at timeout": 2,
+        "pass": 4
+      },
+      "C7a": {
+        "fail at policy": 1,
+        "pass": 12
+      },
+      "C7b": {
+        "fail at policy": 1,
+        "fail at resolve": 2,
+        "fail at timeout": 6
+      },
+      "C8a": {
+        "fail at answer": 4,
+        "fail at policy": 2,
+        "fail at recheck": 2
+      },
+      "C9": {
+        "pass": 8
+      },
+      "none": {
+        "fail at answer": 1,
+        "fail at cleanup": 2,
+        "fail at write": 1,
+        "pass": 131
+      }
+    },
+    "file_pull": {
+      "C10": {
+        "fail at compare": 13
+      },
+      "C3": {
+        "fail at resolve": 1,
+        "pass": 6
+      },
+      "C6": {
+        "fail at policy": 2,
+        "pass": 2
+      },
+      "C7a": {
+        "fail at answer": 1,
+        "pass": 6
+      },
+      "C7b": {
+        "fail at answer": 6,
+        "fail at resolve": 2
+      },
+      "C8a": {
+        "fail at answer": 1,
+        "fail at recheck": 9,
+        "fail at resolve": 1
+      },
+      "none": {
+        "fail at answer": 2,
+        "pass": 148
+      }
+    }
+  },
+  "load": [
+    {
+      "label": "cluster chaos",
+      "mode": "config_push",
+      "attestor": {
+        "count": 52,
+        "p50_ms": 228,
+        "p95_ms": 428,
+        "p99_ms": 734,
+        "max_ms": 734
+      },
+      "steps": {
+        "answer": {
+          "count": 52,
+          "p50_ms": 452,
+          "p95_ms": 2153,
+          "p99_ms": 2304,
+          "max_ms": 2304
+        },
+        "challenge": {
+          "count": 52,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "cleanup": {
+          "count": 52,
+          "p50_ms": 90,
+          "p95_ms": 268,
+          "p99_ms": 310,
+          "max_ms": 310
+        },
+        "compare": {
+          "count": 52,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "policy": {
+          "count": 52,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "recheck": {
+          "count": 52,
+          "p50_ms": 31,
+          "p95_ms": 76,
+          "p99_ms": 114,
+          "max_ms": 114
+        },
+        "resolve": {
+          "count": 52,
+          "p50_ms": 34,
+          "p95_ms": 104,
+          "p99_ms": 192,
+          "max_ms": 192
+        },
+        "write": {
+          "count": 52,
+          "p50_ms": 50,
+          "p95_ms": 123,
+          "p99_ms": 223,
+          "max_ms": 223
+        }
+      },
+      "iterations": 200,
+      "per_second": 0.11332335817253628
+    },
+    {
+      "label": "cluster chaos",
+      "mode": "file_pull",
+      "attestor": {
+        "count": 61,
+        "p50_ms": 107,
+        "p95_ms": 193,
+        "p99_ms": 383,
+        "max_ms": 383
+      },
+      "steps": {
+        "answer": {
+          "count": 61,
+          "p50_ms": 441,
+          "p95_ms": 791,
+          "p99_ms": 2451,
+          "max_ms": 2451
+        },
+        "challenge": {
+          "count": 61,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "compare": {
+          "count": 61,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "file": {
+          "count": 61,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "policy": {
+          "count": 61,
+          "p50_ms": 0,
+          "p95_ms": 0,
+          "p99_ms": 0,
+          "max_ms": 0
+        },
+        "read": {
+          "count": 61,
+          "p50_ms": 45,
+          "p95_ms": 92,
+          "p99_ms": 142,
+          "max_ms": 142
+        },
+        "recheck": {
+          "count": 61,
+          "p50_ms": 25,
+          "p95_ms": 69,
+          "p99_ms": 87,
+          "max_ms": 87
+        },
+        "resolve": {
+          "count": 61,
+          "p50_ms": 26,
+          "p95_ms": 61,
+          "p99_ms": 204,
+          "max_ms": 204
+        }
+      },
+      "iterations": 200,
+      "per_second": 0.11343924333169322
+    }
+  ],
+  "violations": [],
+  "orphans": {
+    "C3": 3,
+    "C6": 4,
+    "C7a": 2,
+    "C7b": 8
+  },
+  "recoveries": 185,
+  "windows": 115,
+  "swept": 15
+}

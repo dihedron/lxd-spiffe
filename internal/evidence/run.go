@@ -313,7 +313,7 @@ var ErrAborted = errors.New("record aborted: the probe was killed before writing
 
 // ReadRecord reads a record file; an empty one is ErrAborted.
 func ReadRecord(path string) (*Record, error) {
-	data, err := os.ReadFile(path) //nolint:gosec // G304: a record of a run the operator names
+	data, err := readEvidenceFile(path)
 	if err != nil {
 		return nil, err
 	}

@@ -155,7 +155,7 @@ func TestGL12SharedDevices(t *testing.T) {
 					for _, w := range c.writers {
 						// the previous proof, from either side: A may not see the shared one
 						for _, i := range []string{c.a, w} {
-							l.trySSH(server, "sudo timeout 20 lxc exec "+i+" -- rm -f "+c.proof) //nolint:errcheck // may not exist
+							l.trySSH(server, "sudo timeout -k 5 20 lxc exec "+i+" -- rm -f "+c.proof) //nolint:errcheck // may not exist
 						}
 						wrote[w] = true
 						put := l.guest(t, s, server, "default", w, append([]string{"guest", "file", "put", c.proof,
@@ -195,7 +195,7 @@ func TestGL12SharedDevices(t *testing.T) {
 func (l *lab) waitAgent(server, instance string) error {
 	deadline := time.Now().Add(5 * time.Minute)
 	for time.Now().Before(deadline) {
-		if _, err := l.trySSH(server, "sudo timeout 10 lxc exec "+instance+" -- true"); err == nil {
+		if _, err := l.trySSH(server, "sudo timeout -k 5 10 lxc exec "+instance+" -- true"); err == nil {
 			return nil
 		}
 		time.Sleep(3 * time.Second)

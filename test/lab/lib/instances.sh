@@ -178,7 +178,7 @@ SETUP
 # guest_exec SERVER PROJECT NAME COMMAND: runs COMMAND (a shell string) in
 # an instance, bounded: lxc exec into a VM that is still booting can hang.
 guest_exec() {
-	vm_ssh "$1" "sudo timeout 60 lxc exec $(printf '%q' "$3") --project $(printf '%q' "$2") -- sh -c $(printf '%q' "$4")"
+	vm_ssh "$1" "sudo timeout -k 5 60 lxc exec $(printf '%q' "$3") --project $(printf '%q' "$2") -- sh -c $(printf '%q' "$4")"
 }
 
 # ensure_selinux SERVER: makes the baseline VMs marked @selinux-enforcing

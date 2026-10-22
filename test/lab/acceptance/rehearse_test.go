@@ -23,6 +23,9 @@ type rehearsal struct {
 	server    *run
 	guest     *run
 	challenge rehearse.Challenge
+	// guestErr is why the guest half failed when the server half's record
+	// still says how the rehearsal ended: the record judges it
+	guestErr error
 }
 
 // rehearse runs a rehearsal (probe spec PRS-53): the server half through
@@ -70,8 +73,7 @@ func (l *lab) rehearseHooked(ctx context.Context, s session, server, identity, p
 	cmd.Env = append(os.Environ(), "LXD_PROBE_RUN_ID="+s.runID)
 	// lab.sh runs lxd-probe in a subshell: a process group of its own lets
 	// C4 kill the probe itself, not only lab.sh's shell
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
+	boundCommand(cmd)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return reh, err
@@ -97,6 +99,7 @@ func (l *lab) rehearseHooked(ctx context.Context, s session, server, identity, p
 		}
 	}()
 	var line string
+	var received time.Time
 	deadline := time.After(2 * time.Minute)
 wait:
 	for {
@@ -106,7 +109,7 @@ wait:
 				break wait
 			}
 			if c, err := rehearse.FindChallenge(ln); err == nil {
-				reh.challenge, line = c, ln
+				reh.challenge, line, received = c, ln, time.Now()
 				break wait
 			}
 		case <-deadline:
@@ -123,7 +126,16 @@ wait:
 	if line != "" && !h.skipGuest {
 		gargs := append([]string{"guest", "rehearse", verb}, guestArgs...)
 		gargs = append(gargs, "--challenge", line)
-		reh.guest, guestErr = l.guestE(ctx, s, server, project, instance, gargs...)
+		// the guest half ends when the server half stops waiting for it: an
+		// lxc exec into an instance a power-off or an evacuation took away
+		// never ends, and waiting for it to the iteration's end lost the
+		// server half's record, which had ended long before (ST-4)
+		gctx, gcancel := ctx, context.CancelFunc(func() {})
+		if d := guestDeadline(received, reh.challenge); !d.IsZero() {
+			gctx, gcancel = context.WithDeadline(ctx, d)
+		}
+		reh.guest, guestErr = l.guestE(gctx, s, server, project, instance, gargs...)
+		gcancel()
 		if h.afterGuest != nil {
 			h.afterGuest()
 		}
@@ -146,8 +158,11 @@ wait:
 		return reh, err
 	case line == "" && reh.server.result() == "":
 		return reh, fmt.Errorf("%s %s/%s: no challenge: %s", server, project, instance, reh.server)
-	case guestErr != nil && reh.guest == nil:
+	case guestErr != nil && reh.guest == nil && reh.server.result() == "":
 		return reh, guestErr
+	}
+	if reh.guest == nil {
+		reh.guestErr = guestErr
 	}
 	return reh, nil
 }

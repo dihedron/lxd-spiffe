@@ -305,6 +305,11 @@ func TestPRS51ConfigPush(t *testing.T) {
 	if _, ok := observation(t, rec, "step.cleanup.ms").(float64); !ok {
 		t.Errorf("cleanup duration: %v", rec.Observations)
 	}
+	// the key is recorded before the write, the challenge's own after it
+	ch, _ := observation(t, rec, "rehearse.challenge").(map[string]any)
+	if got := observation(t, rec, "challenge-write.key"); got == nil || got != ch["proof_key"] {
+		t.Errorf("challenge-write.key %v, challenge's key %v", got, ch["proof_key"])
+	}
 	// the write carried the read's ETag
 	var patches int
 	for _, r := range fake.Requests() {
@@ -360,6 +365,14 @@ func TestPRS52ConfigPushFailures(t *testing.T) {
 			// the key is removed after any failure past the write
 			if keys := challengeKeys(fake); len(keys) != 0 {
 				t.Errorf("keys left: %v", keys)
+			}
+			// a write that failed may still have been applied (a forwarded
+			// PATCH reset after the member applied it, ST-4 on 6.9): its key
+			// is on record for the harness to look for
+			if tt.failedAt == "write" {
+				if k, _ := observation(t, rec, "challenge-write.key").(string); !strings.HasPrefix(k, "user.spire.challenge.") {
+					t.Errorf("challenge-write.key %q", k)
+				}
 			}
 		})
 	}

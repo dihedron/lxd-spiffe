@@ -5,10 +5,12 @@ package acceptance
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -50,8 +52,8 @@ func loadStressSettings(t *testing.T) stressSettings {
 		t.Fatal("LAB_STRESS_SEED: not a number")
 	}
 	return stressSettings{
-		// the fleet: LXD allows 99 permissions per group, see STR-01
-		fleet:      atoi("LAB_STRESS_FLEET", 35),
+		// the fleet: its grants are sharded over groups, see STR-01
+		fleet:      atoi("LAB_STRESS_FLEET", 100),
 		iterations: atoi("LAB_STRESS_ITERATIONS", 500),
 		workers:    atoi("LAB_STRESS_WORKERS", 10), faultRate: rate, seed: seed,
 	}
@@ -76,20 +78,52 @@ func fleetNames(n int) []string {
 // stressBaseline are the baseline instances that join the fleet (STR-01).
 var stressBaseline = []string{"c-unpriv", "c-priv", "c-iso", "c-raw", "v-ubuntu", "v-debian", "v-alpine"}
 
-// fleetGrants are the lab groups' entitlements on each fleet instance, as
-// lab_grant gives them on the baseline (project can_view is there already).
+// fleetGrants are the lab identities' entitlements on each fleet instance,
+// as lab_grant gives them on the baseline. The identity and its baseline
+// group share the name.
 var fleetGrants = []struct{ group, entitlements string }{
 	{"lab-read", "can_view"}, {"lab-files", "can_view can_access_files"}, {"lab-edit", "can_view can_edit"},
+}
+
+// shardCapacity is the most instance grants a shard group holds: a group
+// holds at most 99 permissions (gate L17), and project can_view is one.
+const shardCapacity = 90
+
+// shardScript gives each lab identity its fleet grants through shard
+// groups <group>-s1, <group>-s2, …: each holds project can_view (first)
+// and at most shardCapacity instance grants, and the identity is added to
+// it, as the attestor's Least privilege prescribes (STR-01, gate L17).
+func shardScript(names []string) string {
+	var b strings.Builder
+	b.WriteString("set -e\n")
+	for _, g := range fleetGrants {
+		ents := strings.Fields(g.entitlements)
+		per := shardCapacity / len(ents)
+		for k := 0; k*per < len(names); k++ {
+			shard := fmt.Sprintf("%s-s%d", g.group, k+1)
+			fmt.Fprintf(&b, "sudo lxc auth group create %s\nsudo lxc auth group permission add %s project default can_view\n", shard, shard)
+			for _, n := range names[k*per : min((k+1)*per, len(names))] {
+				for _, e := range ents {
+					fmt.Fprintf(&b, "sudo lxc auth group permission add %s instance %s %s project=default\n", shard, n, e)
+				}
+			}
+			fmt.Fprintf(&b, "sudo lxc auth identity group add tls/%s %s\n", g.group, shard)
+		}
+	}
+	return b.String()
 }
 
 // fleetSetup builds the fleet on server (STR-01) and deletes it when the
 // test ends, and first if a previous session left one (STR-02). It also
 // lifts the VM's sshd limits, so that concurrent guest halves are not
 // refused by MaxStartups or MaxSessions (gone at the next lab.sh reset).
-func (l *lab) fleetSetup(t *testing.T, server string, names []string) {
+func (l *lab) fleetSetup(t *testing.T, server string, names []string, members ...string) {
 	t.Helper()
 	var td strings.Builder
 	td.WriteString("set +e\n")
+	// the shard groups (their grants and memberships go with them), then
+	// grants an unsharded session of chunk 16 put in the baseline groups
+	td.WriteString(`for g in $(sudo lxc auth group list -f csv | cut -d, -f1 | grep -E '^lab-(read|files|edit)-s[0-9]+$'); do sudo lxc auth group delete "$g"; done` + "\n")
 	for _, n := range names {
 		for _, g := range fleetGrants {
 			for _, e := range strings.Fields(g.entitlements) {
@@ -101,34 +135,55 @@ func (l *lab) fleetSetup(t *testing.T, server string, names []string) {
 	teardown := td.String()
 	l.ssh(t, server, teardown)
 	t.Cleanup(func() { l.trySSH(server, teardown) }) //nolint:errcheck // best effort
+	// an instance volume LXD left behind blocks launching that name again
+	// ("UNIQUE constraint failed"), deep in the launches below
+	if orphans := l.orphanVolumes(t, server); len(orphans) > 0 {
+		t.Fatalf("%s has instance volumes without their instance, left by an earlier session (a failed evacuation): %s; run lab.sh reset", server, strings.Join(orphans, " "))
+	}
 	l.ssh(t, server, `printf 'MaxStartups 200:30:400\nMaxSessions 200\n' | sudo tee /etc/ssh/sshd_config.d/90-lab-stress.conf >/dev/null && sudo systemctl reload ssh`)
 
 	start := time.Now()
-	list := strings.Join(names, " ")
 	// eight launches at a time; LXD occasionally fails one under that load
 	// (a zfs clone "bad file descriptor" was seen on 6.9), so every instance
 	// that is not running is launched again alone, up to three times
-	launch := fmt.Sprintf(`printf '%%s\n' %s | xargs -P 8 -I{} sudo lxc launch %s {} -q 2>/dev/null; `+
-		`for n in %s; do for try in 1 2 3; do `+
+	// on a cluster the fleet is spread over the members, round robin
+	var pairs strings.Builder
+	for i, n := range names {
+		target := "-"
+		if len(members) > 0 {
+			target = members[i%len(members)]
+		}
+		fmt.Fprintf(&pairs, "%s %s ", n, target)
+	}
+	launchOne := `n=$1; m=$2; if [ "$m" = - ]; then sudo lxc launch ` + stressImage + ` "$n" -q; else sudo lxc launch ` + stressImage + ` "$n" --target "$m" -q; fi`
+	launch := fmt.Sprintf(`printf '%%s %%s\n' %s | xargs -P 8 -n 2 sh -c '%s' sh 2>/dev/null; `+
+		`set -- %s; while [ $# -gt 0 ]; do n=$1; m=$2; shift 2; for try in 1 2 3; do `+
 		`[ "$(sudo lxc list -c ns -f csv "^$n$")" = "$n,RUNNING" ] && break; `+
-		`echo "relaunching $n (try $try)"; sudo lxc delete --force "$n" 2>/dev/null; sudo lxc launch %s "$n" -q; sleep 2; done; `+
+		`echo "relaunching $n (try $try)"; sudo lxc delete --force "$n" 2>/dev/null; sh -c '%s' sh "$n" "$m"; sleep 2; done; `+
 		`[ "$(sudo lxc list -c ns -f csv "^$n$")" = "$n,RUNNING" ] || { echo "$n does not run" >&2; exit 1; }; done`,
-		list, stressImage, list, stressImage)
+		pairs.String(), launchOne, pairs.String(), launchOne)
 	if out := l.ssh(t, server, launch); strings.TrimSpace(out) != "" {
 		t.Logf("%s: %s", server, strings.TrimSpace(out))
 	}
+	// LXD's file transfer into a container occasionally breaks for one
+	// container of a fresh fleet (a forkfile socket error was seen on 6.9,
+	// lasting across quick retries, not reproducible on demand): each
+	// install is tried again after restarting the container, then after
+	// recreating it
 	var script strings.Builder
-	script.WriteString("set -e\n")
+	script.WriteString("set -e\ninstall() { for try in 1 2 3 4; do " +
+		"sudo lxc file push lxd-probe \"$1\"/usr/local/bin/lxd-probe --uid 0 --gid 0 --mode 0755 && " +
+		"sudo lxc exec \"$1\" -- sh -c 'mkdir -p /var/lib/lxd-probe/evidence && chmod 0700 /var/lib/lxd-probe/evidence' && return 0; " +
+		"case $try in 1|2) echo \"install in $1 failed: restarting it\"; sudo lxc restart --force \"$1\";; " +
+		"3) echo \"install in $1 failed: recreating it\"; sudo lxc delete --force \"$1\"; sudo lxc launch " + stressImage + " \"$1\" -q;; esac; " +
+		"sleep 3; done; return 1; }\n")
 	for _, n := range names {
-		fmt.Fprintf(&script, "sudo lxc file push lxd-probe %s/usr/local/bin/lxd-probe --uid 0 --gid 0 --mode 0755\n", n)
-		fmt.Fprintf(&script, "sudo lxc exec %s -- sh -c 'mkdir -p /var/lib/lxd-probe/evidence && chmod 0700 /var/lib/lxd-probe/evidence'\n", n)
-		for _, g := range fleetGrants {
-			for _, e := range strings.Fields(g.entitlements) {
-				fmt.Fprintf(&script, "sudo lxc auth group permission add %s instance %s %s project=default\n", g.group, n, e)
-			}
-		}
+		fmt.Fprintf(&script, "install %s\n", n)
 	}
-	l.ssh(t, server, script.String())
+	script.WriteString(shardScript(names))
+	if out := strings.TrimSpace(l.ssh(t, server, script.String())); out != "" {
+		t.Logf("%s: %s", server, out) // the installs that needed a restart or a new container
+	}
 	t.Logf("%s: fleet of %d built in %s", server, len(names), time.Since(start).Round(time.Second))
 }
 
@@ -138,6 +193,66 @@ type stressRun struct {
 	l       *lab
 	session session
 	label   string
+	// unchecked are the iterations whose leftovers could not be checked,
+	// the instance out of reach under a fault: checked again at the end
+	mu        sync.Mutex
+	unchecked map[uncheckedKey]uncheckedLeftover
+}
+
+// uncheckedKey names one result: its item, target and start.
+type uncheckedKey struct {
+	n      int
+	target stress.Target
+	start  time.Time
+}
+
+// uncheckedLeftover is what the late check needs.
+type uncheckedLeftover struct {
+	it stress.Item
+	c  rehearse.Challenge
+}
+
+// leftovers sets r's leftovers (INV-4), or, when the instance cannot be
+// reached, keeps the check for recheckLeftovers: counted as none, it hid
+// leftovers that the sweep then found (ST-4).
+func (sr *stressRun) leftovers(r *stress.Result, it stress.Item, c rehearse.Challenge) {
+	n, known := sr.checkLeftovers(it, c)
+	r.Leftovers = n
+	if known {
+		return
+	}
+	sr.mu.Lock()
+	defer sr.mu.Unlock()
+	if sr.unchecked == nil {
+		sr.unchecked = map[uncheckedKey]uncheckedLeftover{}
+	}
+	sr.unchecked[uncheckedKey{it.N, it.Target, r.Start}] = uncheckedLeftover{it, c}
+}
+
+// recheckLeftovers checks again, on the lab the faults have left, the
+// leftovers of the results whose check could not reach the instance.
+func (sr *stressRun) recheckLeftovers(t *testing.T, results []stress.Result) {
+	t.Helper()
+	sr.mu.Lock()
+	defer sr.mu.Unlock()
+	if len(sr.unchecked) == 0 {
+		return
+	}
+	found, unknown := 0, 0
+	for i := range results {
+		u, ok := sr.unchecked[uncheckedKey{results[i].N, results[i].Target, results[i].Start}]
+		if !ok {
+			continue
+		}
+		n, known := sr.checkLeftovers(u.it, u.c)
+		if !known {
+			unknown++
+			continue
+		}
+		results[i].Leftovers = n
+		found += n
+	}
+	t.Logf("leftovers checked again after the session: %d checks, %d found, %d still unknown", len(sr.unchecked), found, unknown)
 }
 
 // iterate runs one item: the rehearsal, then, for file_pull, the guest's
@@ -169,6 +284,14 @@ func (sr *stressRun) iterateHooked(ctx context.Context, it stress.Item, h rehear
 	gargs = append(gargs, guestExtra...)
 	reh, err := l.rehearseHooked(ctx, sr.session, it.Target.Server, identity, "default", it.Target.Instance, it.Mode, sargs, gargs, h)
 	c = reh.challenge
+	if c.ProofKey == "" && c.ProofPath == "" && reh.server != nil {
+		// no challenge: the write failed, but it may have been applied
+		// (a forwarded PATCH reset after the member applied it); the
+		// record names the key it tried (INV-4)
+		if k, ok := reh.server.observation("challenge-write.key"); ok {
+			c.ProofKey, _ = k.(string)
+		}
+	}
 	r.ServerEnd = serverEnd(reh.server)
 	if err != nil {
 		// LXD unreachable or too slow is the server half failing, not the
@@ -176,13 +299,20 @@ func (sr *stressRun) iterateHooked(ctx context.Context, it stress.Item, h rehear
 		if reh.server != nil && (reh.server.code == exit.Connection || reh.server.code == exit.Timeout) {
 			r.Outcome, r.FailedStep = stress.Fail, map[int]string{exit.Connection: "connect", exit.Timeout: "timeout"}[reh.server.code]
 			r.Detail = err.Error()
-			r.Leftovers = sr.checkLeftovers(it, c)
+			sr.leftovers(&r, it, c)
 			return r, c
 		}
 		r.Outcome, r.Detail = stress.Error, err.Error()
+		// a probe cut off after its challenge may have left the key or
+		// the proof file: unchecked, the sweep found more than the
+		// iterations had counted (INV-4)
+		sr.leftovers(&r, it, c)
 		return r, c
 	}
 	r.Steps = stepTimings(reh.server)
+	if reh.guestErr != nil {
+		r.Detail = "guest half: " + reh.guestErr.Error()
+	}
 	result := reh.server.result()
 	switch {
 	case result == "passed":
@@ -197,14 +327,18 @@ func (sr *stressRun) iterateHooked(ctx context.Context, it stress.Item, h rehear
 		rm, err := l.guestE(ctx, sr.session, it.Target.Server, "default", it.Target.Instance,
 			append(append([]string{"guest", "file", "rm", reh.challenge.ProofPath}, spireWrite...), tags...)...)
 		if err != nil || rm.rec.Outcome != "ok" {
-			r.Leftovers = sr.checkLeftovers(it, c)
+			sr.leftovers(&r, it, c)
 		}
+	}
+	if it.Mode == stress.FilePull && reh.challenge.ProofPath != "" && reh.guest == nil && reh.guestErr != nil {
+		// a guest half cut off may have written the proof file first
+		sr.leftovers(&r, it, c)
 	}
 	if it.Mode == stress.ConfigPush && r.Outcome != stress.Pass {
 		// the cleanup may have failed or never run: the instance says
-		r.Leftovers = sr.checkLeftovers(it, c)
+		sr.leftovers(&r, it, c)
 		if v, ok := reh.server.observation("cleanup.result"); ok {
-			r.Detail = fmt.Sprint(v)
+			r.Detail = strings.TrimSpace(r.Detail + " " + fmt.Sprint(v))
 		}
 	}
 	return r, c
@@ -222,21 +356,21 @@ func serverEnd(r *run) time.Time {
 }
 
 // checkLeftovers reports whether the iteration's challenge key
-// (config_push) or proof file (file_pull) is still on the instance (INV-4).
-func (sr *stressRun) checkLeftovers(it stress.Item, c rehearse.Challenge) int {
+// (config_push) or proof file (file_pull) is still on the instance
+// (INV-4), and whether the instance could tell: lxc exec fails the same
+// way for a missing file and for an instance out of reach, so the guest
+// says which.
+func (sr *stressRun) checkLeftovers(it stress.Item, c rehearse.Challenge) (int, bool) {
 	server, inst := it.Target.Server, it.Target.Instance
 	switch {
 	case c.ProofKey != "":
-		out, err := sr.l.trySSH(server, "sudo lxc config get "+inst+" "+c.ProofKey)
-		if err == nil && strings.TrimSpace(out) != "" {
-			return 1
-		}
+		out, err := sr.l.trySSH(server, "sudo timeout -k 5 20 lxc config get "+inst+" "+c.ProofKey)
+		return parseLeftover(out, err, false)
 	case c.ProofPath != "":
-		if _, err := sr.l.trySSH(server, "sudo timeout 20 lxc exec "+inst+" -- test -e "+c.ProofPath); err == nil {
-			return 1
-		}
+		out, err := sr.l.trySSH(server, "sudo timeout -k 5 20 lxc exec "+inst+" -- sh -c 'if test -e "+c.ProofPath+"; then echo present; else echo absent; fi'")
+		return parseLeftover(out, err, true)
 	}
-	return 0
+	return 0, true
 }
 
 // stepTimings reads the step.<name>.ms observations (PRS-54).
@@ -257,6 +391,19 @@ func stepTimings(r *run) map[string]int64 {
 		}
 	}
 	return out
+}
+
+// orphanVolumes are the server's instance volumes whose instance is not
+// on their member, as name@member.
+func (l *lab) orphanVolumes(t *testing.T, server string) []string {
+	t.Helper()
+	vols := l.ssh(t, server, "sudo timeout -k 5 30 lxc storage volume list default -f csv")
+	columns := "n"
+	if l.env.Servers[server].Cluster == "yes" {
+		columns = "nL" // L is refused when not clustered
+	}
+	insts := l.ssh(t, server, "sudo timeout -k 5 30 lxc list -c "+columns+" -f csv")
+	return orphanVolumes(vols, insts)
 }
 
 // stressTargets are the fleet and the baseline of every server.
@@ -284,11 +431,19 @@ func (l *lab) buildFleets(t *testing.T, names []string) {
 // (STR-41, STR-42).
 func (l *lab) writeSummary(t *testing.T, name string, sum stress.Summary, results []stress.Result) {
 	t.Helper()
+	l.writeRun(t, name, sum.OK(), sum.WriteMarkdown, sum.WriteJSON, func(w io.Writer) error { return stress.WriteResults(w, results) })
+}
+
+// writeRun writes a run's summary.md, summary.json and results.jsonl
+// into its evidence directory and, with LAB_COLLECT=yes, when the run is
+// ok, copies them to docs/validation/<name>/.
+func (l *lab) writeRun(t *testing.T, name string, ok bool, md, js, results func(io.Writer) error) {
+	t.Helper()
 	dir := filepath.Join(l.evidence, name)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	write := func(file string, fn func(*os.File) error) {
+	write := func(file string, fn func(io.Writer) error) {
 		f, err := os.Create(filepath.Join(dir, file))
 		if err != nil {
 			t.Fatal(err)
@@ -298,14 +453,14 @@ func (l *lab) writeSummary(t *testing.T, name string, sum stress.Summary, result
 			t.Fatal(err)
 		}
 	}
-	write("summary.md", func(f *os.File) error { return sum.WriteMarkdown(f) })
-	write("summary.json", func(f *os.File) error { return sum.WriteJSON(f) })
-	write("results.jsonl", func(f *os.File) error { return stress.WriteResults(f, results) })
-	md, _ := os.ReadFile(filepath.Join(dir, "summary.md"))
-	t.Logf("summary in %s:\n%s", dir, md)
-	// a run that broke an invariant is not collected: it stays in the
-	// working evidence for analysis
-	if os.Getenv("LAB_COLLECT") == "yes" && !t.Failed() && sum.OK() {
+	write("summary.md", md)
+	write("summary.json", js)
+	write("results.jsonl", results)
+	text, _ := os.ReadFile(filepath.Join(dir, "summary.md"))
+	t.Logf("summary in %s:\n%s", dir, text)
+	// a run that is not ok is not collected: it stays in the working
+	// evidence for analysis
+	if os.Getenv("LAB_COLLECT") == "yes" && !t.Failed() && ok {
 		dst := filepath.Join(l.repo, "docs", "validation", name)
 		if err := copyTree(dir, dst, nil); err != nil {
 			t.Fatalf("collecting the summary: %v", err)
@@ -350,6 +505,7 @@ func TestST1Fleet(t *testing.T) {
 	sr := &stressRun{l: l, session: session{evidenceDir: l.evidence, runID: stamp + "-st-1"}, label: "fleet check"}
 	results := stress.Run(context.Background(), eachInstanceOnce(l.stressTargets(names)), set.workers, sr.iterate)
 	requireIterations(t, results)
+	sr.recheckLeftovers(t, results)
 	sum := stress.Summarize(results, set.record(), stressBounds)
 	l.writeSummary(t, stamp+"-st-1-summary", sum, results)
 	for _, r := range results {
@@ -378,6 +534,7 @@ func TestST2Load(t *testing.T) {
 			items[i].N += len(results)
 		}
 		step := stress.Run(context.Background(), items, c, sr.iterate)
+		sr.recheckLeftovers(t, step)
 		t.Logf("%s: %d iterations", sr.label, len(step))
 		results = append(results, step...)
 	}
@@ -424,6 +581,7 @@ func TestST5Burst(t *testing.T) {
 	requireIterations(t, results)
 	settings := set.record()
 	settings["session"], settings["offered"] = "ST-5", "20/s for 60 s, 16 in flight"
+	sr.recheckLeftovers(t, results)
 	sum := stress.Summarize(results, settings, stressBounds)
 	l.writeSummary(t, stamp+"-st-5-summary", sum, results)
 	if !sum.OK() {

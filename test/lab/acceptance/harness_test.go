@@ -105,6 +105,17 @@ func (l *lab) clusters() []string {
 	return out
 }
 
+// vmOf is the VM to reach name through: a cluster's first member, its
+// entry point; any other name is a VM already.
+func (l *lab) vmOf(name string) string {
+	if s, ok := l.env.Servers[name]; ok && s.Cluster == "yes" {
+		if m := l.members(name); len(m) > 0 {
+			return m[0]
+		}
+	}
+	return name
+}
+
 // members returns a cluster's members in name order.
 func (l *lab) members(cluster string) []string {
 	var out []string
@@ -255,6 +266,11 @@ func (l *lab) lxdProbe(t *testing.T, s session, args []string) *run {
 func (l *lab) lxdProbeE(ctx context.Context, s session, args []string) (*run, error) {
 	cmd := exec.CommandContext(ctx, filepath.Join(l.dir, "lab.sh"), args...)
 	cmd.Env = append(os.Environ(), "LXD_PROBE_RUN_ID="+s.runID)
+	if deadline, ok := ctx.Deadline(); ok && len(args) > 0 && args[0] == "guest" {
+		// the member ends the lxc exec too: killing the local ssh does not
+		cmd.Env = append(cmd.Env, fmt.Sprintf("LAB_GUEST_TIMEOUT=%d", max(1, int(time.Until(deadline).Seconds()))))
+	}
+	boundCommand(cmd)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()
@@ -365,7 +381,7 @@ func (l *lab) labsh(t *testing.T, args ...string) string {
 // trySSH runs a shell command on a lab VM and returns its standard output,
 // or an error with its standard error, for steps that may fail.
 func (l *lab) trySSH(vm, command string) (string, error) {
-	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), "ssh", vm, command)
+	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), "ssh", l.vmOf(vm), command)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
@@ -377,7 +393,7 @@ func (l *lab) trySSH(vm, command string) (string, error) {
 // ssh runs a shell command on a lab VM and returns its standard output.
 func (l *lab) ssh(t *testing.T, vm, command string) string {
 	t.Helper()
-	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), "ssh", vm, command)
+	cmd := exec.Command(filepath.Join(l.dir, "lab.sh"), "ssh", l.vmOf(vm), command)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
