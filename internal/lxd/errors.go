@@ -24,8 +24,11 @@ const (
 	KindRedirect     Kind = "redirect"     // 3xx, never followed
 	KindTooLarge     Kind = "too-large"    // body over the limit
 	KindServer       Kind = "server"       // other 4xx and 5xx
-	KindProtocol     Kind = "protocol"     // not a valid LXD response
-	KindOther        Kind = "other"
+	// KindAgentNotRunning is the files API's 500 while a VM's lxd-agent is
+	// not up yet (gate L7): not ready, unlike any other 500.
+	KindAgentNotRunning Kind = "agent-not-running"
+	KindProtocol        Kind = "protocol" // not a valid LXD response
+	KindOther           Kind = "other"
 )
 
 // Error is an error of the LXD client with its kind.

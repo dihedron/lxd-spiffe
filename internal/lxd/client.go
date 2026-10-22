@@ -9,6 +9,7 @@ package lxd
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/tls"
 	"encoding/hex"
@@ -163,6 +164,8 @@ type RawRequest struct {
 	Method string
 	// Path is the API path, e.g. /1.0/instances/c1.
 	Path string
+	// Project overrides the connection's project for this request.
+	Project string
 	// Query is added to the project parameter.
 	Query url.Values
 	// Body is a JSON body, if any.
@@ -191,7 +194,7 @@ func (c *Client) Raw(ctx context.Context, r RawRequest) (*RawResponse, error) {
 	for k, v := range r.Query {
 		query[k] = v
 	}
-	query.Set("project", c.project)
+	query.Set("project", cmp.Or(r.Project, c.project))
 	u := *c.base
 	u.Path = r.Path
 	u.RawQuery = query.Encode()
