@@ -1,0 +1,68 @@
+{
+  "settings": {
+    "arms": "config",
+    "cluster": "c6",
+    "containers": "3",
+    "cycles": "10",
+    "evacuee": "c6n3",
+    "harness": "7e7deba",
+    "session": "ST-6",
+    "sparse_period": "60",
+    "version": "6.9",
+    "vms": "3"
+  },
+  "groups": [
+    {
+      "version": "6.9",
+      "arm": "config",
+      "type": "container",
+      "evacuate_attempted": 4,
+      "evacuate_failed": 2,
+      "restore_attempted": 2,
+      "restore_failed": 2,
+      "evacuate_skipped": 26,
+      "restore_skipped": 0,
+      "volumes_left": 0,
+      "busy_errors": 0
+    },
+    {
+      "version": "6.9",
+      "arm": "config",
+      "type": "virtual-machine",
+      "evacuate_attempted": 0,
+      "evacuate_failed": 0,
+      "restore_attempted": 0,
+      "restore_failed": 0,
+      "evacuate_skipped": 30,
+      "restore_skipped": 0,
+      "volumes_left": 0,
+      "busy_errors": 0
+    }
+  ],
+  "cycles": [
+    {
+      "version": "6.9",
+      "arm": "config",
+      "cycles": 10,
+      "blocked": 0,
+      "evacuate_errors": 10,
+      "restore_errors": 0,
+      "evacuate": {
+        "count": 10,
+        "p50_ms": 1703,
+        "p95_ms": 15808,
+        "p99_ms": 15808,
+        "max_ms": 15808
+      },
+      "restore": {
+        "count": 10,
+        "p50_ms": 922,
+        "p95_ms": 72162,
+        "p99_ms": 72162,
+        "max_ms": 72162
+      }
+    }
+  ],
+  "holders": [],
+  "harness_errors": []
+}
