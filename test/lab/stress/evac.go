@@ -24,6 +24,10 @@ const (
 	// ArmFilesSparse reads every instance's files once per period (a few
 	// attestations' worth) instead of back to back.
 	ArmFilesSparse = "files-sparse"
+	// ArmConfig writes the instances' configuration back to back, as the
+	// server does in config_push: a conditional PATCH setting a challenge
+	// key, another removing it (not the guest's devLXD read).
+	ArmConfig = "config"
 )
 
 // The instance types, as LXD names them.
@@ -43,7 +47,7 @@ func EvacArms(cycles int, arms []string) []string {
 }
 
 // ParseEvacArms reads LAB_EVAC_ARMS, arms separated by commas; empty is
-// idle, files and files-vm (files-sparse is asked for by name).
+// idle, files and files-vm (files-sparse and config are asked for by name).
 func ParseEvacArms(s string) ([]string, error) {
 	if s == "" {
 		return []string{ArmIdle, ArmFiles, ArmFilesVM}, nil
@@ -51,8 +55,8 @@ func ParseEvacArms(s string) ([]string, error) {
 	var arms []string
 	for a := range strings.SplitSeq(s, ",") {
 		a = strings.TrimSpace(a)
-		if !slices.Contains([]string{ArmIdle, ArmFiles, ArmFilesVM, ArmFilesSparse}, a) || slices.Contains(arms, a) {
-			return nil, fmt.Errorf("LAB_EVAC_ARMS: %q is not an arm or comes twice (idle, files, files-vm, files-sparse)", a)
+		if !slices.Contains([]string{ArmIdle, ArmFiles, ArmFilesVM, ArmFilesSparse, ArmConfig}, a) || slices.Contains(arms, a) {
+			return nil, fmt.Errorf("LAB_EVAC_ARMS: %q is not an arm or comes twice (idle, files, files-vm, files-sparse, config)", a)
 		}
 		arms = append(arms, a)
 	}

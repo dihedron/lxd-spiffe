@@ -189,6 +189,15 @@ func (er *evacRun) startStep(arm string) (stop func(*stress.EvacStep), err error
 	}, nil
 }
 
+// configPush is the config arm's request, as the server's config_push does it
+// on the entry member's local socket (STR-72): read the instance for its
+// ETag, PATCH a challenge key with If-Match, read again, PATCH it away.
+const configPush = `n=$1; U=http://lxd/1.0/instances/$n; S=/var/snap/lxd/common/lxd/unix.socket; ` +
+	`B1='{"config":{"user.spire.challenge.evac":"v"}}'; B0='{"config":{"user.spire.challenge.evac":null}}'; ` +
+	`put() { e=$(curl -s -m 30 -D - -o /dev/null --unix-socket $S $U | tr -d "\r" | sed -n "s/^[Ee][Tt]ag: *//p"); ` +
+	`curl -sf -m 30 -o /dev/null -X PATCH -H "If-Match: $e" -d "$1" --unix-socket $S $U; }; ` +
+	`put "$B1" && put "$B0"`
+
 // startReaders starts, in the files arms, one reader per instance (per VM
 // in files-vm) on the entry member, pulling /etc/hostname through the
 // files API one request at a time, as file_pull does (STR-72), on LXD's
@@ -204,13 +213,17 @@ func (er *evacRun) startReaders(arm string) (stop func(*stress.EvacStep), err er
 		return func(*stress.EvacStep) {}, nil
 	}
 	ok, failed, first := "echo o", "echo f; sleep 1", ""
+	request := `curl -sf -m 30 -o /dev/null --unix-socket /var/snap/lxd/common/lxd/unix.socket "http://lxd/1.0/instances/$1/files?path=/etc/hostname"`
+	if arm == stress.ArmConfig {
+		request = configPush
+	}
 	if arm == stress.ArmFilesSparse {
 		pause := "sleep " + strconv.Itoa(er.sparse)
 		ok, failed = "echo o; "+pause, "echo f; "+pause
 		first = fmt.Sprintf(`sleep $(awk -v s=$$ 'BEGIN{srand(s); print rand()*%d}'); `, er.sparse)
 	}
 	reader := first + `end=$(($(date +%s)+1200)); while [ $(date +%s) -lt $end ]; do ` +
-		`if curl -sf -m 30 -o /dev/null --unix-socket /var/snap/lxd/common/lxd/unix.socket "http://lxd/1.0/instances/$1/files?path=/etc/hostname"; then ` + ok + `; else ` + failed + `; fi; ` +
+		`if ` + request + `; then ` + ok + `; else ` + failed + `; fi; ` +
 		`done >>/tmp/evac-reads-$1`
 	script := "rm -f /tmp/evac-reads-*; for n in " + strings.Join(names, " ") + "; do " +
 		"setsid nohup sh -c " + shellQuote(reader) + " " + evacReader + ` "$n" >/dev/null 2>&1 </dev/null & done`
@@ -227,7 +240,7 @@ func (er *evacRun) startReaders(arm string) (stop func(*stress.EvacStep), err er
 func (er *evacRun) read(arm string) []string {
 	var names []string
 	for _, n := range er.names {
-		if arm == stress.ArmFiles || arm == stress.ArmFilesSparse || arm == stress.ArmFilesVM && er.types[n] == stress.VM {
+		if arm == stress.ArmFiles || arm == stress.ArmFilesSparse || arm == stress.ArmConfig || arm == stress.ArmFilesVM && er.types[n] == stress.VM {
 			names = append(names, n)
 		}
 	}
