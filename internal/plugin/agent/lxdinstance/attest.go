@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"slices"
 	"time"
 
 	"github.com/dihedron/lxd-spiffe/internal/agentproof"
@@ -32,23 +33,12 @@ type received struct {
 // carry the claim and the steps, never a nonce or a proof (FR-A10).
 func (s *settings) attest(ctx context.Context, stream nodeattestorv1.NodeAttestor_AidAttestationServer) error {
 	src := claim.Sources{Hostname: os.Hostname}
-	typ := lxdinstancev1.InstanceType_INSTANCE_TYPE_UNSPECIFIED
-	modes := []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL}
-	g, err := s.connectDevLXD(ctx)
+	g, typ, modes, err := s.probeDevLXD(ctx)
 	if err != nil {
 		return err
 	}
 	if g != nil {
 		src.DevLXD = g
-		if typ, err = g.instanceType(ctx); err != nil {
-			if s.devLXD == devLXDRequired {
-				return fmt.Errorf("reading devLXD: %w", err)
-			}
-			slog.Debug("devLXD gave no instance type", "error", err.Error())
-			g = nil // not answering: config_push is not offered
-		} else {
-			modes = append(modes, lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH)
-		}
 	}
 	c, err := claim.Collect(ctx, s.claim, src)
 	if err != nil {
@@ -86,7 +76,7 @@ func (s *settings) attest(ctx context.Context, stream nodeattestorv1.NodeAttesto
 	if err != nil {
 		return fmt.Errorf("waiting for the challenge: %w", err)
 	}
-	remove, answer, err := s.prove(ctx, g, c, nonce, m.GetChallenge())
+	remove, answer, err := s.prove(ctx, g, modes, c, nonce, m.GetChallenge())
 	if err != nil {
 		return err
 	}
@@ -112,23 +102,47 @@ func (s *settings) attest(ctx context.Context, stream nodeattestorv1.NodeAttesto
 	}
 }
 
+// probeDevLXD connects to devLXD and reads the instance type (FR-A3); the
+// guest is nil without a socket, and config_push is offered only when
+// devLXD answers (FR-A5).
+func (s *settings) probeDevLXD(ctx context.Context) (*guest, lxdinstancev1.InstanceType, []lxdinstancev1.ProofMode, error) {
+	modes := []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL}
+	g, err := s.connectDevLXD(ctx)
+	if err != nil || g == nil {
+		return nil, lxdinstancev1.InstanceType_INSTANCE_TYPE_UNSPECIFIED, modes, err
+	}
+	typ, err := g.instanceType(ctx)
+	switch {
+	case err != nil && s.devLXD == devLXDRequired:
+		return nil, 0, nil, fmt.Errorf("reading devLXD: %w", err)
+	case err != nil:
+		slog.Debug("devLXD gave no instance type", "error", err.Error())
+		return g, lxdinstancev1.InstanceType_INSTANCE_TYPE_UNSPECIFIED, modes, nil
+	}
+	return g, typ, append(modes, lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH), nil
+}
+
 // prove checks the challenge and answers it: file_pull writes the proof
 // file (FR-A7), config_push reads the challenge key through devLXD
 // (FR-A8). remove deletes what the answer left in the guest.
-func (s *settings) prove(ctx context.Context, g *guest, c claim.Claim, nonce, data []byte) (remove func(), answer *lxdinstancev1.ChallengeResponse, err error) {
+func (s *settings) prove(ctx context.Context, g *guest, offered []lxdinstancev1.ProofMode, c claim.Claim, nonce, data []byte) (remove func(), answer *lxdinstancev1.ChallengeResponse, err error) {
 	ch, err := lxdinstancev1.DecodeChallenge(data)
 	if err != nil {
 		return nil, nil, fmt.Errorf("the challenge: %w", err)
 	}
 	answer = &lxdinstancev1.ChallengeResponse{Version: lxdinstancev1.Version, Mode: ch.GetMode(), Done: true}
 	switch {
+	case !slices.Contains(offered, ch.GetMode()):
+		err = fmt.Errorf("the server asks for %v, which this agent does not offer", ch.GetMode())
 	case ch.GetMode() == lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL:
 		remove, err = s.filePull(c, nonce, ch)
-	case ch.GetMode() == lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH && g != nil:
-		remove = func() {}
+	case ch.GetMode() == lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH:
+		remove = func() {
+			// nothing to remove: the server removes its challenge key
+		}
 		answer.Echo, err = configPush(ctx, g, nonce, ch)
 	default:
-		err = fmt.Errorf("the server asks for %v, which this agent does not offer", ch.GetMode())
+		err = fmt.Errorf("unknown proof mode %v", ch.GetMode())
 	}
 	if err != nil {
 		return nil, nil, err

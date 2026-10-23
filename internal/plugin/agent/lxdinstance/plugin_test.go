@@ -465,3 +465,19 @@ func TestFRA8Refusals(t *testing.T) {
 		})
 	}
 }
+
+// TestFRA3DevLXDServerUnreadable: under auto, a devLXD whose GET /1.0 is
+// unusable still gives the claim its meta-data, but config_push is not
+// offered and its challenge is refused.
+func TestFRA3DevLXDServerUnreadable(t *testing.T) {
+	dev := fakelxd.NewDevLXD(t)
+	dev.InstanceType = "unknown"
+	s := newHarness(t, fmt.Sprintf("devlxd_socket = %q", dev.Socket)).start()
+	r := s.request
+	if r.GetClaim().GetNameSource() != lxdinstancev1.ClaimSource_CLAIM_SOURCE_DEVLXD_METADATA || !slices.Equal(r.GetProofModes(), []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL}) {
+		t.Fatalf("claim %v, modes %v", r.GetClaim(), r.GetProofModes())
+	}
+	if _, err := s.send(s.pushChallenge()); status.Code(err) != codes.Internal || !strings.Contains(err.Error(), "does not offer") {
+		t.Errorf("config_push challenge: %v; want refused", err)
+	}
+}
