@@ -104,6 +104,7 @@ type spireAgent struct {
 		Value string `json:"value"`
 	} `json:"selectors"`
 	Serial      string `json:"x509svid_serial_number"`
+	Expires     string `json:"x509svid_expires_at"`
 	CanReattest bool   `json:"can_reattest"`
 	Banned      bool   `json:"banned"`
 }

@@ -173,6 +173,7 @@ server {
   data_dir     = "/var/lib/spire/server"
   log_level    = "DEBUG"
   ca_ttl       = "168h"
+$([[ -z "$LAB_SPIRE_AGENT_TTL" ]] || echo "  agent_ttl    = \"$LAB_SPIRE_AGENT_TTL\"")
 }
 
 plugins {

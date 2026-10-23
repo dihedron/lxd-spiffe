@@ -27,6 +27,9 @@ func requirePlugins(t *testing.T) *lab {
 
 // plugins is the part of env.json the plugins tests read.
 type plugins struct {
+	VMs map[string]struct {
+		IP string `json:"ip"`
+	} `json:"vms"`
 	Spire struct {
 		Version string `json:"version"`
 	} `json:"spire"`

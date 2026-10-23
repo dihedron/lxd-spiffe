@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -19,12 +20,36 @@ import (
 	"github.com/dihedron/lxd-spiffe/test/fakelxd"
 )
 
-// fixtureVersions are the LXD versions whose recorded fixtures the
-// operations are verified against (FR-S17 (11), gate L15).
-var fixtureVersions = []string{"5.21.8", "6.9"}
+// supportedVersions are the LXD versions whose fixtures must exist: the
+// operations are verified against them (FR-S17 (11), gate L15). Any other
+// folder under test/fixtures, a version the lab recorded later, is
+// replayed too.
+var supportedVersions = []string{"5.21.8", "6.9"}
 
 func fixtureDir(version string) string {
 	return filepath.Join("..", "..", "test", "fixtures", version)
+}
+
+// fixtureVersions lists the versions with recorded fixtures: every folder
+// of test/fixtures. The supported versions must be among them.
+func fixtureVersions(t *testing.T) []string {
+	t.Helper()
+	entries, err := os.ReadDir(filepath.Join("..", "..", "test", "fixtures"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var versions []string
+	for _, e := range entries {
+		if e.IsDir() {
+			versions = append(versions, e.Name())
+		}
+	}
+	for _, v := range supportedVersions {
+		if !slices.Contains(versions, v) {
+			t.Fatalf("no fixtures of LXD %s, a supported version: %v", v, versions)
+		}
+	}
+	return versions
 }
 
 func connectFake(t *testing.T, s *fakelxd.Server) *Client {
@@ -167,7 +192,7 @@ func callOf(f evidence.Fixture, query url.Values) (string, []string) {
 // each project has its own connection, so every replay queue keeps its
 // order.
 func TestFRS17Fixtures(t *testing.T) {
-	for _, version := range fixtureVersions {
+	for _, version := range fixtureVersions(t) {
 		t.Run(version, func(t *testing.T) { replayFixtures(t, version) })
 	}
 }
