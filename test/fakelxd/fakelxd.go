@@ -12,6 +12,7 @@
 package fakelxd
 
 import (
+	"cmp"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
@@ -68,6 +69,7 @@ type Server struct {
 	failAll    int
 	failAllMsg string
 	nextOp     int
+	opStatus   map[string]string // key: operation id
 	replay     map[string][]evidence.Fixture
 	// bearerExpiry, when set, refuses bearer tokens from then on, as LXD
 	// refuses an expired token (lab, LXD 6.9).
@@ -75,6 +77,9 @@ type Server struct {
 	// fileFailures answers the files API of an instance with an error a
 	// number of times first, as a VM whose lxd-agent is not up yet.
 	fileFailures map[string]*fileFailure // key: project/name
+	// patchOperation, when set, makes a PATCH answer with an operation that
+	// ends with this status (Success or Failure) instead of synchronously.
+	patchOperation string
 	// mounts serve a guest directory of an instance from a host directory.
 	mounts map[string]mount // key: project/name
 }
@@ -118,6 +123,16 @@ type instance struct {
 	// staleAfterRead changes the ETag right after the next GET, as a
 	// concurrent writer would.
 	staleAfterRead bool
+	// alwaysStale changes the ETag after every GET.
+	alwaysStale bool
+	// afterRead is applied right after the next GET.
+	afterRead *Change
+}
+
+// Change is what AfterNextRead applies to an instance; empty fields are
+// left as they are.
+type Change struct {
+	Status, Location string
 }
 
 func (i *instance) etag() string {
@@ -130,7 +145,7 @@ func (i *instance) etag() string {
 func NewAssumed(t testing.TB) *Server {
 	t.Helper()
 	t.Log("fakelxd: ASSUMPTION-BASED fake LXD (PRT-10); replace with recorded fixtures after Lab 0")
-	s := &Server{t: t, instances: map[string]*instance{}, projects: map[string]map[string]string{}, files: map[string]*File{}, exts: DefaultExtensions}
+	s := &Server{t: t, instances: map[string]*instance{}, projects: map[string]map[string]string{}, files: map[string]*File{}, exts: DefaultExtensions, opStatus: map[string]string{}}
 	s.start(http.HandlerFunc(s.assumed))
 	return s
 }
@@ -294,6 +309,15 @@ func (s *Server) ExpireBearerAt(at time.Time) {
 	s.bearerExpiry = at
 }
 
+// PatchAsOperation makes every PATCH answer with a background operation
+// that ends with status, Success or Failure, as a PUT does; LXD 5.21.8 and
+// 6.9 answered PATCH synchronously in the lab (gate L14).
+func (s *Server) PatchAsOperation(status string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.patchOperation = status
+}
+
 // FailAll answers every request with status and msg until it is called
 // with status 0.
 func (s *Server) FailAll(status int, msg string) {
@@ -396,6 +420,26 @@ func (s *Server) StaleAfterNextRead(project, name string) {
 	defer s.mu.Unlock()
 	if i, ok := s.instances[project+"/"+name]; ok {
 		i.staleAfterRead = true
+	}
+}
+
+// AlwaysStale changes the instance's ETag after every GET, as writers that
+// never stop would.
+func (s *Server) AlwaysStale(project, name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i, ok := s.instances[project+"/"+name]; ok {
+		i.alwaysStale = true
+	}
+}
+
+// AfterNextRead applies c, with a new ETag, right after the next GET of
+// the instance, as a concurrent change would.
+func (s *Server) AfterNextRead(project, name string, c Change) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i, ok := s.instances[project+"/"+name]; ok {
+		i.afterRead = &c
 	}
 }
 
@@ -517,6 +561,10 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 	case len(parts) == 4 && parts[1] == "instances" && parts[3] == "files" && (r.Method == http.MethodGet || r.Method == http.MethodHead):
 		s.file(w, r, project, parts[2])
 	case len(parts) == 4 && parts[1] == "operations" && parts[3] == "wait":
+		if s.opStatus[parts[2]] == "Failure" {
+			writeSync(w, map[string]any{"id": parts[2], "status": "Failure", "status_code": 400, "err": "operation failed"}, "")
+			return
+		}
 		writeSync(w, map[string]any{"id": parts[2], "status": "Success", "status_code": 200, "err": ""}, "")
 	default:
 		writeError(w, http.StatusNotFound, "not found")
@@ -581,6 +629,15 @@ func (s *Server) instance(w http.ResponseWriter, r *http.Request, project, name 
 			metadata["backups"] = nil
 		}
 		writeSync(w, metadata, i.etag())
+		if i.afterRead != nil {
+			i.Status = cmp.Or(i.afterRead.Status, i.Status)
+			i.Location = cmp.Or(i.afterRead.Location, i.Location)
+			i.afterRead = nil
+			i.etagSeq++
+		}
+		if i.alwaysStale {
+			i.etagSeq++
+		}
 		if i.staleAfterRead {
 			i.staleAfterRead = false
 			i.etagSeq++
@@ -608,13 +665,16 @@ func (s *Server) instance(w http.ResponseWriter, r *http.Request, project, name 
 			}
 		}
 		i.etagSeq++
-		if r.Method == http.MethodPatch {
+		if r.Method == http.MethodPatch && s.patchOperation == "" {
 			// synchronous, as LXD 6.9 answered in the lab
 			writeSync(w, map[string]any{}, "")
 			return
 		}
 		s.nextOp++
 		op := fmt.Sprintf("/1.0/operations/op-%d", s.nextOp)
+		if r.Method == http.MethodPatch {
+			s.opStatus[fmt.Sprintf("op-%d", s.nextOp)] = s.patchOperation
+		}
 		w.Header().Set("Location", op)
 		writeJSON(w, http.StatusAccepted, map[string]any{"type": "async", "status": "Operation created", "status_code": 100, "operation": op, "metadata": map[string]any{"id": fmt.Sprintf("op-%d", s.nextOp)}})
 	default:

@@ -55,6 +55,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Oct 23, 2026 (plugins, chunk 4) | FR-S15: the circuit breaker's behaviour and its `limits` keys (`breaker_threshold`, `breaker_open`, `breaker_max_open`). SEC-09: limits apply before any LXD call, refuse with `rate_limited`, and key the cooldown on the claimed project and name. *Observability*: v1's metrics are log fields (`duration_ms`, `proof_ms`, `inflight`), the plugin SDK having no metrics API. |
 | Oct 23, 2026 (plugins, chunk 5) | FR-A11: the agent's overall timeout is configurable, `attestation_timeout` (default 30 s, 2 s to 5 min), and `proof_timeout` bounds how long the proof stays after the answer; `agent.conf` and its validation at `Configure` listed; new *Operational guidance* item 16 on setting both. FR-A7: euid checked at `Configure`, missing parents of the proof directory created 0700, the directory checked again on the handle the file is created through. |
 | Oct 23, 2026 (plugins, chunk 6) | *Testing → Tests*: the agent and server plugins tested together in process. |
+| Oct 23, 2026 (plugins, chunk 7a) | *Observability*: where the two `config_push` counters appear (a field of the attestation's log line, a field of the WARN line of a failed cleanup). |
 
 ## Overview
 
@@ -608,7 +609,7 @@ The fields below are the **only** ones the plugin consumes. They were first draw
 ### Observability
 
 - Structured logs: `correlation_id`, `server_id`, `project`, `instance_uuid` (on success), `proof_mode`, `outcome`, `reason_code`. Reason codes: `ok, payload_invalid, instance_not_found, instance_ambiguous, not_running, scope_denied, policy_denied, proof_timeout, proof_mismatch, vm_agent_unavailable, lxd_unavailable, extension_missing, rate_limited, precondition_failed, instance_moved, project_unreadable`.
-- Metrics: v1 emits no SPIRE telemetry, since the plugin SDK offers plugins no metrics API; the metrics are derived from the structured log lines, one per attestation: `attestations_total{outcome}` from `outcome` and `reason_code`, `duration_ms` (the whole attestation), `proof_ms` (challenge to proof read back), `inflight`, and the WARN of every claim-only attestation for `claim_only_mode_active`; `config_push_cleanup_failures_total` and `config_push_stale_keys_removed_total` come with `config_push`. No names or UUIDs as labels.
+- Metrics: v1 emits no SPIRE telemetry, since the plugin SDK offers plugins no metrics API; the metrics are derived from the structured log lines, one per attestation: `attestations_total{outcome}` from `outcome` and `reason_code`, `duration_ms` (the whole attestation), `proof_ms` (challenge to proof read back), `inflight`, and the WARN of every claim-only attestation for `claim_only_mode_active`; with `config_push`, `config_push_stale_keys_removed_total` is a field of the attestation's log line, the number of stale keys its challenge write removed, and `config_push_cleanup_failures_total` a field of the WARN line that every failed cleanup logs. No names or UUIDs as labels.
 - One audit log line per issued ID including the selectors emitted.
 
 ## Configuration
