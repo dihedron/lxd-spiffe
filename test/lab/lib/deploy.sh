@@ -79,25 +79,34 @@ probe_env_bearer() {
 	chmod 0600 "$file"
 }
 
+# probe_env_tls SERVER IDENTITY [COMMON]: the environment file of a TLS
+# identity.
+probe_env_tls() {
+	local file common="${3:-$(probe_env_common "$1")}"
+	file="$(probe_env_file "$1" "$2")"
+	mkdir -p "$(probe_env_dir)"
+	chmod 0700 "$(probe_env_dir)"
+	(
+		umask 077
+		{
+			printf '%s\n' "$common"
+			printf '%s=%q\n' LXD_PROBE_AUTH tls \
+				LXD_PROBE_CLIENT_CERT "$(identity_cert "$2")" \
+				LXD_PROBE_CLIENT_KEY "$(identity_key "$2")"
+		} >"$file"
+	)
+	chmod 0600 "$file"
+}
+
 # probe_env SERVER: the environment files of SERVER, one per identity (and
 # one for its bearer identity), for "lab.sh probe" (probe spec PRN-32).
 probe_env() {
-	local server="$1" id file common
+	local server="$1" id common
 	mkdir -p "$(probe_env_dir)"
 	chmod 0700 "$(probe_env_dir)"
 	common="$(probe_env_common "$server")"
 	for id in "${LAB_IDENTITIES[@]}"; do
-		file="$(probe_env_file "$server" "$id")"
-		(
-			umask 077
-			{
-				printf '%s\n' "$common"
-				printf '%s=%q\n' LXD_PROBE_AUTH tls \
-					LXD_PROBE_CLIENT_CERT "$(identity_cert "$id")" \
-					LXD_PROBE_CLIENT_KEY "$(identity_key "$id")"
-			} >"$file"
-		)
-		chmod 0600 "$file"
+		probe_env_tls "$server" "$id" "$common"
 	done
 	if [[ "$(env_get ".servers[\"$server\"].auth.bearer // \"no\"")" == yes ]]; then
 		probe_env_bearer "$server" bearer "$(bearer_token_file "$server")"
