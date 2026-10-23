@@ -152,3 +152,19 @@ func TestNewNonce(t *testing.T) {
 		t.Errorf("nonces %x %x", a, b)
 	}
 }
+
+func TestValidDir(t *testing.T) {
+	for dir, ok := range map[string]bool{
+		"/run/spire/lxd":               true,
+		"run/spire/lxd":                false,
+		"/run/spire/../lxd":            false,
+		"/run/spire/lxd/":              false,
+		"/":                            false,
+		"/" + strings.Repeat("d", 104): true,
+		"/" + strings.Repeat("d", 105): false,
+	} {
+		if err := ValidDir(dir); (err == nil) != ok {
+			t.Errorf("ValidDir(%.20q…) = %v; want ok %v", dir, err, ok)
+		}
+	}
+}

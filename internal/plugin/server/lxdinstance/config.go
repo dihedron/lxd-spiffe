@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
 	"github.com/dihedron/lxd-spiffe/internal/plugin/config"
 	"github.com/dihedron/lxd-spiffe/internal/policy"
+	"github.com/dihedron/lxd-spiffe/internal/proof"
 	"github.com/dihedron/lxd-spiffe/internal/selectors"
 )
 
@@ -239,13 +239,8 @@ func proofMode(c *Config) (string, error) {
 // that every proof path fits the protocol's string limit (SEC-11).
 func proofDir(dir string) (string, error) {
 	dir = cmpOr(dir, defaultProofDir)
-	switch {
-	case !filepath.IsAbs(dir) || filepath.Clean(dir) != dir:
-		return "", invalid("proof_dir must be an absolute, clean path")
-	case dir == "/":
-		return "", invalid("proof_dir must not be /")
-	case len(dir)+len("/proof-")+16 > limits.MaxString:
-		return "", invalid("proof_dir is too long: proof paths must fit %d bytes", limits.MaxString)
+	if err := proof.ValidDir(dir); err != nil {
+		return "", invalid("%v", err)
 	}
 	return dir, nil
 }

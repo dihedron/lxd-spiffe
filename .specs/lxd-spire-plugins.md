@@ -53,6 +53,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Oct 22, 2026 (plugins, chunk 2) | FR-S11: the key of a `servers` entry is its `server_id`, a SPIFFE ID path segment. FR-S12: the capability check runs on the first use of a server's client and after every reconnect; `Configure` contacts no server. |
 | Oct 23, 2026 (plugins, chunk 3) | SEC-03: a server nonce lives as long as its challenge's `proof_timeout`, at most 2 min, instead of 30 s, which would have contradicted the 90 s that item 10 recommends for slow VMs; `proof_timeout` is bounded to 2 min accordingly. |
 | Oct 23, 2026 (plugins, chunk 4) | FR-S15: the circuit breaker's behaviour and its `limits` keys (`breaker_threshold`, `breaker_open`, `breaker_max_open`). SEC-09: limits apply before any LXD call, refuse with `rate_limited`, and key the cooldown on the claimed project and name. *Observability*: v1's metrics are log fields (`duration_ms`, `proof_ms`, `inflight`), the plugin SDK having no metrics API. |
+| Oct 23, 2026 (plugins, chunk 5) | FR-A11: the agent's overall timeout is configurable, `attestation_timeout` (default 30 s, 2 s to 5 min), and `proof_timeout` bounds how long the proof stays after the answer; `agent.conf` and its validation at `Configure` listed; new *Operational guidance* item 16 on setting both. FR-A7: euid checked at `Configure`, missing parents of the proof directory created 0700, the directory checked again on the handle the file is created through. |
 
 ## Overview
 
@@ -497,11 +498,11 @@ Recommendations (SEC-16, *Configuration → Operational guidance*):
 | FR-A4 | Generate `agent_nonce`: 32 bytes from the OS CSPRNG. |
 | FR-A5 | Send the first message (`AttestRequest`, *Overview → Wire protocol*) with claim, nonce, instance type (if known), supported proof modes and plugin version. |
 | FR-A6 | On `Challenge`, execute the requested mode (*Trust model → Proof of co-location*) and send `ChallengeResponse`. |
-| FR-A7 | `file_pull`: MUST run as root (euid 0) and fail clearly otherwise; create the proof directory (default `/run/spire/lxd`) with mode 0700 if missing; refuse if it exists with another owner, other mode, or is a symlink; create the proof file with `O_CREAT\|O_EXCL\|O_NOFOLLOW`, mode 0600, content = the 64 lowercase hex characters of the proof (*Proof of co-location → Mode `file_pull`*), `fsync`; best-effort removal when the stream ends. The proof path MUST equal the path in the challenge and MUST be inside the configured `proof_dir`. |
+| FR-A7 | `file_pull`: MUST run as root (euid 0) and fail clearly otherwise, checked at `Configure`; create the proof directory (default `/run/spire/lxd`) with mode 0700 if missing, and its missing parents with mode 0700; refuse if it exists with another owner, other mode, or is a symlink, and check it again on the handle the file is created through (the same directory, owner and mode), so that a directory swapped in between is refused; create the proof file with `O_CREAT\|O_EXCL\|O_NOFOLLOW`, mode 0600, content = the 64 lowercase hex characters of the proof (*Proof of co-location → Mode `file_pull`*), `fsync`; best-effort removal when the stream ends. The proof path MUST equal the path in the challenge and MUST be inside the configured `proof_dir`. |
 | FR-A8 | `config_push`: read `/1.0/config/<proof_key>` through devLXD (key must match `^user\.spire\.challenge\.[0-9a-f]{16}$`), validate the value as 64 hex characters, return it in `echo`. |
 | FR-A9 | *Withdrawn in v0.2 (was the experimental `ready_signal` mode). ID kept so that references stay stable.* |
 | FR-A10 | Never log nonces, proofs or challenge values. Claim fields may be logged at INFO. |
-| FR-A11 | Enforce an overall attestation timeout (default 30 s) and per-step timeouts. |
+| FR-A11 | Enforce an overall attestation timeout, `attestation_timeout` (default 30 s, from 2 s to 5 min), and per-step timeouts: each devLXD request 5 s (FR-A3); once the challenge is answered, the proof stays until the SPIRE Agent closes the stream or `proof_timeout` passes (default 15 s, from 1 s to 2 min, shorter than `attestation_timeout`), then it is removed. A timeout fails the attestation with an error naming the setting (*Operational guidance* item 16). |
 | FR-A12 | Static binary, no CGO, linux/amd64 and linux/arm64. No dependency on `lxc`, `lxd-agent`, `cloud-init`, `curl` or any external program. |
 
 ## Server-side plugin
@@ -625,10 +626,12 @@ NodeAttestor "lxd_instance" {
     use_devlxd      = "auto"           # auto | required | off
     devlxd_socket   = "/dev/lxd/sock"
     proof_dir       = "/run/spire/lxd"
-    proof_timeout   = "15s"
+    proof_timeout   = "15s"            # how long the proof stays after the answer
+    attestation_timeout = "30s"        # the whole attestation (FR-A11)
   }
 }
 ```
+Validation at `Configure`: unknown keys rejected; the agent runs as root (FR-A7); `claim.project` and `claim.instance_name` empty or valid names (FR-S2); `use_devlxd` one of `auto`, `required`, `off`; `proof_dir` absolute, clean, not `/`; `proof_timeout` and `attestation_timeout` within their bounds, `proof_timeout` the shorter (FR-A11).
 
 ### Server (`server.conf`)
 
@@ -693,6 +696,8 @@ Validation at `Configure`: unknown keys rejected; missing pin/CA (SEC-07); per s
     - **Evacuating, stopping or moving an instance while `config_push` writes to it can fail, without leaving anything behind.** *What you see:* `Failed stopping instance "<name>" in project "<project>": Instance is busy running a "update" operation`, or `Failed migrating instance … Instance is busy running a "update" operation`: LXD holds an instance while a `PATCH` of its configuration is in flight (30–45 ms, median, per write; an attestation makes two). With the writes back to back (stress session ST-6, 5.21.8 and 6.9) all 20 evacuations failed: 15 were refused at an instance's stop within a few seconds with nothing changed (on 5.21.8 in three of them an earlier container had already moved), 5 failed while migrating and left an instance stopped; no volume was left behind, every `lxc cluster restore` worked, and no reset was needed. At real attestation rates a collision should be rare (an estimate from the write time, not measured). *To restore a clean state:* run `lxc cluster evacuate` again (it carries on with what is left), or `lxc cluster restore <member> --force` to give up; then `lxc list`: `lxc start <name>` for an instance left stopped, and for one found on another member `lxc stop --force <name>`, `lxc move <name> --target <member>`, `lxc start <name>` (the sequence the stress harness used, always successfully). Only evacuation was tested: stop, restart, snapshot and move of an instance are expected to behave the same.
     - **On 6.9 an evacuated member loses its database role.** A three-member cluster with one member evacuated keeps two database voters, and the failure of one of them loses the cluster's quorum. Do not evacuate a second member, or restart or power off another member, until the evacuated one is restored and `lxc cluster list` shows three database voters again (role `database-voter` or `database-leader`).
     - **A power-off can empty a member's image cache.** A member powered off while LXD wrote its image-stream cache came back with empty files under `/var/snap/lxd/common/lxd/cache` (5.21.8). Every launch from a remote image on that member then failed, and launches hung once the files were removed, until LXD was restarted there. Remove the empty files and restart LXD on that member (`systemctl restart snap.lxd.daemon`, which is the same as `snap restart lxd` and so stops every instance there: item 13).
+
+16. **Agent timeouts** (FR-A11). `attestation_timeout` (default 30 s) bounds one attestation on the agent: the devLXD reads, the wait for the server's challenge (which includes the server's LXD lookups and its queue under `limits`), and the time the proof stays. `proof_timeout` (default 15 s) is how long the agent keeps the proof file after answering, while the server reads it. Set the agent's `proof_timeout` at least as long as the server's (10 s by default), or the file can vanish while the server still retries, and `attestation_timeout` longer than `proof_timeout` plus a few seconds for the lookups. *Too short:* attestations fail with an error naming the timeout, mostly for VMs whose `lxd-agent` is still starting (item 10) or when the server is busy; the SPIRE Agent retries with backoff. *Too long:* an attestation against a stalled server holds the agent that much longer before its retry, and the proof file stays that long (harmless: it is bound to this attestation's nonces). For VMs whose agent cannot start after `lxd-agent`, with the server's `proof_timeout` at 90 s: `proof_timeout = "90s"` and `attestation_timeout = "2m"` on the agent.
 
 #### Choosing the proof mode (operators)
 
