@@ -1,14 +1,13 @@
 // Package lxdinstance implements the agent side of the lxd_instance SPIRE
-// node attestor. It will gather the evidence of the LXD instance it runs on
-// and send it to SPIRE Server as the attestation payload.
+// node attestor: it sends the instance's claim and a nonce, then proves it
+// runs inside that instance by the mode the server asks for.
 //
-// This is a stub: it accepts an empty configuration and answers every
-// attestation with codes.Unimplemented, until the attestation mechanism is
-// specified in .specs/lxd-spire-plugins.md.
+// It proves with file_pull; config_push comes later.
 package lxdinstance
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 
@@ -21,20 +20,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Config is the plugin_data block of the plugin in the SPIRE Agent
-// configuration.
-type Config struct{}
-
-// configKeys lists the keys Config accepts: any other key is an error.
-var configKeys = []string{}
-
 // Plugin is the agent-side lxd_instance node attestor.
 type Plugin struct {
 	nodeattestorv1.UnimplementedNodeAttestorServer
 	configv1.UnimplementedConfigServer
 
-	mu     sync.RWMutex
-	config *Config
+	mu       sync.RWMutex
+	settings *settings
 }
 
 // New returns an unconfigured Plugin.
@@ -47,25 +39,50 @@ func (p *Plugin) SetLogger(logger hclog.Logger) {
 	slog.SetDefault(slog.New(logging.NewHandler(logger)))
 }
 
-// Configure validates and applies the plugin_data block.
+// Configure validates the plugin_data block and replaces the settings as a
+// whole; a refused configuration leaves the previous one in place.
 func (p *Plugin) Configure(ctx context.Context, req *configv1.ConfigureRequest) (*configv1.ConfigureResponse, error) {
 	var c Config
 	if err := config.Decode(req.GetHclConfiguration(), &c, configKeys); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	s, err := newSettings(&c)
+	if err != nil {
+		code := codes.FailedPrecondition
+		if errors.Is(err, config.ErrInvalid) {
+			code = codes.InvalidArgument
+		}
+		return nil, status.Error(code, err.Error())
+	}
 	p.mu.Lock()
-	p.config = &c
+	p.settings = s
 	p.mu.Unlock()
 	return &configv1.ConfigureResponse{}, nil
 }
 
-// AidAttestation is not implemented yet.
-func (p *Plugin) AidAttestation(stream nodeattestorv1.NodeAttestor_AidAttestationServer) error {
+// current returns the settings in force, nil before Configure.
+func (p *Plugin) current() *settings {
 	p.mu.RLock()
-	configured := p.config != nil
-	p.mu.RUnlock()
-	if !configured {
+	defer p.mu.RUnlock()
+	return p.settings
+}
+
+// AidAttestation runs one attestation (FR-A1) within attestation_timeout
+// (FR-A11).
+func (p *Plugin) AidAttestation(stream nodeattestorv1.NodeAttestor_AidAttestationServer) error {
+	s := p.current()
+	if s == nil {
 		return status.Error(codes.FailedPrecondition, "not configured")
 	}
-	return status.Error(codes.Unimplemented, "lxd_instance: attestation is not implemented yet")
+	ctx, cancel := context.WithTimeoutCause(stream.Context(), s.attestationTimeout, timeoutCause(s.attestationTimeout))
+	defer cancel()
+	if err := s.attest(ctx, stream); err != nil {
+		slog.Error("attestation failed", "error", err.Error())
+		code := codes.Internal
+		if errors.Is(err, context.DeadlineExceeded) {
+			code = codes.DeadlineExceeded
+		}
+		return status.Error(code, "lxd_instance: "+err.Error())
+	}
+	return nil
 }

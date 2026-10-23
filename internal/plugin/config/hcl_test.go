@@ -182,3 +182,37 @@ func TestDecodeUnknownBlockKeys(t *testing.T) {
 		t.Fatalf("an unknown block: %v, want ErrInvalid", err)
 	}
 }
+
+type withMap struct {
+	Servers map[string]struct {
+		URL      string   `hcl:"url"`
+		Projects []string `hcl:"projects"`
+	} `hcl:"servers"`
+}
+
+var withMapKeys = []string{"servers.*.url", "servers.*.projects"}
+
+// TestDecodeWildcard: "*" in a known key matches any one key, such as the
+// name of a server in a map, whose own keys are checked too.
+func TestDecodeWildcard(t *testing.T) {
+	var v withMap
+	err := Decode(`
+servers = {
+  "lxd-prod" = { url = "https://a", projects = ["p"] }
+  "lxd.lab"  = { url = "https://b" }
+}
+`, &v, withMapKeys)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if len(v.Servers) != 2 || v.Servers["lxd-prod"].URL != "https://a" || v.Servers["lxd.lab"].URL != "https://b" || len(v.Servers["lxd-prod"].Projects) != 1 {
+		t.Fatalf("decoded %+v", v)
+	}
+	err = Decode(`servers = { "lxd.lab" = { url = "https://b", projets = ["p"] } }`, &v, withMapKeys)
+	if !errors.Is(err, ErrInvalid) || !strings.Contains(err.Error(), "servers.lxd.lab.projets") {
+		t.Fatalf("a typo in a map entry: %v, want ErrInvalid naming servers.lxd.lab.projets", err)
+	}
+	if err := Decode(`servers = "x"`, &v, withMapKeys); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("a map that is not one: %v", err)
+	}
+}

@@ -22,14 +22,19 @@ var ErrInvalid = errors.New("invalid plugin configuration")
 
 // Decode parses the configuration into v, a pointer to a struct with hcl
 // tags, after checking that every key is one of known. A block's keys are
-// listed as "block.key" (e.g. "audit_syslog.enabled"), and checked too.
+// listed as "block.key" (e.g. "audit_syslog.enabled"), and checked too; a
+// "*" matches any one key, such as the names of a map ("servers.*.url").
 func Decode(configuration string, v any, known []string) error {
 	file, err := hcl.Parse(configuration)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	if list, ok := file.Node.(*ast.ObjectList); ok {
-		if unknown := unknownKeys(list, "", known); len(unknown) > 0 {
+		patterns := make([][]string, len(known))
+		for i, k := range known {
+			patterns[i] = strings.Split(k, ".")
+		}
+		if unknown := unknownKeys(list, nil, patterns); len(unknown) > 0 {
 			return fmt.Errorf("%w: unknown keys %s (known: %s)", ErrInvalid, strings.Join(unknown, ", "), strings.Join(known, ", "))
 		}
 	}
@@ -39,9 +44,10 @@ func Decode(configuration string, v any, known []string) error {
 	return nil
 }
 
-// unknownKeys returns the keys of list, under prefix, that known does not
-// list, descending into the blocks known lists keys of.
-func unknownKeys(list *ast.ObjectList, prefix string, known []string) []string {
+// unknownKeys returns the keys of list, under the key path prefix, that no
+// pattern matches, descending into the blocks and maps patterns go into.
+// Paths are kept as segments, so that a map key may contain a dot.
+func unknownKeys(list *ast.ObjectList, prefix []string, patterns [][]string) []string {
 	var unknown []string
 	add := func(key string) {
 		if !slices.Contains(unknown, key) {
@@ -52,23 +58,35 @@ func unknownKeys(list *ast.ObjectList, prefix string, known []string) []string {
 		if len(item.Keys) == 0 {
 			continue
 		}
-		key := prefix + strings.Trim(item.Keys[0].Token.Text, `"`)
-		isBlock := slices.ContainsFunc(known, func(k string) bool { return strings.HasPrefix(k, key+".") })
+		path := append(slices.Clone(prefix), strings.Trim(item.Keys[0].Token.Text, `"`))
+		name := strings.Join(path, ".")
+		isBlock := slices.ContainsFunc(patterns, func(p []string) bool { return len(p) > len(path) && matches(p, path) })
 		switch {
 		case isBlock:
 			object, ok := item.Val.(*ast.ObjectType)
 			if !ok {
-				add(key + " (a block is expected)")
+				add(name + " (a block is expected)")
 				continue
 			}
-			for _, k := range unknownKeys(object.List, key+".", known) {
+			for _, k := range unknownKeys(object.List, path, patterns) {
 				add(k)
 			}
-		case !slices.Contains(known, key):
-			add(key)
+		case !slices.ContainsFunc(patterns, func(p []string) bool { return len(p) == len(path) && matches(p, path) }):
+			add(name)
 		}
 	}
 	return unknown
+}
+
+// matches reports whether path matches the first segments of pattern,
+// where "*" matches any segment.
+func matches(pattern, path []string) bool {
+	for i, seg := range path {
+		if pattern[i] != "*" && pattern[i] != seg {
+			return false
+		}
+	}
+	return true
 }
 
 // Duration parses the duration set for key, returning def if the value is

@@ -2,15 +2,16 @@
 // node attestor. It will verify the evidence an LXD instance's SPIRE Agent
 // presents, then return the agent's SPIFFE ID and selectors.
 //
-// This is a stub: it accepts an empty configuration and answers every
-// attestation with codes.Unimplemented, until the attestation mechanism is
-// specified in .specs/lxd-spire-plugins.md.
+// It attests with file_pull, or on the claim alone when proof_mode is none;
+// config_push comes later.
 package lxdinstance
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/dihedron/lxd-spiffe/internal/plugin/config"
 	"github.com/dihedron/lxd-spiffe/internal/plugin/logging"
@@ -21,20 +22,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Config is the plugin_data block of the plugin in the SPIRE Server
-// configuration.
-type Config struct{}
-
-// configKeys lists the keys Config accepts: any other key is an error.
-var configKeys = []string{}
-
 // Plugin is the server-side lxd_instance node attestor.
 type Plugin struct {
 	nodeattestorv1.UnimplementedNodeAttestorServer
 	configv1.UnimplementedConfigServer
 
-	mu     sync.RWMutex
-	config *Config
+	mu       sync.RWMutex
+	settings *settings
 }
 
 // New returns an unconfigured Plugin.
@@ -47,25 +41,64 @@ func (p *Plugin) SetLogger(logger hclog.Logger) {
 	slog.SetDefault(slog.New(logging.NewHandler(logger)))
 }
 
-// Configure validates and applies the plugin_data block.
+// Configure validates the plugin_data block and replaces the settings as a
+// whole; a refused configuration leaves the previous one in place.
 func (p *Plugin) Configure(ctx context.Context, req *configv1.ConfigureRequest) (*configv1.ConfigureResponse, error) {
 	var c Config
 	if err := config.Decode(req.GetHclConfiguration(), &c, configKeys); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	s, err := newSettings(ctx, &c, req.GetCoreConfiguration().GetTrustDomain())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 	p.mu.Lock()
-	p.config = &c
+	p.settings = s
 	p.mu.Unlock()
 	return &configv1.ConfigureResponse{}, nil
 }
 
-// Attest is not implemented yet.
-func (p *Plugin) Attest(stream nodeattestorv1.NodeAttestor_AttestServer) error {
+// current returns the settings in force, nil before Configure.
+func (p *Plugin) current() *settings {
 	p.mu.RLock()
-	configured := p.config != nil
-	p.mu.RUnlock()
-	if !configured {
+	defer p.mu.RUnlock()
+	return p.settings
+}
+
+// Attest runs one attestation (FR-S1). Every failure answers the agent with
+// the same PermissionDenied (SEC-10); the server's log has the reason code
+// and the detail, under a correlation ID.
+func (p *Plugin) Attest(stream nodeattestorv1.NodeAttestor_AttestServer) error {
+	s := p.current()
+	if s == nil {
 		return status.Error(codes.FailedPrecondition, "not configured")
 	}
-	return status.Error(codes.Unimplemented, "lxd_instance: attestation is not implemented yet")
+	start := time.Now()
+	log := slog.Default().With("correlation_id", newCorrelationID())
+	release, ok := s.limiter.acquire()
+	if !ok {
+		// before any LXD call (SEC-09)
+		log.Error("attestation refused", "outcome", "failure", "reason_code", reasonRateLimited, "inflight", s.limiter.inflight())
+		return status.Error(codes.PermissionDenied, "attestation failed")
+	}
+	defer release()
+	a := &attestation{s: s, stream: stream, log: log.With("inflight", s.limiter.inflight()), start: start}
+	attrs, err := a.run(stream.Context())
+	reason := reasonOK
+	if err != nil {
+		reason = reasonPolicyDenied
+		var f *failure
+		if errors.As(err, &f) {
+			reason = f.reason
+		}
+		a.log.Error("attestation refused", "outcome", "failure", "reason_code", reason, "error", err.Error(),
+			"duration_ms", time.Since(start).Milliseconds(), "proof_ms", a.proof.Milliseconds())
+	}
+	if a.claimKey != "" && reason != reasonRateLimited {
+		s.limiter.outcome(a.claimKey, err == nil)
+	}
+	if err != nil {
+		return status.Error(codes.PermissionDenied, "attestation failed")
+	}
+	return stream.Send(&nodeattestorv1.AttestResponse{Response: &nodeattestorv1.AttestResponse_AgentAttributes{AgentAttributes: attrs}})
 }

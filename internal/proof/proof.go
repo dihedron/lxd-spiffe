@@ -57,6 +57,21 @@ func ID(agentNonce []byte) (string, error) {
 	return hex.EncodeToString(sum[:])[:idLen], nil
 }
 
+// ValidDir checks a configured proof directory, the same on both sides:
+// absolute, clean, not the root, and short enough for its proof paths to
+// fit limits.MaxString.
+func ValidDir(dir string) error {
+	switch {
+	case !path.IsAbs(dir) || path.Clean(dir) != dir:
+		return errors.New("proof_dir must be an absolute, clean path")
+	case dir == "/":
+		return errors.New("proof_dir must not be /")
+	case len(dir)+len("/"+FilePrefix)+idLen > limits.MaxString:
+		return fmt.Errorf("proof_dir is too long: proof paths must fit %d bytes", limits.MaxString)
+	}
+	return nil
+}
+
 // Path returns the file_pull proof path <proofDir>/proof-<id>. proofDir must
 // be absolute, clean and not the root.
 func Path(proofDir string, agentNonce []byte) (string, error) {

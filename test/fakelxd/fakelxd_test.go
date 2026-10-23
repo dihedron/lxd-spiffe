@@ -3,6 +3,7 @@ package fakelxd_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -184,6 +185,55 @@ func TestDevLXDRecordThenReplay(t *testing.T) {
 		same := jsonEqual(resp.Body, recorded[i].Body) || bytes.Equal(bytes.TrimSpace(resp.Body), bytes.TrimSpace(recorded[i].Body))
 		if resp.Status != recorded[i].Status || !same {
 			t.Errorf("%s: replayed %d %q; recorded %d %q", p, resp.Status, resp.Body, recorded[i].Status, recorded[i].Body)
+		}
+	}
+}
+
+// TestMount reads a host directory through the files API: owners shifted,
+// modes and types as on disk, paths outside the mount or not clean left to
+// the static files.
+func TestMount(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	fake.AddInstance("default", "c1", nil)
+	host := filepath.Join(t.TempDir(), "lxd")
+	if err := os.Mkdir(host, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(host, "proof-x"), []byte("abcd"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("/etc/passwd", filepath.Join(host, "link")); err != nil {
+		t.Fatal(err)
+	}
+	fake.Mount("default", "c1", "/run/spire/lxd", host, os.Getuid())
+	cert, key := fakelxd.ClientCredentials(t)
+	c, err := lxd.Connect(context.Background(), lxd.Config{Endpoint: fake.URL, Pin: fake.Fingerprint(), Project: "default", ClientCertFile: cert, ClientKeyFile: key})
+	if err != nil {
+		t.Fatal(err)
+	}
+	get := func(p string) *lxd.RawResponse {
+		resp, err := c.Raw(context.Background(), lxd.RawRequest{Method: http.MethodGet, Path: "/1.0/instances/c1/files", Query: map[string][]string{"path": {p}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resp
+	}
+	for p, want := range map[string]string{
+		"/run/spire/lxd/proof-x": "200 file 0 0600 abcd",
+		"/run/spire/lxd":         "200 directory 0 0700 ",
+		"/run/spire/lxd/link":    "200 symlink 0 0777 ",
+		"/run/spire/lxd/missing": "404    ",
+		"/run/spire/lxd/../x":    "404    ",
+		"/run/spire":             "404    ",
+	} {
+		r := get(p)
+		body := string(r.Body)
+		if r.Header.Get("X-LXD-type") != "file" {
+			body = ""
+		}
+		got := fmt.Sprintf("%d %s %s %s %s", r.Status, r.Header.Get("X-LXD-type"), r.Header.Get("X-LXD-uid"), r.Header.Get("X-LXD-mode"), body)
+		if got != want {
+			t.Errorf("%s: %q; want %q", p, got, want)
 		}
 	}
 }

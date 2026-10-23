@@ -203,3 +203,17 @@ func TestExpectedOwnerNoEntry(t *testing.T) {
 		t.Errorf("error %v", err)
 	}
 }
+
+// TestSEC02ClaimOnly: proof_mode none keeps every check that is not a
+// proof mode's (SEC-02 issues on the claim, not on a weaker policy).
+func TestSEC02ClaimOnly(t *testing.T) {
+	if _, err := Check(instance(t, fxUnpriv), basePolicy(), ClaimOnly, ""); err != nil {
+		t.Errorf("running, allowed: %v", err)
+	}
+	stopped := instance(t, fxUnpriv)
+	stopped.Status = "Stopped"
+	var d *Denial
+	if _, err := Check(stopped, basePolicy(), ClaimOnly, ""); !errors.As(err, &d) || d.Code != NotRunning {
+		t.Errorf("stopped: %v", err)
+	}
+}

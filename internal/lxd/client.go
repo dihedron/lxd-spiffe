@@ -9,12 +9,16 @@ package lxd
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -35,9 +39,15 @@ type Config struct {
 	// Endpoint is https://host:port or unix:///path/to/unix.socket.
 	Endpoint string
 	// Pin is the SHA-256 fingerprint of the server certificate, in hex,
-	// optionally prefixed by "sha256:" or separated by colons. Mandatory
-	// for https.
+	// optionally prefixed by "sha256:" or separated by colons. For https,
+	// exactly one of Pin and CAFile, unless Insecure (SEC-07).
 	Pin string
+	// CAFile is a PEM bundle the server certificate chain is verified
+	// against, instead of a pin.
+	CAFile string
+	// Insecure (dev_mode) connects without verifying the server, logging a
+	// warning on every connection; a pin or CA bundle, if set, still holds.
+	Insecure bool
 	// ClientCertFile and ClientKeyFile hold the TLS identity; both or none.
 	ClientCertFile string
 	ClientKeyFile  string
@@ -102,7 +112,7 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 	var base *url.URL
 	switch endpoint.Scheme {
 	case "https":
-		pin, err := normalizePin(cfg.Pin)
+		pin, roots, err := serverVerification(cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -111,9 +121,21 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 			certs = &certLoader{certFile: cfg.ClientCertFile, keyFile: cfg.ClientKeyFile}
 		}
 		args.TransportWrapper = func(t *http.Transport) lxdclient.HTTPTransporter {
-			// pinned mode: chain verification is replaced by the pin
-			t.TLSClientConfig.InsecureSkipVerify = true
-			t.TLSClientConfig.VerifyConnection = pinVerifier(pin)
+			switch {
+			case pin != "":
+				// pinned mode: chain verification is replaced by the pin
+				t.TLSClientConfig.InsecureSkipVerify = true
+				t.TLSClientConfig.VerifyConnection = pinVerifier(pin)
+			case roots != nil:
+				t.TLSClientConfig.InsecureSkipVerify = false
+				t.TLSClientConfig.RootCAs = roots
+			default:
+				t.TLSClientConfig.InsecureSkipVerify = true
+				t.TLSClientConfig.VerifyConnection = func(tls.ConnectionState) error {
+					slog.Warn("lxd: dev_mode: the LXD server certificate is not verified", "endpoint", endpoint.Host)
+					return nil
+				}
+			}
 			t.TLSClientConfig.MinVersion = tls.VersionTLS13
 			if certs != nil {
 				t.TLSClientConfig.Certificates = nil
@@ -141,6 +163,69 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 	return &Client{sdk: sdk.UseProject(cfg.Project), base: base, project: cfg.Project}, nil
 }
 
+// serverVerification returns how an https server is verified: by pin, by
+// a CA bundle, or, only when Insecure, not at all (SEC-07).
+func serverVerification(cfg Config) (string, *x509.CertPool, error) {
+	switch {
+	case cfg.Pin != "" && cfg.CAFile != "":
+		return "", nil, errors.New("lxd: a pin or a CA bundle, not both")
+	case cfg.Pin != "":
+		pin, err := normalizePin(cfg.Pin)
+		return pin, nil, err
+	case cfg.CAFile != "":
+		data, err := os.ReadFile(cfg.CAFile) //nolint:gosec // G304: the operator's CA bundle
+		if err != nil {
+			return "", nil, fmt.Errorf("lxd: CA bundle: %w", err)
+		}
+		roots := x509.NewCertPool()
+		if !roots.AppendCertsFromPEM(data) {
+			return "", nil, errors.New("lxd: the CA bundle holds no PEM certificate")
+		}
+		return "", roots, nil
+	case cfg.Insecure:
+		return "", nil, nil
+	}
+	return "", nil, errors.New("lxd: a pin or a CA bundle is required for https")
+}
+
+// CheckBearerToken refuses a bearer token that LXD would never issue: one
+// that is not a JWT, or has no signature (FR-S19). The client presents the
+// token and never trusts it: LXD verifies its signature on every call,
+// with a key the client does not have. Only the token's form is checked,
+// so no JWT library is involved.
+func CheckBearerToken(token string) error {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return fmt.Errorf("the bearer token is not a JWT: %d parts", len(parts))
+	}
+	var header struct {
+		Alg string `json:"alg"`
+	}
+	if err := decodeSegment(parts[0], &header); err != nil {
+		return fmt.Errorf("the bearer token is not a JWT: header: %w", err)
+	}
+	var claims map[string]any
+	if err := decodeSegment(parts[1], &claims); err != nil {
+		return fmt.Errorf("the bearer token is not a JWT: claims: %w", err)
+	}
+	if strings.EqualFold(header.Alg, "none") || header.Alg == "" {
+		return errors.New("the bearer token is unsigned (alg none): LXD never issues such a token")
+	}
+	if parts[2] == "" {
+		return errors.New("the bearer token has no signature: LXD never issues such a token")
+	}
+	return nil
+}
+
+// decodeSegment decodes a JWT segment, base64url without padding, as JSON.
+func decodeSegment(segment string, v any) error {
+	data, err := base64.RawURLEncoding.DecodeString(segment)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, v)
+}
+
 // normalizePin returns a SHA-256 fingerprint as 64 lowercase hex digits.
 func normalizePin(pin string) (string, error) {
 	p := strings.ToLower(strings.TrimSpace(pin))
@@ -163,6 +248,8 @@ type RawRequest struct {
 	Method string
 	// Path is the API path, e.g. /1.0/instances/c1.
 	Path string
+	// Project overrides the connection's project for this request.
+	Project string
 	// Query is added to the project parameter.
 	Query url.Values
 	// Body is a JSON body, if any.
@@ -191,7 +278,7 @@ func (c *Client) Raw(ctx context.Context, r RawRequest) (*RawResponse, error) {
 	for k, v := range r.Query {
 		query[k] = v
 	}
-	query.Set("project", c.project)
+	query.Set("project", cmp.Or(r.Project, c.project))
 	u := *c.base
 	u.Path = r.Path
 	u.RawQuery = query.Encode()

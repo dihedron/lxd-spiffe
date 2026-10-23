@@ -15,6 +15,9 @@ type Mode string
 const (
 	FilePull   Mode = "file_pull"
 	ConfigPush Mode = "config_push"
+	// ClaimOnly is proof_mode none (SEC-02): no proof, so no checks of a
+	// proof mode.
+	ClaimOnly Mode = "none"
 )
 
 // Code is the reason code of a denial (attestor spec Observability).
@@ -99,6 +102,8 @@ func Check(inst *api.Instance, p Policy, mode Mode, typeHint string) (Decision, 
 		if shared.IsFalse(ec["security.devlxd"]) {
 			return Decision{}, deny(PolicyDenied, "security.devlxd is off")
 		}
+		return Decision{}, nil
+	case ClaimOnly:
 		return Decision{}, nil
 	default:
 		return Decision{}, deny(PolicyDenied, "unknown proof mode %q", mode)

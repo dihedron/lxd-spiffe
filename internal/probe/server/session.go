@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/canonical/lxd/shared/api"
-	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
@@ -127,19 +126,8 @@ func bearerToken(opts *probe.ServerCommand) (string, error) {
 	if token == "" {
 		return "", errors.New("--auth bearer needs --token-file or LXD_PROBE_TOKEN")
 	}
-	// the probe presents the token, it never trusts it: LXD verifies its
-	// signature on every call, with a key the probe does not have. A token
-	// without one is still refused here, since LXD never issues such a
-	// token: it is a mistake, better caught before any request.
-	parsed, parts, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{})
-	if err != nil {
-		return "", fmt.Errorf("the bearer token is not a JWT: %w", err)
-	}
-	if alg, _ := parsed.Header["alg"].(string); strings.EqualFold(alg, "none") || alg == "" {
-		return "", errors.New("the bearer token is unsigned (alg none): LXD never issues such a token")
-	}
-	if len(parts) != 3 || parts[2] == "" {
-		return "", errors.New("the bearer token has no signature: LXD never issues such a token")
+	if err := lxd.CheckBearerToken(token); err != nil {
+		return "", err
 	}
 	return token, nil
 }

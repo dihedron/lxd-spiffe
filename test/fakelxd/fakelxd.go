@@ -18,13 +18,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -58,14 +63,26 @@ type Server struct {
 	hidden    []string                     // projects answered with 404
 	exts      []string                     // api_extensions of GET /1.0
 	member    string                       // server_name of GET /1.0 when clustered
-	nextOp    int
-	replay    map[string][]evidence.Fixture
+	// failAll, when non-zero, answers every request with that status, as
+	// an LXD that is down would.
+	failAll    int
+	failAllMsg string
+	nextOp     int
+	replay     map[string][]evidence.Fixture
 	// bearerExpiry, when set, refuses bearer tokens from then on, as LXD
 	// refuses an expired token (lab, LXD 6.9).
 	bearerExpiry time.Time
 	// fileFailures answers the files API of an instance with an error a
 	// number of times first, as a VM whose lxd-agent is not up yet.
 	fileFailures map[string]*fileFailure // key: project/name
+	// mounts serve a guest directory of an instance from a host directory.
+	mounts map[string]mount // key: project/name
+}
+
+// mount is a guest directory served from a host directory.
+type mount struct {
+	guestDir, hostDir string
+	uidShift          int
 }
 
 type fileFailure struct {
@@ -91,6 +108,12 @@ type instance struct {
 	Project string
 	Status  string
 	Config  map[string]string
+	// Type is container unless SetType changed it; Location is "none", as
+	// a standalone server reports it, unless SetLocation changed it.
+	Type     string
+	Location string
+	// Devices are added to the root disk in expanded_devices.
+	Devices map[string]map[string]string
 	etagSeq int
 	// staleAfterRead changes the ETag right after the next GET, as a
 	// concurrent writer would.
@@ -161,7 +184,7 @@ func (s *Server) Requests() []Request {
 func (s *Server) AddInstance(project, name string, config map[string]string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.instances[project+"/"+name] = &instance{Name: name, Project: project, Status: "Running", Config: maps.Clone(config)}
+	s.instances[project+"/"+name] = &instance{Name: name, Project: project, Status: "Running", Config: maps.Clone(config), Type: "container", Location: "none"}
 }
 
 // AddProject adds a project with its config, for GET /1.0/projects/{name}.
@@ -176,6 +199,63 @@ func (s *Server) AddFile(project, name, path string, f File) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.files[project+"/"+name+"/"+path] = &f
+}
+
+// Mount serves the files API of the instance under guestDir from hostDir,
+// read at each request, so that a real agent's files can be read through
+// the fake. Owners are reported as the host uid minus uidShift: inside the
+// instance, as the files API reports them (gate L1).
+func (s *Server) Mount(project, name, guestDir, hostDir string, uidShift int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.mounts == nil {
+		s.mounts = map[string]mount{}
+	}
+	s.mounts[project+"/"+name] = mount{guestDir: guestDir, hostDir: hostDir, uidShift: uidShift}
+}
+
+// mounted returns the file at guestPath under the instance's mount; ok is
+// false when the path is not under it. The host directory is read through
+// os.Root, so no path escapes it.
+func (s *Server) mounted(project, name, guestPath string) (f *File, ok bool) {
+	m, found := s.mounts[project+"/"+name]
+	if !found || path.Clean(guestPath) != guestPath {
+		return nil, false
+	}
+	rel, err := filepath.Rel(m.guestDir, guestPath)
+	if err != nil || !filepath.IsLocal(rel) && rel != "." {
+		return nil, false
+	}
+	root, err := os.OpenRoot(m.hostDir)
+	if err != nil {
+		return nil, true
+	}
+	defer root.Close() //nolint:errcheck // read only
+	fi, err := root.Lstat(rel)
+	if err != nil {
+		return nil, true
+	}
+	f = &File{Mode: int(fi.Mode().Perm()), Type: "file"}
+	if st, ok := fi.Sys().(*syscall.Stat_t); ok {
+		f.UID, f.GID = int(st.Uid)-m.uidShift, int(st.Gid)
+	}
+	switch {
+	case fi.Mode()&os.ModeSymlink != 0:
+		f.Type = "symlink"
+	case fi.IsDir():
+		f.Type, f.Entries = "directory", []string{}
+		entries, _ := fs.ReadDir(root.FS(), rel)
+		for _, e := range entries {
+			f.Entries = append(f.Entries, e.Name())
+		}
+	default:
+		data, err := fs.ReadFile(root.FS(), rel)
+		if err != nil {
+			return nil, true
+		}
+		f.Content = string(data)
+	}
+	return f, true
 }
 
 // Deny answers 403 to every request whose path starts with prefix.
@@ -214,6 +294,14 @@ func (s *Server) ExpireBearerAt(at time.Time) {
 	s.bearerExpiry = at
 }
 
+// FailAll answers every request with status and msg until it is called
+// with status 0.
+func (s *Server) FailAll(status int, msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.failAll, s.failAllMsg = status, msg
+}
+
 // SetExtensions replaces the api_extensions the fake reports; the
 // extensions do not change what the fake serves.
 func (s *Server) SetExtensions(extensions ...string) {
@@ -246,6 +334,39 @@ func (s *Server) SetStatus(project, name, status string) {
 	defer s.mu.Unlock()
 	if i, ok := s.instances[project+"/"+name]; ok {
 		i.Status = status
+		i.etagSeq++
+	}
+}
+
+// SetType makes an instance a container or a virtual-machine.
+func (s *Server) SetType(project, name, typ string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i, ok := s.instances[project+"/"+name]; ok {
+		i.Type = typ
+	}
+}
+
+// SetLocation sets the cluster member an instance runs on, as a move or an
+// evacuation changes it.
+func (s *Server) SetLocation(project, name, location string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i, ok := s.instances[project+"/"+name]; ok {
+		i.Location = location
+		i.etagSeq++
+	}
+}
+
+// SetDevice adds or replaces a device of an instance, in expanded_devices.
+func (s *Server) SetDevice(project, name, device string, config map[string]string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if i, ok := s.instances[project+"/"+name]; ok {
+		if i.Devices == nil {
+			i.Devices = map[string]map[string]string{}
+		}
+		i.Devices[device] = maps.Clone(config)
 		i.etagSeq++
 	}
 }
@@ -338,6 +459,10 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "Failed verifying bearer token: Failed authenticating bearer token: Token is not valid: token has invalid claims: token is expired")
 		return
 	}
+	if s.failAll != 0 {
+		writeError(w, s.failAll, s.failAllMsg)
+		return
+	}
 	for _, prefix := range s.deny {
 		if strings.HasPrefix(r.URL.Path, prefix) {
 			writeError(w, http.StatusForbidden, "not authorized")
@@ -386,7 +511,7 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 	case len(parts) == 3 && parts[1] == "projects" && r.Method == http.MethodGet:
 		s.project(w, parts[2])
 	case len(parts) == 2 && parts[1] == "instances" && r.Method == http.MethodGet:
-		s.list(w, project)
+		s.list(w, project, r.URL.Query().Get("filter"))
 	case len(parts) == 3 && parts[1] == "instances":
 		s.instance(w, r, project, parts[2])
 	case len(parts) == 4 && parts[1] == "instances" && parts[3] == "files" && (r.Method == http.MethodGet || r.Method == http.MethodHead):
@@ -413,12 +538,19 @@ func (s *Server) project(w http.ResponseWriter, name string) {
 	writeSync(w, map[string]any{"name": name, "description": "", "config": config, "used_by": []string{}}, hex.EncodeToString(sum[:8]))
 }
 
-// list answers GET /1.0/instances?recursion=1 for the project.
-func (s *Server) list(w http.ResponseWriter, project string) {
-	var out []map[string]any
+// list answers GET /1.0/instances?recursion=1 for the project, with the
+// one filter the attestor sends, config.volatile.uuid eq <uuid> (FR-S18),
+// as the recorded list/filter fixtures show it.
+func (s *Server) list(w http.ResponseWriter, project, filter string) {
+	uuid, filtered := strings.CutPrefix(filter, "config.volatile.uuid eq ")
+	if filter != "" && !filtered {
+		writeError(w, http.StatusBadRequest, "the fake answers only the filter config.volatile.uuid eq <uuid>")
+		return
+	}
+	out := []map[string]any{}
 	for _, i := range s.instances {
-		if i.Project == project {
-			out = append(out, map[string]any{"name": i.Name, "project": i.Project, "type": "container", "status": i.Status, "location": "none", "config": i.Config})
+		if i.Project == project && (!filtered || i.Config["volatile.uuid"] == uuid) {
+			out = append(out, map[string]any{"name": i.Name, "project": i.Project, "type": i.Type, "status": i.Status, "location": i.Location, "config": i.Config})
 		}
 	}
 	slices.SortFunc(out, func(a, b map[string]any) int { return strings.Compare(a["name"].(string), b["name"].(string)) })
@@ -433,11 +565,14 @@ func (s *Server) instance(w http.ResponseWriter, r *http.Request, project, name 
 	}
 	switch r.Method {
 	case http.MethodGet:
-		root := map[string]any{"root": map[string]any{"type": "disk", "path": "/", "pool": "default"}}
+		devices := map[string]any{"root": map[string]any{"type": "disk", "path": "/", "pool": "default"}}
+		for k, v := range i.Devices {
+			devices[k] = v
+		}
 		metadata := map[string]any{
 			"name": i.Name, "project": i.Project, "status": i.Status, "status_code": 103,
-			"type": "container", "architecture": "x86_64", "location": "none", "profiles": []string{"default"},
-			"config": i.Config, "devices": map[string]any{}, "expanded_config": i.Config, "expanded_devices": root,
+			"type": i.Type, "architecture": "x86_64", "location": i.Location, "profiles": []string{"default"},
+			"config": i.Config, "devices": map[string]any{}, "expanded_config": i.Config, "expanded_devices": devices,
 			"created_at": "2026-10-01T10:00:00Z", "last_used_at": "2026-10-01T10:00:05Z",
 		}
 		if r.URL.Query().Get("recursion") == "1" {
@@ -512,8 +647,11 @@ func (s *Server) file(w http.ResponseWriter, r *http.Request, project, name stri
 		writeError(w, f.status, f.msg)
 		return
 	}
-	f, ok := s.files[project+"/"+name+"/"+r.URL.Query().Get("path")]
+	f, ok := s.mounted(project, name, r.URL.Query().Get("path"))
 	if !ok {
+		f, ok = s.files[project+"/"+name+"/"+r.URL.Query().Get("path")]
+	}
+	if !ok || f == nil {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
 	}
