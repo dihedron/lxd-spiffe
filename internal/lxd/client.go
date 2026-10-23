@@ -13,6 +13,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -25,7 +26,6 @@ import (
 
 	lxdclient "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
-	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/dihedron/lxd-spiffe/internal/limits"
 	"github.com/dihedron/lxd-spiffe/pkg/metadata"
@@ -191,19 +191,39 @@ func serverVerification(cfg Config) (string, *x509.CertPool, error) {
 // CheckBearerToken refuses a bearer token that LXD would never issue: one
 // that is not a JWT, or has no signature (FR-S19). The client presents the
 // token and never trusts it: LXD verifies its signature on every call,
-// with a key the client does not have.
+// with a key the client does not have. Only the token's form is checked,
+// so no JWT library is involved.
 func CheckBearerToken(token string) error {
-	parsed, parts, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{})
-	if err != nil {
-		return fmt.Errorf("the bearer token is not a JWT: %w", err)
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return fmt.Errorf("the bearer token is not a JWT: %d parts", len(parts))
 	}
-	if alg, _ := parsed.Header["alg"].(string); strings.EqualFold(alg, "none") || alg == "" {
+	var header struct {
+		Alg string `json:"alg"`
+	}
+	if err := decodeSegment(parts[0], &header); err != nil {
+		return fmt.Errorf("the bearer token is not a JWT: header: %w", err)
+	}
+	var claims map[string]any
+	if err := decodeSegment(parts[1], &claims); err != nil {
+		return fmt.Errorf("the bearer token is not a JWT: claims: %w", err)
+	}
+	if strings.EqualFold(header.Alg, "none") || header.Alg == "" {
 		return errors.New("the bearer token is unsigned (alg none): LXD never issues such a token")
 	}
-	if len(parts) != 3 || parts[2] == "" {
+	if parts[2] == "" {
 		return errors.New("the bearer token has no signature: LXD never issues such a token")
 	}
 	return nil
+}
+
+// decodeSegment decodes a JWT segment, base64url without padding, as JSON.
+func decodeSegment(segment string, v any) error {
+	data, err := base64.RawURLEncoding.DecodeString(segment)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, v)
 }
 
 // normalizePin returns a SHA-256 fingerprint as 64 lowercase hex digits.

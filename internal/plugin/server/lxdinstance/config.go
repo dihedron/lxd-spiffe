@@ -84,6 +84,9 @@ var configKeys = []string{
 	"limits.breaker_threshold", "limits.breaker_open", "limits.breaker_max_open",
 }
 
+// serverError prefixes an error with the servers entry it is about.
+const serverError = "server %s: %v"
+
 // pluginName is the attestor's name, the first segment of the agent path.
 const pluginName = "lxd_instance"
 
@@ -262,12 +265,12 @@ func limitsSettings(c *LimitsConfig) (limitSettings, error) {
 	if c == nil {
 		c = &LimitsConfig{}
 	}
-	bounded := func(key string, v, def, max int) (int, error) {
+	bounded := func(key string, v, def, maxValue int) (int, error) {
 		switch {
 		case v == 0:
 			return def, nil
-		case v < 0 || v > max:
-			return 0, invalid("limits.%s must be between 1 and %d", key, max)
+		case v < 0 || v > maxValue:
+			return 0, invalid("limits.%s must be between 1 and %d", key, maxValue)
 		}
 		return v, nil
 	}
@@ -310,11 +313,11 @@ func serverSettings(ctx context.Context, c *Config, s *settings) ([]*lxdServer, 
 			return nil, err
 		}
 		if _, err := s.agentPath(id, sampleUUID); err != nil {
-			return nil, invalid("server %s: %v", id, err)
+			return nil, invalid(serverError, id, err)
 		}
 		srv, err := newLXDServer(ctx, id, sc, c.DevMode, s.limits.breaker)
 		if err != nil {
-			return nil, invalid("server %s: %v", id, err)
+			return nil, invalid(serverError, id, err)
 		}
 		out = append(out, srv)
 	}
@@ -331,7 +334,7 @@ func checkServer(id string, sc ServerConfig, devMode bool) error {
 		return invalid("server %s: url: %v", id, err)
 	}
 	if err := checkCredential(sc); err != nil {
-		return invalid("server %s: %v", id, err)
+		return invalid(serverError, id, err)
 	}
 	switch {
 	case sc.ServerCertFingerprint != "" && sc.CABundleFile != "":

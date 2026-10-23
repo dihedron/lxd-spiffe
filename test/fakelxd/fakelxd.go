@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -214,18 +215,23 @@ func (s *Server) Mount(project, name, guestDir, hostDir string, uidShift int) {
 }
 
 // mounted returns the file at guestPath under the instance's mount; ok is
-// false when the path is not under it.
+// false when the path is not under it. The host directory is read through
+// os.Root, so no path escapes it.
 func (s *Server) mounted(project, name, guestPath string) (f *File, ok bool) {
 	m, found := s.mounts[project+"/"+name]
 	if !found || path.Clean(guestPath) != guestPath {
 		return nil, false
 	}
 	rel, err := filepath.Rel(m.guestDir, guestPath)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, "../") {
+	if err != nil || !filepath.IsLocal(rel) && rel != "." {
 		return nil, false
 	}
-	host := filepath.Join(m.hostDir, rel)
-	fi, err := os.Lstat(host)
+	root, err := os.OpenRoot(m.hostDir)
+	if err != nil {
+		return nil, true
+	}
+	defer root.Close() //nolint:errcheck // read only
+	fi, err := root.Lstat(rel)
 	if err != nil {
 		return nil, true
 	}
@@ -238,12 +244,12 @@ func (s *Server) mounted(project, name, guestPath string) (f *File, ok bool) {
 		f.Type = "symlink"
 	case fi.IsDir():
 		f.Type, f.Entries = "directory", []string{}
-		entries, _ := os.ReadDir(host)
+		entries, _ := fs.ReadDir(root.FS(), rel)
 		for _, e := range entries {
 			f.Entries = append(f.Entries, e.Name())
 		}
 	default:
-		data, err := os.ReadFile(host) //nolint:gosec // G304: a test's mounted directory
+		data, err := fs.ReadFile(root.FS(), rel)
 		if err != nil {
 			return nil, true
 		}

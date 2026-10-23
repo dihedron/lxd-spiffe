@@ -68,12 +68,15 @@ func WriteFile(dir, name string, content []byte, owner int) (remove func(), err 
 }
 
 // create makes dir 0700, whatever the umask, and its missing parents 0700
-// less the umask.
+// less the umask. A dir created meanwhile by another process is returned
+// as it is, for the caller to check.
 func create(dir string) (os.FileInfo, error) {
 	if err := os.MkdirAll(filepath.Dir(dir), 0o700); err != nil {
 		return nil, err
 	}
-	if err := os.Mkdir(dir, 0o700); err != nil {
+	if err := os.Mkdir(dir, 0o700); errors.Is(err, os.ErrExist) {
+		return os.Lstat(dir)
+	} else if err != nil {
 		return nil, err
 	}
 	if err := os.Chmod(dir, 0o700); err != nil { //nolint:gosec // G302: a directory, 0700 is FR-A7's mode

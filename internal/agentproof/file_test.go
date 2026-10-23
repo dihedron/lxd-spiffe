@@ -3,6 +3,7 @@ package agentproof
 import (
 	"cmp"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -129,5 +130,26 @@ func touch(t *testing.T, path string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestFRA7ConcurrentCreate: writers racing to create the missing directory
+// all succeed.
+func TestFRA7ConcurrentCreate(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "spire", "lxd")
+	errs := make(chan error, 16)
+	for i := range 16 {
+		go func() {
+			remove, err := WriteFile(dir, fmt.Sprintf("proof-%016x", i), content, os.Getuid())
+			if err == nil {
+				remove()
+			}
+			errs <- err
+		}()
+	}
+	for range 16 {
+		if err := <-errs; err != nil {
+			t.Error(err)
+		}
 	}
 }

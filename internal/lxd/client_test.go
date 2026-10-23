@@ -444,9 +444,12 @@ func TestFRS19CheckBearerToken(t *testing.T) {
 	// outside the scanners' allowlist appears in the source
 	unsigned := testToken[:strings.LastIndex(testToken, ".")+1]
 	for name, token := range map[string]string{
-		"alg none":     base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none","typ":"JWT"}`)) + unsigned[strings.Index(unsigned, "."):],
-		"no signature": unsigned,
-		"not a JWT":    "opaque-token",
+		"alg none":          base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none","typ":"JWT"}`)) + unsigned[strings.Index(unsigned, "."):],
+		"no signature":      unsigned,
+		"not a JWT":         "opaque-token",
+		"four parts":        testToken + ".x",
+		"header not JSON":   base64.RawURLEncoding.EncodeToString([]byte(`alg`)) + testToken[strings.Index(testToken, "."):],
+		"claims not base64": testToken[:strings.Index(testToken, ".")] + ".!!" + testToken[strings.LastIndex(testToken, "."):],
 	} {
 		if err := CheckBearerToken(token); err == nil {
 			t.Errorf("%s: accepted", name)

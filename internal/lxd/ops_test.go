@@ -159,47 +159,64 @@ func callOf(f evidence.Fixture, query url.Values) (string, []string) {
 // order.
 func TestFRS17Fixtures(t *testing.T) {
 	for _, version := range fixtureVersions {
-		t.Run(version, func(t *testing.T) {
-			fixtures, err := evidence.LoadFixtures(fixtureDir(version))
-			if err != nil {
-				t.Fatal(err)
-			}
-			fake := fakelxd.NewReplay(t, fixtureDir(version))
-			clients := map[string]*Client{}
-			calls := map[string]int{}
-			for _, f := range fixtures {
-				if strings.HasPrefix(f.Path, "devlxd") || f.Request.Method != http.MethodGet {
-					continue
-				}
-				query, err := url.ParseQuery(f.Request.Query)
-				if err != nil {
-					t.Fatal(err)
-				}
-				name, parts := callOf(f, query)
-				call, ok := fixtureCalls[name]
-				project := query.Get("project")
-				query.Del("project")
-				if !ok || !sameKeys(query, call.query) {
-					continue
-				}
-				if clients[project] == nil {
-					c, err := Connect(context.Background(), Config{Endpoint: fake.URL, Pin: fake.Fingerprint(), Project: project})
-					if err != nil {
-						t.Fatal(err)
-					}
-					clients[project] = c
-				}
-				calls[name]++
-				call.check(t, clients[project], f, query, parts)
-			}
-			for name := range fixtureCalls {
-				if calls[name] == 0 {
-					t.Errorf("no fixture exercised %s", name)
-				}
-			}
-			t.Logf("requests replayed: %v", calls)
-		})
+		t.Run(version, func(t *testing.T) { replayFixtures(t, version) })
 	}
+}
+
+// replayFixtures replays every fixture of version that an operation sends.
+func replayFixtures(t *testing.T, version string) {
+	fixtures, err := evidence.LoadFixtures(fixtureDir(version))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fake := fakelxd.NewReplay(t, fixtureDir(version))
+	clients := map[string]*Client{}
+	calls := map[string]int{}
+	for _, f := range fixtures {
+		name, project, query, parts, ok := operationOf(t, f)
+		if !ok {
+			continue
+		}
+		if clients[project] == nil {
+			clients[project] = connectReplay(t, fake, project)
+		}
+		calls[name]++
+		fixtureCalls[name].check(t, clients[project], f, query, parts)
+	}
+	for name := range fixtureCalls {
+		if calls[name] == 0 {
+			t.Errorf("no fixture exercised %s", name)
+		}
+	}
+	t.Logf("requests replayed: %v", calls)
+}
+
+// operationOf returns the operation that sends f's request, its project
+// and its other parameters; ok is false for a devLXD fixture, another
+// method, or parameters no operation sends.
+func operationOf(t *testing.T, f evidence.Fixture) (name, project string, query url.Values, parts []string, ok bool) {
+	t.Helper()
+	if strings.HasPrefix(f.Path, "devlxd") || f.Request.Method != http.MethodGet {
+		return "", "", nil, nil, false
+	}
+	query, err := url.ParseQuery(f.Request.Query)
+	if err != nil {
+		t.Fatal(err)
+	}
+	name, parts = callOf(f, query)
+	call, ok := fixtureCalls[name]
+	project = query.Get("project")
+	query.Del("project")
+	return name, project, query, parts, ok && sameKeys(query, call.query)
+}
+
+func connectReplay(t *testing.T, fake *fakelxd.Server, project string) *Client {
+	t.Helper()
+	c, err := Connect(context.Background(), Config{Endpoint: fake.URL, Pin: fake.Fingerprint(), Project: project})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c
 }
 
 // sameKeys reports whether query has exactly the parameters keys.

@@ -23,6 +23,12 @@ import (
 )
 
 // The reason codes of the server's log (Observability).
+// The instance keys that identify an instance (R1).
+const (
+	keyUUID       = "volatile.uuid"
+	keyGeneration = "volatile.uuid.generation"
+)
+
 const (
 	reasonOK                = "ok"
 	reasonPayloadInvalid    = "payload_invalid"
@@ -127,7 +133,7 @@ func (a *attestation) run(ctx context.Context) (*nodeattestorv1.AgentAttributes,
 		}
 		return nil, fail(reasonPolicyDenied, "%v", err)
 	}
-	uuid := m.inst.ExpandedConfig["volatile.uuid"]
+	uuid := m.inst.ExpandedConfig[keyUUID]
 	if err := a.unique(ctx, m, uuid); err != nil {
 		return nil, err
 	}
@@ -397,7 +403,7 @@ func (a *attestation) reverify(ctx context.Context, m *match) error {
 	}
 	before, after := m.inst.ExpandedConfig, again.ExpandedConfig
 	same := again.Name == m.inst.Name && again.Project == m.inst.Project &&
-		after["volatile.uuid"] == before["volatile.uuid"] && after["volatile.uuid.generation"] == before["volatile.uuid.generation"]
+		after[keyUUID] == before[keyUUID] && after[keyGeneration] == before[keyGeneration]
 	switch {
 	case !same:
 		return fail(reasonNotFound, "the instance's identity changed during the proof")

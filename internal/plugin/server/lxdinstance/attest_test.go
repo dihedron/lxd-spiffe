@@ -133,17 +133,7 @@ func (h *harness) attest(project string, a *agent) (*nodeattestorv1.AgentAttribu
 	if err != nil {
 		h.t.Fatal(err)
 	}
-	payload := a.payload
-	if payload == nil {
-		payload = marshal(h.t, &lxdinstancev1.AttestRequest{
-			Version:      1,
-			Claim:        &lxdinstancev1.Claim{Project: a.project, InstanceName: a.name, CloudInitInstanceId: a.cloudInitID},
-			AgentNonce:   a.nonce,
-			InstanceType: a.typ,
-			ProofModes:   a.modes,
-		})
-	}
-	if err := stream.Send(&nodeattestorv1.AttestRequest{Request: &nodeattestorv1.AttestRequest_Payload{Payload: payload}}); err != nil {
+	if err := stream.Send(&nodeattestorv1.AttestRequest{Request: &nodeattestorv1.AttestRequest_Payload{Payload: a.request(h.t)}}); err != nil {
 		h.t.Fatal(err)
 	}
 	for {
@@ -154,18 +144,7 @@ func (h *harness) attest(project string, a *agent) (*nodeattestorv1.AgentAttribu
 		if attrs := resp.GetAgentAttributes(); attrs != nil {
 			return attrs, nil
 		}
-		a.challenged = true
-		c, err := lxdinstancev1.DecodeChallenge(resp.GetChallenge())
-		if err != nil {
-			h.t.Fatalf("the server sent an invalid challenge: %v", err)
-		}
-		var r *lxdinstancev1.ChallengeResponse
-		if a.answer != nil {
-			r = a.answer(h, a, c)
-		} else {
-			h.writeProof(project, a, c, 0, 0o600, a.rightProof(c))
-			r = done
-		}
+		r := h.answer(project, a, resp.GetChallenge())
 		if r == nil {
 			// the agent never answers: wait for the server to give up
 			_, err := stream.Recv()
@@ -175,6 +154,36 @@ func (h *harness) attest(project string, a *agent) (*nodeattestorv1.AgentAttribu
 			h.t.Fatal(err)
 		}
 	}
+}
+
+// request is a's payload: a well-formed request unless a.payload is set.
+func (a *agent) request(t *testing.T) []byte {
+	if a.payload != nil {
+		return a.payload
+	}
+	return marshal(t, &lxdinstancev1.AttestRequest{
+		Version:      1,
+		Claim:        &lxdinstancev1.Claim{Project: a.project, InstanceName: a.name, CloudInitInstanceId: a.cloudInitID},
+		AgentNonce:   a.nonce,
+		InstanceType: a.typ,
+		ProofModes:   a.modes,
+	})
+}
+
+// answer is a's answer to the challenge in data: a.answer's, or the right
+// proof written as root.
+func (h *harness) answer(project string, a *agent, data []byte) *lxdinstancev1.ChallengeResponse {
+	h.t.Helper()
+	a.challenged = true
+	c, err := lxdinstancev1.DecodeChallenge(data)
+	if err != nil {
+		h.t.Fatalf("the server sent an invalid challenge: %v", err)
+	}
+	if a.answer != nil {
+		return a.answer(h, a, c)
+	}
+	h.writeProof(project, a, c, 0, 0o600, a.rightProof(c))
+	return done
 }
 
 func marshal(t *testing.T, m proto.Message) []byte {
