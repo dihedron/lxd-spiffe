@@ -72,12 +72,18 @@ commands:
   refresh                   move the LXD servers to their channels' newest
                             revision, then offer a new snapshot
   guest-up <server> <name> [--vm] [--privileged] [--no-files] [--target <member>]
-                            (plugins) launch an Ubuntu guest of project
-                            default with SPIRE Agent and lxd-agent-plugin,
-                            lab-spire granted on it (--no-files: without
-                            can_access_files)
-  guest-down <server> <name>
+           [--project <project>] [--claim-name <name>]
+                            (plugins) launch an Ubuntu guest with SPIRE Agent
+                            and lxd-agent-plugin, lab-spire granted on it in
+                            project default (--no-files: without
+                            can_access_files; --claim-name: the agent claims
+                            another instance's name)
+  guest-down <server> <name> [--project <project>]
                             (plugins) delete a guest and lab-spire's grants
+  guest-copy <server> <src> <dst> [--keep-agent]
+                            (plugins) copy a running guest container; without
+                            --keep-agent its SPIRE Agent data stays out of the
+                            copy
   spire-mode file_pull|config_push|auto|default
                             (plugins) set the server plugin's proof_mode and
                             restart SPIRE Server (default: from
@@ -434,6 +440,7 @@ main() {
 	token) cmd_token "${args[@]}" ;;
 	guest-up) cmd_guest_up "${args[@]}" ;;
 	guest-down) cmd_guest_down "${args[@]}" ;;
+	guest-copy) cmd_guest_copy "${args[@]}" ;;
 	spire-mode) cmd_spire_mode "${args[@]}" ;;
 	refresh) cmd_refresh ;;
 	test) cmd_test "${args[@]}" ;;

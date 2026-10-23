@@ -407,13 +407,16 @@ cmd_spire_mode() {
 
 # --- Guests -----------------------------------------------------------------------
 
-# cmd_guest_up SERVER NAME [--vm] [--privileged] [--no-files]: launches an
-# Ubuntu guest in default with the SPIRE Agent cloud-init, and grants
-# lab-spire its entitlements on it (--no-files: without can_access_files).
+# cmd_guest_up SERVER NAME [--vm] [--privileged] [--no-files] [--target M]
+# [--project P] [--claim-name N]: launches an Ubuntu guest with the SPIRE
+# Agent cloud-init, and grants lab-spire its entitlements on it (--no-files:
+# without can_access_files). --project puts the guest in another project
+# (and claims it; lab-spire gets no grants there) and --claim-name makes the
+# agent claim another instance's name.
 cmd_guest_up() {
 	require_state
-	local usage="usage: lab.sh guest-up <server> <name> [--vm] [--privileged] [--no-files] [--target <member>]"
-	local server="${1:-}" name="${2:-}" args=() files="" config
+	local usage="usage: lab.sh guest-up <server> <name> [--vm] [--privileged] [--no-files] [--target <member>] [--project <project>] [--claim-name <name>]"
+	local server="${1:-}" name="${2:-}" args=() files="" project=default claim_name="" config user_data
 	[[ -n "$server" && -n "$name" ]] || die "$usage"
 	shift 2
 	require_server "$server"
@@ -422,36 +425,84 @@ cmd_guest_up() {
 	while (($#)); do
 		case "$1" in
 		--vm) args+=(--vm -c "limits.cpu=$LAB_GUEST_VM_VCPUS" -c "limits.memory=${LAB_GUEST_VM_RAM_GIB}GiB") ;;
-		--privileged) args+=(-c security.privileged=true) ;;
+		--privileged) args+=(-c security.privileged=true -c security.nesting=true) ;;
 		--no-files) files=--no-files ;;
-		--target)
+		--target | --project | --claim-name)
 			[[ $# -ge 2 ]] || die "$usage"
-			args+=(--target "$2")
+			case "$1" in
+			--target) args+=(--target "$2") ;;
+			--project) project="$2" ;;
+			--claim-name) claim_name="$2" ;;
+			esac
 			shift
 			;;
 		*) die "$usage" ;;
 		esac
 		shift
 	done
-	scp -q "${SSH_OPTS[@]}" "$config" "$LAB_USER@$(vm_ip "$server"):guest-ubuntu.yaml" || die "$server: cannot copy the guest cloud-init"
-	info "$server: launching guest $name"
+	# the claim of the agent: its project, and a name other than its own if asked
+	user_data="$LAB_STATE_DIR/guest/$server-$name.yaml"
+	sed -e "s/^\( *\)project = \"default\"$/\1project = \"$project\"/" \
+		${claim_name:+-e "s/^\( *\)project = \"$project\"$/&\n\1instance_name = \"$claim_name\"/"} \
+		"$config" >"$user_data"
+	scp -q "${SSH_OPTS[@]}" "$user_data" "$LAB_USER@$(vm_ip "$server"):guest-$name.yaml" || die "$server: cannot copy the guest cloud-init"
+	info "$server: launching guest $project/$name"
 	# the grants come before the agent's first attestation
-	vm_ssh "$server" "set -e; sudo lxc init $LAB_IMAGE_UBUNTU $(printf '%q ' "$name" "${args[@]}") --project default >/dev/null
-		sudo lxc config set $name --project default cloud-init.user-data=\"\$(cat guest-ubuntu.yaml)\"" ||
+	vm_ssh "$server" "set -e; sudo lxc init $LAB_IMAGE_UBUNTU $(printf '%q ' "$name" "${args[@]}") --project $project >/dev/null
+		sudo lxc config set $name --project $project cloud-init.user-data=\"\$(cat guest-$name.yaml)\"" ||
 		die "$server: cannot create guest $name"
-	# shellcheck disable=SC2046 # one entitlement per word
-	spire_permissions "$server" add "$name" $(spire_entitlements $files) || die "$server: cannot grant lab-spire access to $name"
-	vm_lxc "$server" start "$name" --project default >/dev/null || die "$server: cannot start guest $name"
+	if [[ "$project" == default ]]; then
+		# shellcheck disable=SC2046 # one entitlement per word
+		spire_permissions "$server" add "$name" $(spire_entitlements $files) || die "$server: cannot grant lab-spire access to $name"
+	fi
+	vm_lxc "$server" start "$name" --project "$project" >/dev/null || die "$server: cannot start guest $name"
 }
 
-# cmd_guest_down SERVER NAME: deletes the guest and lab-spire's grants on it.
+# cmd_guest_down SERVER NAME [--project P]: deletes the guest and, in
+# default, lab-spire's grants on it.
 cmd_guest_down() {
 	require_state
-	local server="${1:-}" name="${2:-}"
-	[[ -n "$server" && -n "$name" ]] || die "usage: lab.sh guest-down <server> <name>"
+	local server="${1:-}" name="${2:-}" project=default
+	[[ -n "$server" && -n "$name" ]] || die "usage: lab.sh guest-down <server> <name> [--project <project>]"
+	shift 2
+	[[ "${1:-}" != --project ]] || project="${2:?usage: --project <project>}"
 	require_server "$server"
+	if [[ "$project" == default ]]; then
+		spire_permissions "$server" remove "$name" can_view can_access_files can_edit
+	fi
+	vm_lxc "$server" delete --force "$name" --project "$project" >/dev/null 2>&1 || true
+	rm -f "$LAB_STATE_DIR/guest/$server-$name.yaml"
+	info "$server: guest $project/$name deleted"
+}
+
+# cmd_guest_copy SERVER SRC DST [--keep-agent]: copies the running container
+# SRC (project default) to DST, grants lab-spire its entitlements on DST and
+# starts it. Without --keep-agent the SPIRE Agent's data (its SVID and key)
+# is moved aside in SRC while the copy is made, so that the copy has to
+# attest; with it the copy inherits them (E2E-4).
+cmd_guest_copy() {
+	require_state
+	local usage="usage: lab.sh guest-copy <server> <src> <dst> [--keep-agent]"
+	local server="${1:-}" src="${2:-}" dst="${3:-}" keep=no
+	[[ -n "$server" && -n "$src" && -n "$dst" ]] || die "$usage"
+	shift 3
+	[[ "${1:-}" != --keep-agent ]] || keep=yes
+	require_server "$server"
+	local agent=/var/lib/spire/agent
+	if [[ "$keep" == no ]]; then
+		vm_ssh "$server" "sudo lxc exec $src --project default -- sh -c 'systemctl stop spire-agent && mv $agent $agent.moved'" ||
+			die "$server: cannot move the agent's data aside in $src"
+	fi
+	info "$server: copying $src to $dst"
+	local status=0
+	vm_ssh "$server" "sudo lxc copy $src $dst --project default" || status=$?
+	if [[ "$keep" == no ]]; then
+		vm_ssh "$server" "sudo lxc exec $src --project default -- sh -c 'mv $agent.moved $agent && systemctl start spire-agent'" ||
+			die "$server: cannot restore the agent's data in $src"
+	fi
+	((status == 0)) || die "$server: cannot copy $src (a running container is needed)"
+	# the grants come once the copy exists and before it starts
 	# shellcheck disable=SC2046 # one entitlement per word
-	spire_permissions "$server" remove "$name" can_view can_access_files can_edit
-	vm_lxc "$server" delete --force "$name" --project default >/dev/null 2>&1 || true
-	info "$server: guest $name deleted"
+	spire_permissions "$server" add "$dst" $(spire_entitlements) || die "$server: cannot grant lab-spire access to $dst"
+	vm_lxc "$server" start "$dst" --project default >/dev/null || die "$server: cannot start $dst"
 }
