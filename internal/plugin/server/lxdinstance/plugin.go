@@ -2,8 +2,8 @@
 // node attestor. It will verify the evidence an LXD instance's SPIRE Agent
 // presents, then return the agent's SPIFFE ID and selectors.
 //
-// It attests with file_pull, or on the claim alone when proof_mode is none;
-// config_push comes later.
+// It attests with file_pull or config_push, or on the claim alone when
+// proof_mode is none.
 package lxdinstance
 
 import (
@@ -29,11 +29,13 @@ type Plugin struct {
 
 	mu       sync.RWMutex
 	settings *settings
+	// inflight outlives Configure, like the attestations it tracks.
+	inflight *challenges
 }
 
 // New returns an unconfigured Plugin.
 func New() *Plugin {
-	return &Plugin{}
+	return &Plugin{inflight: newChallenges()}
 }
 
 // SetLogger routes the plugin's logs, and those of log/slog, to SPIRE.
@@ -82,7 +84,7 @@ func (p *Plugin) Attest(stream nodeattestorv1.NodeAttestor_AttestServer) error {
 		return status.Error(codes.PermissionDenied, "attestation failed")
 	}
 	defer release()
-	a := &attestation{s: s, stream: stream, log: log.With("inflight", s.limiter.inflight()), start: start}
+	a := &attestation{s: s, stream: stream, inflight: p.inflight, log: log.With("inflight", s.limiter.inflight()), start: start}
 	attrs, err := a.run(stream.Context())
 	reason := reasonOK
 	if err != nil {

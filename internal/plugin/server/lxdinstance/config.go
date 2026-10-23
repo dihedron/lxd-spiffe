@@ -224,9 +224,7 @@ func cmpOr(v, def string) string {
 func proofMode(c *Config) (string, error) {
 	mode := cmpOr(c.ProofMode, modeFilePull)
 	switch mode {
-	case modeFilePull, modeAuto:
-	case modeConfigPush:
-		return "", invalid(`proof_mode "config_push" is not implemented in this version: use file_pull or auto`)
+	case modeFilePull, modeConfigPush, modeAuto:
 	case modeNone:
 		if !c.ClaimOnlyAck {
 			return "", invalid(`proof_mode "none" issues identities on a claim alone: it needs i_understand_claim_only_is_insecure = true (SEC-02)`)

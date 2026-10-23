@@ -69,6 +69,19 @@ func fail(reason, format string, a ...any) *failure {
 	return &failure{reason: reason, err: fmt.Errorf(format, a...)}
 }
 
+// denied is the failure of a policy check, with the policy's own reason;
+// when, if set, tells the log when the check ran.
+func denied(err error, when string) *failure {
+	if when != "" {
+		err = fmt.Errorf("%s: %w", when, err)
+	}
+	var d *policy.Denial
+	if errors.As(err, &d) {
+		return &failure{reason: string(d.Code), err: err}
+	}
+	return &failure{reason: reasonPolicyDenied, err: err}
+}
+
 // attestation is one run of the Attest stream.
 type attestation struct {
 	s      *settings
@@ -79,6 +92,13 @@ type attestation struct {
 	// proof is how long the challenge took, sent to proof read back.
 	proof time.Duration
 	start time.Time
+	// inflight holds the config_push keys of the attestations running in
+	// this plugin process.
+	inflight *challenges
+	// policy and hint are those of the decision, applied again to every
+	// re-read before a write (FR-S14).
+	policy policy.Policy
+	hint   string
 }
 
 // match is the one instance the claim resolved to (FR-S3).
@@ -86,6 +106,7 @@ type match struct {
 	srv      *lxdServer
 	client   *lxd.Client
 	inst     *api.Instance
+	etag     string // inst's, the If-Match of the challenge write (FR-S14)
 	instance string // inst.Name, as asked for
 }
 
@@ -123,26 +144,29 @@ func (a *attestation) run(ctx context.Context) (*nodeattestorv1.AgentAttributes,
 		return nil, err
 	}
 	a.log = a.log.With("server_id", m.srv.id, "project", m.inst.Project)
-	pol := a.s.policy
-	pol.Projects = m.srv.projects
-	decision, err := policy.Check(m.inst, pol, mode, typeHint(r.GetInstanceType()))
+	a.policy = a.s.policy
+	a.policy.Projects = m.srv.projects
+	a.hint = typeHint(r.GetInstanceType())
+	decision, err := policy.Check(m.inst, a.policy, mode, a.hint)
 	if err != nil {
-		var d *policy.Denial
-		if errors.As(err, &d) {
-			return nil, &failure{reason: string(d.Code), err: err}
-		}
-		return nil, fail(reasonPolicyDenied, "%v", err)
+		return nil, denied(err, "")
 	}
 	uuid := m.inst.ExpandedConfig[keyUUID]
 	if err := a.unique(ctx, m, uuid); err != nil {
 		return nil, err
 	}
-	if mode == policy.ClaimOnly {
+	switch mode {
+	case policy.ClaimOnly:
 		a.log.Warn(`proof_mode "none": issuing an identity on a claim only, with no proof of co-location (SEC-02)`)
-	} else {
-		if err := a.filePull(ctx, m, r, decision.ExpectedOwner); err != nil {
-			return nil, err
-		}
+	case policy.ConfigPush:
+		err = a.configPush(ctx, m, r)
+	default:
+		err = a.filePull(ctx, m, r, decision.ExpectedOwner)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if mode != policy.ClaimOnly {
 		if err := a.reverify(ctx, m); err != nil {
 			return nil, err
 		}
@@ -151,16 +175,17 @@ func (a *attestation) run(ctx context.Context) (*nodeattestorv1.AgentAttributes,
 }
 
 // chooseMode applies Mode negotiation: the configured mode, which the agent
-// must offer; auto takes file_pull when offered. config_push is refused at
-// Configure until it is implemented.
+// must offer; auto takes file_pull when offered, then config_push.
 func (a *attestation) chooseMode(offered []lxdinstancev1.ProofMode) (policy.Mode, error) {
-	switch a.s.mode {
-	case modeNone:
+	filePull := slices.Contains(offered, lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL)
+	configPush := slices.Contains(offered, lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH)
+	switch {
+	case a.s.mode == modeNone:
 		return policy.ClaimOnly, nil
-	case modeFilePull, modeAuto:
-		if slices.Contains(offered, lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL) {
-			return policy.FilePull, nil
-		}
+	case filePull && (a.s.mode == modeFilePull || a.s.mode == modeAuto):
+		return policy.FilePull, nil
+	case configPush && (a.s.mode == modeConfigPush || a.s.mode == modeAuto):
+		return policy.ConfigPush, nil
 	}
 	return "", fail(reasonPolicyDenied, "the agent offers %v, the server requires %s", offered, a.s.mode)
 }
@@ -208,7 +233,7 @@ func (a *attestation) resolve(ctx context.Context, c *lxdinstancev1.Claim) (*mat
 			return nil, err
 		}
 		for _, p := range projects {
-			inst, _, err := cl.Instance(ctx, p, c.GetInstanceName())
+			inst, etag, err := cl.Instance(ctx, p, c.GetInstanceName())
 			srv.observe(ctx, err)
 			switch {
 			case lxd.KindOf(err) == lxd.KindNotFound:
@@ -218,7 +243,7 @@ func (a *attestation) resolve(ctx context.Context, c *lxdinstancev1.Claim) (*mat
 			case c.GetCloudInitInstanceId() != "" && inst.ExpandedConfig["volatile.cloud-init.instance-id"] != c.GetCloudInitInstanceId():
 				continue
 			}
-			matches = append(matches, &match{srv: srv, client: cl, inst: inst, instance: c.GetInstanceName()})
+			matches = append(matches, &match{srv: srv, client: cl, inst: inst, etag: etag, instance: c.GetInstanceName()})
 		}
 	}
 	switch {
@@ -401,14 +426,19 @@ func (a *attestation) reverify(ctx context.Context, m *match) error {
 	case again.Status != "Running":
 		return fail("not_running", "the instance is %s after the proof", again.Status)
 	}
-	before, after := m.inst.ExpandedConfig, again.ExpandedConfig
-	same := again.Name == m.inst.Name && again.Project == m.inst.Project &&
-		after[keyUUID] == before[keyUUID] && after[keyGeneration] == before[keyGeneration]
+	return unchanged(m.inst, again, "during the proof")
+}
+
+// unchanged requires again to have first's identity, generation, project,
+// name and location; when tells the log when it changed.
+func unchanged(first, again *api.Instance, when string) error {
+	before, after := first.ExpandedConfig, again.ExpandedConfig
 	switch {
-	case !same:
-		return fail(reasonNotFound, "the instance's identity changed during the proof")
-	case again.Location != m.inst.Location:
-		return fail(reasonInstanceMoved, "the instance moved from %q to %q during the proof", m.inst.Location, again.Location)
+	case again.Name != first.Name || again.Project != first.Project ||
+		after[keyUUID] != before[keyUUID] || after[keyGeneration] != before[keyGeneration]:
+		return fail(reasonNotFound, "the instance's identity changed %s", when)
+	case again.Location != first.Location:
+		return fail(reasonInstanceMoved, "the instance moved from %q to %q %s", first.Location, again.Location, when)
 	}
 	return nil
 }

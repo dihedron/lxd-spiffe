@@ -2,6 +2,7 @@ package lxd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -140,6 +141,51 @@ func (c *Client) InstancesByUUID(ctx context.Context, project, id string) ([]str
 		names = append(names, inst.Name)
 	}
 	return names, nil
+}
+
+// PatchConfig changes config keys of an instance with PATCH under
+// If-Match etag (FR-S13, FR-S14); a nil value removes the key. LXD answers
+// a PATCH synchronously (gate L14); should it answer with an operation, the
+// operation is waited for within ctx. A stale ETag is KindPrecondition.
+func (c *Client) PatchConfig(ctx context.Context, project, name, etag string, config map[string]*string) error {
+	body, err := json.Marshal(map[string]any{"config": config})
+	if err != nil {
+		return fmt.Errorf("lxd: encoding the config: %w", err)
+	}
+	resp, err := c.Raw(ctx, RawRequest{Method: http.MethodPatch, Path: "/1.0/instances/" + url.PathEscape(name), Project: project, Body: body, ETag: etag})
+	if err != nil {
+		return err
+	}
+	switch resp.Status {
+	case http.StatusOK:
+		return nil
+	case http.StatusAccepted:
+		return c.wait(ctx, project, resp)
+	}
+	return responseError(resp)
+}
+
+// wait waits for the operation of an async response to succeed.
+func (c *Client) wait(ctx context.Context, project string, resp *RawResponse) error {
+	env, err := resp.Envelope()
+	if err != nil {
+		return err
+	}
+	if !strings.HasPrefix(env.Operation, "/1.0/operations/") {
+		return &Error{Kind: KindProtocol, Status: resp.Status, Err: fmt.Errorf("operation %q", env.Operation)}
+	}
+	done, err := c.Raw(ctx, RawRequest{Method: http.MethodGet, Path: env.Operation + "/wait", Project: project})
+	if err != nil {
+		return err
+	}
+	var op api.Operation
+	if err := Decode(done, &op); err != nil {
+		return err
+	}
+	if op.Status != api.Success.String() {
+		return &Error{Kind: KindServer, Status: done.Status, Err: fmt.Errorf("operation %s: %s: %s", op.ID, op.Status, op.Err)}
+	}
+	return nil
 }
 
 // Project reads a project and its ETag (gate L16: features.networks).

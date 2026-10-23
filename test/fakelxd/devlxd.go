@@ -29,6 +29,9 @@ type DevLXD struct {
 	InstanceType, Location string
 	// Config holds the instance's config keys, readable or not.
 	Config map[string]string
+	// ConfigFrom, when set, gives the config instead of Config, read at
+	// each request: a fake LXD's instance, as the server writes it.
+	ConfigFrom func() map[string]string
 	// MetaData is GET /1.0/meta-data.
 	MetaData string
 	// Devices is GET /1.0/devices.
@@ -96,6 +99,14 @@ func (d *DevLXD) Requests() []string {
 	return slices.Clone(d.requests)
 }
 
+// config is the instance's config, from ConfigFrom when set.
+func (d *DevLXD) config() map[string]string {
+	if d.ConfigFrom != nil {
+		return d.ConfigFrom()
+	}
+	return d.Config
+}
+
 // readable reports whether devLXD exposes the key to the guest.
 func readable(key string) bool {
 	return strings.HasPrefix(key, "user.") || strings.HasPrefix(key, "cloud-init.")
@@ -126,7 +137,7 @@ func (d *DevLXD) serve(w http.ResponseWriter, r *http.Request) {
 		})
 	case path == "/1.0/config":
 		urls := []string{}
-		for key := range d.Config {
+		for key := range d.config() {
 			if readable(key) {
 				urls = append(urls, "/1.0/config/"+key)
 			}
@@ -135,7 +146,7 @@ func (d *DevLXD) serve(w http.ResponseWriter, r *http.Request) {
 		d.json(w, urls)
 	case strings.HasPrefix(path, "/1.0/config/"):
 		key := strings.TrimPrefix(path, "/1.0/config/")
-		value, ok := d.Config[key]
+		value, ok := d.config()[key]
 		if !readable(key) {
 			d.text(w, http.StatusForbidden, "Forbidden")
 		} else if !ok {

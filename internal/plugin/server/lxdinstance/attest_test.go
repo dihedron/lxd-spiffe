@@ -34,6 +34,7 @@ type harness struct {
 	fake   *fakelxd.Server
 	client *nodeattestorv1.NodeAttestorPluginClient
 	log    *syncBuffer
+	plugin *Plugin
 }
 
 type syncBuffer struct {
@@ -72,7 +73,7 @@ func newHarness(t *testing.T, top string, extraServers ...string) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := &harness{t: t, fake: fake, client: new(nodeattestorv1.NodeAttestorPluginClient), log: &syncBuffer{}}
+	h := &harness{t: t, fake: fake, client: new(nodeattestorv1.NodeAttestorPluginClient), log: &syncBuffer{}, plugin: p}
 	plugintest.ServeInBackground(t, plugintest.Config{
 		PluginServer: nodeattestorv1.NodeAttestorPluginServer(p),
 		PluginClient: h.client,

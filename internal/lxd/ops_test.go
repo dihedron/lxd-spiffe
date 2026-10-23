@@ -117,6 +117,15 @@ var fixtureCalls = map[string]fixtureCall{
 			t.Errorf("%s: ETag %q, fixture %q", f.Path, etag, f.Response.Header.Get("Etag"))
 		}
 	}},
+	"patch": {nil, func(t *testing.T, c *Client, f evidence.Fixture, _ url.Values, parts []string) {
+		var body struct {
+			Config map[string]*string `json:"config"`
+		}
+		if err := json.Unmarshal(f.Request.Body, &body); err != nil || len(body.Config) == 0 {
+			t.Fatalf("%s: request body %s: %v", f.Path, f.Request.Body, err)
+		}
+		checkKind(t, f, c.PatchConfig(context.Background(), c.project, parts[2], f.Request.Header.Get("If-Match"), body.Config))
+	}},
 	"file": {[]string{"path"}, func(t *testing.T, c *Client, f evidence.Fixture, query url.Values, parts []string) {
 		file, err := c.File(context.Background(), c.project, parts[2], query.Get("path"))
 		if !checkKind(t, f, err) {
@@ -196,7 +205,7 @@ func replayFixtures(t *testing.T, version string) {
 // method, or parameters no operation sends.
 func operationOf(t *testing.T, f evidence.Fixture) (name, project string, query url.Values, parts []string, ok bool) {
 	t.Helper()
-	if strings.HasPrefix(f.Path, "devlxd") || f.Request.Method != http.MethodGet {
+	if strings.HasPrefix(f.Path, "devlxd") || f.Request.Method != http.MethodGet && f.Request.Method != http.MethodPatch {
 		return "", "", nil, nil, false
 	}
 	query, err := url.ParseQuery(f.Request.Query)
@@ -204,6 +213,9 @@ func operationOf(t *testing.T, f evidence.Fixture) (name, project string, query 
 		t.Fatal(err)
 	}
 	name, parts = callOf(f, query)
+	if f.Request.Method == http.MethodPatch {
+		name = map[string]string{"instance": "patch"}[name]
+	}
 	call, ok := fixtureCalls[name]
 	project = query.Get("project")
 	query.Del("project")
@@ -333,5 +345,36 @@ func writeFixture(t *testing.T, dir, stem, request, response string) {
 		if err := os.WriteFile(filepath.Join(dir, stem+suffix), []byte(body), 0o600); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+// TestFRS13PatchConfig: a PATCH sets and removes keys under If-Match, a
+// stale ETag is KindPrecondition, and an operation answer is waited for.
+func TestFRS13PatchConfig(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	fake.AddInstance("default", "c1", map[string]string{"user.a": "1"})
+	c := connectFake(t, fake)
+	ctx := context.Background()
+	_, etag, err := c.Instance(ctx, "default", "c1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	value := "2"
+	if err := c.PatchConfig(ctx, "default", "c1", etag, map[string]*string{"user.a": nil, "user.b": &value}); err != nil {
+		t.Fatal(err)
+	}
+	if config, _ := fake.Config("default", "c1"); config["user.b"] != "2" || config["user.a"] != "" {
+		t.Errorf("config %v", config)
+	}
+	if err := c.PatchConfig(ctx, "default", "c1", etag, map[string]*string{"user.b": nil}); KindOf(err) != KindPrecondition {
+		t.Errorf("stale ETag: %v; want %s", err, KindPrecondition)
+	}
+	fake.PatchAsOperation("Success")
+	if err := c.PatchConfig(ctx, "default", "c1", "", map[string]*string{"user.b": nil}); err != nil {
+		t.Errorf("operation: %v", err)
+	}
+	fake.PatchAsOperation("Failure")
+	if err := c.PatchConfig(ctx, "default", "c1", "", map[string]*string{"user.b": nil}); KindOf(err) != KindServer || !strings.Contains(err.Error(), "Failure") {
+		t.Errorf("failed operation: %v; want %s", err, KindServer)
 	}
 }

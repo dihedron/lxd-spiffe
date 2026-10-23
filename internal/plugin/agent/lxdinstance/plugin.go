@@ -2,7 +2,7 @@
 // node attestor: it sends the instance's claim and a nonce, then proves it
 // runs inside that instance by the mode the server asks for.
 //
-// It proves with file_pull; config_push comes later.
+// It proves with file_pull, or config_push when devLXD answers.
 package lxdinstance
 
 import (
