@@ -8,7 +8,7 @@
       "guest": "e2e-priv",
       "kind": "privileged container",
       "proof_mode": "config_push",
-      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_instance/lxd5/cdca246b-938d-4e99-823a-695d54bcd110",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd5/cdca246b-938d-4e99-823a-695d54bcd110",
       "selectors": [
         "network:default/lxdbr0",
         "privileged:true",
@@ -26,7 +26,7 @@
       "guest": "e2e-unpriv",
       "kind": "container",
       "proof_mode": "config_push",
-      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_instance/lxd5/e96e460d-dc8d-4caa-92ca-44ded51d21a1",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd5/e96e460d-dc8d-4caa-92ca-44ded51d21a1",
       "selectors": [
         "network:default/lxdbr0",
         "privileged:false",
@@ -44,7 +44,7 @@
       "guest": "e2e-vm",
       "kind": "vm",
       "proof_mode": "config_push",
-      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_instance/lxd5/528e42a7-8961-47e4-a00a-ab1dbecab1fe",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd5/528e42a7-8961-47e4-a00a-ab1dbecab1fe",
       "selectors": [
         "network:default/lxdbr0",
         "profile:default",
@@ -61,7 +61,7 @@
       "guest": "e2e-priv",
       "kind": "privileged container",
       "proof_mode": "config_push",
-      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_instance/lxd6/2141518f-34d8-4b7a-a491-c5cfc42211d4",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd6/2141518f-34d8-4b7a-a491-c5cfc42211d4",
       "selectors": [
         "network:default/lxdbr0",
         "privileged:true",
@@ -79,7 +79,7 @@
       "guest": "e2e-unpriv",
       "kind": "container",
       "proof_mode": "config_push",
-      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_instance/lxd6/586fba03-64f6-491e-a8f2-2bc70cb114f6",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd6/586fba03-64f6-491e-a8f2-2bc70cb114f6",
       "selectors": [
         "network:default/lxdbr0",
         "privileged:false",
@@ -97,7 +97,7 @@
       "guest": "e2e-vm",
       "kind": "vm",
       "proof_mode": "config_push",
-      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_instance/lxd6/84c341de-42cc-41d1-8f08-61e62b1c59b1",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd6/84c341de-42cc-41d1-8f08-61e62b1c59b1",
       "selectors": [
         "network:default/lxdbr0",
         "profile:default",

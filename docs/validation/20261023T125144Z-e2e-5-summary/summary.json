@@ -8,7 +8,7 @@
       "guest": "e2e-config-push",
       "kind": "container",
       "proof_mode": "config_push",
-      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_instance/c5/89192957-7663-463e-8023-f216284c4fff",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/c5/89192957-7663-463e-8023-f216284c4fff",
       "selectors": [
         "network:default/lxdbr0",
         "privileged:false",
@@ -26,7 +26,7 @@
       "guest": "e2e-file-pull",
       "kind": "container",
       "proof_mode": "file_pull",
-      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_instance/c5/c5aee636-a27d-4424-b433-de039fe92b69",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/c5/c5aee636-a27d-4424-b433-de039fe92b69",
       "selectors": [
         "network:default/lxdbr0",
         "privileged:false",
