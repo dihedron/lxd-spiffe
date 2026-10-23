@@ -2,6 +2,7 @@ package lxdinstance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -274,4 +275,97 @@ func TestInProcessConcurrent(t *testing.T) {
 		}
 	}
 	l.checkEmpty()
+}
+
+// pushAgent starts an agent whose devLXD shows the fake LXD's config of
+// instance name, as LXD shows the server's writes to the guest.
+func (l *lab) pushAgent(name, typ string) *agentv1.NodeAttestorPluginClient {
+	dev := fakelxd.NewDevLXD(l.t)
+	dev.InstanceType = typ
+	dev.MetaData = "instance-id: " + cloudInitID + "\nlocal-hostname: " + name + "\n"
+	dev.ConfigFrom = func() map[string]string {
+		config, _ := l.fake.Config("default", name)
+		return config
+	}
+	return l.agent(fmt.Sprintf("devlxd_socket = %q", dev.Socket))
+}
+
+// checkNoKeys: no challenge key is left on the instance.
+func (l *lab) checkNoKeys(name string) {
+	l.t.Helper()
+	config, _ := l.fake.Config("default", name)
+	for k := range config {
+		if strings.HasPrefix(k, "user.spire.challenge.") {
+			l.t.Errorf("challenge key %s left on %s", k, name)
+		}
+	}
+}
+
+// TestInProcessConfigPush: a container and a VM prove co-location through
+// devLXD; a stale key left by an earlier attestation goes too, and the
+// proof directory is not used.
+func TestInProcessConfigPush(t *testing.T) {
+	for _, typ := range []string{"container", "virtual-machine"} {
+		t.Run(typ, func(t *testing.T) {
+			l := newLab(t, `proof_mode = "config_push"`)
+			l.instance("c1", typ, uuidOf(1), true)
+			l.fake.SetInstanceConfig("default", "c1", "user.spire.challenge.0123456789abcdef", strings.Repeat("a", 64))
+			attrs, err := l.attest(l.pushAgent("c1", typ))
+			if err != nil {
+				t.Fatalf("attestation failed: %v\n%s", err, l.log)
+			}
+			if want := "spiffe://example.org/spire/agent/lxd_instance/lab/" + uuidOf(1); attrs.GetSpiffeId() != want {
+				t.Errorf("SPIFFE ID %q, want %q", attrs.GetSpiffeId(), want)
+			}
+			if !strings.Contains(l.log.String(), "config_push_stale_keys_removed_total=1") {
+				t.Errorf("stale key not counted:\n%s", l.log)
+			}
+			l.checkNoKeys("c1")
+			if _, err := os.Stat(l.proofDir); !errors.Is(err, os.ErrNotExist) {
+				t.Errorf("proof directory used: %v", err)
+			}
+		})
+	}
+}
+
+// TestInProcessAuto: with auto, an agent that offers both modes proves
+// with file_pull.
+func TestInProcessAuto(t *testing.T) {
+	l := newLab(t, `proof_mode = "auto"`)
+	l.instance("c1", "container", uuidOf(1), true)
+	if _, err := l.attest(l.pushAgent("c1", "container")); err != nil {
+		t.Fatalf("attestation failed: %v\n%s", err, l.log)
+	}
+	if !strings.Contains(l.log.String(), "proof_mode=file_pull") {
+		t.Errorf("not file_pull:\n%s", l.log)
+	}
+	l.checkNoKeys("c1")
+}
+
+// TestInProcessConfigPushSameInstance: attestations running at once on one
+// instance keep each other's keys and all succeed, through the 412s of
+// each other's writes.
+func TestInProcessConfigPushSameInstance(t *testing.T) {
+	const n = 4
+	l := newLab(t, `proof_mode = "config_push"`)
+	l.instance("c1", "container", uuidOf(1), true)
+	agents := make([]*agentv1.NodeAttestorPluginClient, n)
+	for i := range agents {
+		agents[i] = l.pushAgent("c1", "container")
+	}
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	for i := range n {
+		wg.Go(func() { _, errs[i] = l.attest(agents[i]) })
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("agent %d: %v", i, err)
+		}
+	}
+	if t.Failed() {
+		t.Log(l.log)
+	}
+	l.checkNoKeys("c1")
 }

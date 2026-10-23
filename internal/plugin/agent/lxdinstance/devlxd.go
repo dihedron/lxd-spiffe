@@ -55,12 +55,26 @@ func (g *guest) instanceType(ctx context.Context) (lxdinstancev1.InstanceType, e
 	return 0, fmt.Errorf("devLXD reports instance type %q", info.InstanceType)
 }
 
-// MetaData reads GET /1.0/meta-data, text in devLXD's plain format and a
-// string in an envelope.
+// MetaData reads GET /1.0/meta-data.
 func (g *guest) MetaData(ctx context.Context) (claim.MetaData, error) {
-	resp, err := g.c.Get(ctx, "/1.0/meta-data")
+	text, err := g.text(ctx, "/1.0/meta-data")
 	if err != nil {
 		return claim.MetaData{}, err
+	}
+	return claim.ParseMetaData(text)
+}
+
+// config reads a config key, GET /1.0/config/<key> (FR-A8).
+func (g *guest) config(ctx context.Context, key string) (string, error) {
+	return g.text(ctx, "/1.0/config/"+key)
+}
+
+// text reads a text value: the body in devLXD's plain format, a string in
+// an envelope.
+func (g *guest) text(ctx context.Context, path string) (string, error) {
+	resp, err := g.c.Get(ctx, path)
+	if err != nil {
+		return "", err
 	}
 	text := string(resp.Body)
 	switch {
@@ -69,8 +83,5 @@ func (g *guest) MetaData(ctx context.Context) (claim.MetaData, error) {
 	case lxd.StatusKind(resp.Status) != lxd.KindNone:
 		err = &lxd.Error{Kind: lxd.StatusKind(resp.Status), Status: resp.Status, Err: errors.New(text)}
 	}
-	if err != nil {
-		return claim.MetaData{}, err
-	}
-	return claim.ParseMetaData(text)
+	return text, err
 }

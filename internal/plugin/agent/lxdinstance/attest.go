@@ -33,6 +33,7 @@ type received struct {
 func (s *settings) attest(ctx context.Context, stream nodeattestorv1.NodeAttestor_AidAttestationServer) error {
 	src := claim.Sources{Hostname: os.Hostname}
 	typ := lxdinstancev1.InstanceType_INSTANCE_TYPE_UNSPECIFIED
+	modes := []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL}
 	g, err := s.connectDevLXD(ctx)
 	if err != nil {
 		return err
@@ -44,6 +45,9 @@ func (s *settings) attest(ctx context.Context, stream nodeattestorv1.NodeAttesto
 				return fmt.Errorf("reading devLXD: %w", err)
 			}
 			slog.Debug("devLXD gave no instance type", "error", err.Error())
+			g = nil // not answering: config_push is not offered
+		} else {
+			modes = append(modes, lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH)
 		}
 	}
 	c, err := claim.Collect(ctx, s.claim, src)
@@ -63,7 +67,7 @@ func (s *settings) attest(ctx context.Context, stream nodeattestorv1.NodeAttesto
 		},
 		AgentNonce:    nonce,
 		InstanceType:  typ,
-		ProofModes:    []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL},
+		ProofModes:    modes,
 		PluginVersion: metadata.Version,
 	})
 	if err != nil {
@@ -82,19 +86,20 @@ func (s *settings) attest(ctx context.Context, stream nodeattestorv1.NodeAttesto
 	if err != nil {
 		return fmt.Errorf("waiting for the challenge: %w", err)
 	}
-	remove, mode, err := s.prove(c, nonce, m.GetChallenge())
+	remove, answer, err := s.prove(ctx, g, c, nonce, m.GetChallenge())
 	if err != nil {
 		return err
 	}
 	defer remove()
-	response, err := proto.Marshal(&lxdinstancev1.ChallengeResponse{Version: lxdinstancev1.Version, Mode: mode, Done: true})
+	mode := answer.GetMode()
+	response, err := proto.Marshal(answer)
 	if err != nil {
 		return err
 	}
 	if err := stream.Send(&nodeattestorv1.PayloadOrChallengeResponse{Data: &nodeattestorv1.PayloadOrChallengeResponse_ChallengeResponse{ChallengeResponse: response}}); err != nil {
 		return fmt.Errorf("sending the challenge response: %w", err)
 	}
-	slog.Debug("proof written, waiting for the server", "proof_mode", mode.String())
+	slog.Debug("challenge answered, waiting for the server", "proof_mode", mode.String())
 	pctx, cancel := context.WithTimeoutCause(ctx, s.proofTimeout, fmt.Errorf("proof_timeout of %v: %w", s.proofTimeout, context.DeadlineExceeded))
 	defer cancel()
 	switch _, err := next(pctx, messages); {
@@ -107,30 +112,68 @@ func (s *settings) attest(ctx context.Context, stream nodeattestorv1.NodeAttesto
 	}
 }
 
-// prove checks the challenge and writes its proof file (FR-A7).
-func (s *settings) prove(c claim.Claim, nonce, data []byte) (remove func(), mode lxdinstancev1.ProofMode, err error) {
+// prove checks the challenge and answers it: file_pull writes the proof
+// file (FR-A7), config_push reads the challenge key through devLXD
+// (FR-A8). remove deletes what the answer left in the guest.
+func (s *settings) prove(ctx context.Context, g *guest, c claim.Claim, nonce, data []byte) (remove func(), answer *lxdinstancev1.ChallengeResponse, err error) {
 	ch, err := lxdinstancev1.DecodeChallenge(data)
 	if err != nil {
-		return nil, 0, fmt.Errorf("the challenge: %w", err)
+		return nil, nil, fmt.Errorf("the challenge: %w", err)
 	}
-	if ch.GetMode() != lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL {
-		return nil, 0, fmt.Errorf("the server asks for %v, which this agent does not offer", ch.GetMode())
+	answer = &lxdinstancev1.ChallengeResponse{Version: lxdinstancev1.Version, Mode: ch.GetMode(), Done: true}
+	switch {
+	case ch.GetMode() == lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL:
+		remove, err = s.filePull(c, nonce, ch)
+	case ch.GetMode() == lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH && g != nil:
+		remove = func() {}
+		answer.Echo, err = configPush(ctx, g, nonce, ch)
+	default:
+		err = fmt.Errorf("the server asks for %v, which this agent does not offer", ch.GetMode())
 	}
+	if err != nil {
+		return nil, nil, err
+	}
+	return remove, answer, nil
+}
+
+// filePull writes the proof file of the challenge (FR-A7).
+func (s *settings) filePull(c claim.Claim, nonce []byte, ch *lxdinstancev1.Challenge) (remove func(), err error) {
 	want, err := proof.Path(s.proofDir, nonce)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	if ch.GetProofPath() != want {
-		return nil, 0, fmt.Errorf("the challenge's proof path %q is not %q: check that proof_dir is the same on the server", ch.GetProofPath(), want)
+		return nil, fmt.Errorf("the challenge's proof path %q is not %q: check that proof_dir is the same on the server", ch.GetProofPath(), want)
 	}
 	sum, err := proof.Compute(c.Project, c.InstanceName, ch.GetServerNonce(), nonce)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	if remove, err = agentproof.WriteFile(s.proofDir, path.Base(want), proof.Hex(sum), requiredUID); err != nil {
-		return nil, 0, fmt.Errorf("writing the proof: %w", err)
+		return nil, fmt.Errorf("writing the proof: %w", err)
 	}
-	return remove, ch.GetMode(), nil
+	return remove, nil
+}
+
+// configPush reads the challenge key, which must be the one derived from
+// this agent's nonce (SEC-04), and returns its value, 64 hex characters
+// (FR-A8).
+func configPush(ctx context.Context, g *guest, nonce []byte, ch *lxdinstancev1.Challenge) ([]byte, error) {
+	want, err := proof.Key(nonce)
+	if err != nil {
+		return nil, err
+	}
+	if ch.GetProofKey() != want {
+		return nil, fmt.Errorf("the challenge's key %q is not %q, the one of this agent's nonce", ch.GetProofKey(), want)
+	}
+	value, err := g.config(ctx, want)
+	if err != nil {
+		return nil, fmt.Errorf("reading the challenge key through devLXD: %w", err)
+	}
+	if !proof.IsHexProof([]byte(value)) {
+		return nil, fmt.Errorf("the challenge key holds %d bytes, not 64 lowercase hex characters", len(value))
+	}
+	return []byte(value), nil
 }
 
 // receive reads the stream until it fails or the stream's context ends, so

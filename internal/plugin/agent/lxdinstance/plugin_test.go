@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -171,7 +172,7 @@ func TestFRA1FilePull(t *testing.T) {
 		r.GetClaim().GetNameSource() != lxdinstancev1.ClaimSource_CLAIM_SOURCE_DEVLXD_METADATA,
 		r.GetClaim().GetCloudInitInstanceId() != "7c64d5b4-63d7-4bd6-9a5e-0d3b5a1c2f10",
 		r.GetInstanceType() != lxdinstancev1.InstanceType_INSTANCE_TYPE_CONTAINER,
-		len(r.GetProofModes()) != 1 || r.GetProofModes()[0] != lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL,
+		!slices.Equal(r.GetProofModes(), []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL, lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH}),
 		r.GetPluginVersion() == "":
 		t.Fatalf("payload %v", r)
 	}
@@ -383,5 +384,84 @@ func TestConfigureRefusals(t *testing.T) {
 func TestAidAttestationNotConfigured(t *testing.T) {
 	if err := New().AidAttestation(nil); status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("AidAttestation before Configure = %v; want FailedPrecondition", err)
+	}
+}
+
+// TestFRA5ProofModes: config_push is offered only when devLXD answers.
+func TestFRA5ProofModes(t *testing.T) {
+	dev := fakelxd.NewDevLXD(t)
+	pull := []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL}
+	both := append(slices.Clone(pull), lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH)
+	for hcl, want := range map[string][]lxdinstancev1.ProofMode{
+		fmt.Sprintf("devlxd_socket = %q", dev.Socket): both,
+		`use_devlxd = "off"`:                          pull,
+		`devlxd_socket = "/nonexistent/sock"`:         pull,
+	} {
+		if got := newHarness(t, hcl).start().request.GetProofModes(); !slices.Equal(got, want) {
+			t.Errorf("%s: modes %v, want %v", hcl, got, want)
+		}
+	}
+}
+
+// pushChallenge is the config_push challenge for s, with the key of s's
+// nonce.
+func (s *session) pushChallenge() *lxdinstancev1.Challenge {
+	s.h.t.Helper()
+	key, err := proof.Key(s.request.GetAgentNonce())
+	if err != nil {
+		s.h.t.Fatal(err)
+	}
+	return &lxdinstancev1.Challenge{Version: 1, Mode: lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH, ProofKey: key, TimeoutMs: 10000}
+}
+
+// TestFRA8ConfigPush: the agent echoes the challenge key's value read
+// through devLXD, plain or in an envelope.
+func TestFRA8ConfigPush(t *testing.T) {
+	for _, envelope := range []bool{false, true} {
+		dev := fakelxd.NewDevLXD(t)
+		dev.Envelope = envelope
+		s := newHarness(t, fmt.Sprintf("devlxd_socket = %q", dev.Socket)).start()
+		c := s.pushChallenge()
+		value := strings.Repeat("ab", 32)
+		dev.SetConfig(c.GetProofKey(), value)
+		resp, err := s.send(c)
+		if err != nil {
+			t.Fatalf("envelope %v: %v", envelope, err)
+		}
+		if !resp.GetDone() || resp.GetMode() != lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH || string(resp.GetEcho()) != value {
+			t.Errorf("envelope %v: response %v", envelope, resp)
+		}
+		checkSecretsNotLogged(t, s.h.log.String(), s.request.GetAgentNonce(), []byte(value))
+	}
+}
+
+// TestFRA8Refusals: a key not derived from the agent's nonce, a missing
+// key or a value that is not a proof end the attestation with an error.
+func TestFRA8Refusals(t *testing.T) {
+	cases := map[string]func(dev *fakelxd.DevLXD, c *lxdinstancev1.Challenge){
+		"key of another nonce": func(dev *fakelxd.DevLXD, c *lxdinstancev1.Challenge) {
+			c.ProofKey = "user.spire.challenge.0123456789abcdef"
+			dev.SetConfig(c.ProofKey, strings.Repeat("ab", 32))
+		},
+		"missing key": func(*fakelxd.DevLXD, *lxdinstancev1.Challenge) {},
+		"short value": func(dev *fakelxd.DevLXD, c *lxdinstancev1.Challenge) {
+			dev.SetConfig(c.GetProofKey(), strings.Repeat("ab", 31))
+		},
+		"upper-case hex": func(dev *fakelxd.DevLXD, c *lxdinstancev1.Challenge) {
+			dev.SetConfig(c.GetProofKey(), strings.Repeat("AB", 32))
+		},
+	}
+	for label, change := range cases {
+		t.Run(label, func(t *testing.T) {
+			dev := fakelxd.NewDevLXD(t)
+			s := newHarness(t, fmt.Sprintf("devlxd_socket = %q", dev.Socket)).start()
+			c := s.pushChallenge()
+			change(dev, c)
+			if _, err := s.send(c); status.Code(err) != codes.Internal {
+				t.Fatalf("answer = %v; want Internal", err)
+			} else {
+				t.Log(err)
+			}
+		})
 	}
 }
