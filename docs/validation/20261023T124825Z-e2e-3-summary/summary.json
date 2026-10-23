@@ -1,0 +1,67 @@
+{
+  "environment": "SPIRE 1.15.5, plugins 0.0.0-SNAPSHOT-e2f13e2, c5 LXD 5.21.8, c6 LXD 6.9, lxd5 LXD 5.21.8, lxd6 LXD 6.9",
+  "name": "20261023T124825Z-e2e-3-summary",
+  "results": [
+    {
+      "test": "E2E-3",
+      "server": "lxd5",
+      "guest": "a claim naming another instance",
+      "kind": "container",
+      "reasons": [
+        "instance_not_found"
+      ],
+      "notes": "time=\"2026-10-23T12:46:50Z\" level=error msg=\"Agent crashed\" error=\"failed to receive attestation response: rpc error: code = PermissionDenied desc = nodeattestor(lxd_instance): attestation failed\""
+    },
+    {
+      "test": "E2E-3",
+      "server": "lxd5",
+      "guest": "an identity lacking can_access_files",
+      "kind": "container",
+      "reasons": [
+        "lxd_unavailable"
+      ],
+      "notes": "time=\"2026-10-23T12:47:14Z\" level=error msg=\"Agent crashed\" error=\"failed to receive attestation response: rpc error: code = PermissionDenied desc = nodeattestor(lxd_instance): attestation failed\""
+    },
+    {
+      "test": "E2E-3",
+      "server": "lxd5",
+      "guest": "outside the allowed projects",
+      "kind": "container",
+      "reasons": [
+        "scope_denied"
+      ],
+      "notes": "time=\"2026-10-23T12:46:25Z\" level=error msg=\"Agent crashed\" error=\"failed to receive attestation response: rpc error: code = PermissionDenied desc = nodeattestor(lxd_instance): attestation failed\""
+    },
+    {
+      "test": "E2E-3",
+      "server": "lxd6",
+      "guest": "a claim naming another instance",
+      "kind": "container",
+      "reasons": [
+        "instance_not_found",
+        "rate_limited"
+      ],
+      "notes": "time=\"2026-10-23T12:47:56Z\" level=error msg=\"Agent crashed\" error=\"failed to receive attestation response: rpc error: code = PermissionDenied desc = nodeattestor(lxd_instance): attestation failed\""
+    },
+    {
+      "test": "E2E-3",
+      "server": "lxd6",
+      "guest": "an identity lacking can_access_files",
+      "kind": "container",
+      "reasons": [
+        "lxd_unavailable"
+      ],
+      "notes": "time=\"2026-10-23T12:48:16Z\" level=error msg=\"Agent crashed\" error=\"failed to receive attestation response: rpc error: code = PermissionDenied desc = nodeattestor(lxd_instance): attestation failed\""
+    },
+    {
+      "test": "E2E-3",
+      "server": "lxd6",
+      "guest": "outside the allowed projects",
+      "kind": "container",
+      "reasons": [
+        "scope_denied"
+      ],
+      "notes": "time=\"2026-10-23T12:47:31Z\" level=error msg=\"Agent crashed\" error=\"failed to receive attestation response: rpc error: code = PermissionDenied desc = nodeattestor(lxd_instance): attestation failed\""
+    }
+  ]
+}
