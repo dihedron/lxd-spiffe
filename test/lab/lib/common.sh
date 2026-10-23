@@ -48,16 +48,14 @@ die() {
 LAB_SELECTED=()
 
 # select_scenarios VALUE: sets LAB_SELECTED from a --scenario value (probe,
-# plugins or all) or, when VALUE is empty, from LAB_SCENARIOS. Refuses what is
-# not built yet.
+# plugins or all) or, when VALUE is empty, from LAB_SCENARIOS.
 select_scenarios() {
 	local value="${1:-$LAB_SCENARIOS}" scenario
 	[[ "$value" == all ]] && value="probe plugins"
 	LAB_SELECTED=()
 	for scenario in $value; do
 		case "$scenario" in
-		probe) ;;
-		plugins) die "the plugins scenario is not built yet: it comes with the plugins' end-to-end step" ;;
+		probe | plugins) ;;
 		*) die "unknown scenario \"$scenario\": probe, plugins or all" ;;
 		esac
 		[[ " ${LAB_SELECTED[*]} " == *" $scenario "* ]] || LAB_SELECTED+=("$scenario")

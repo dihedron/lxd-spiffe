@@ -29,6 +29,8 @@ source "$LAB_DIR/lib/snapshot.sh"
 source "$LAB_DIR/lib/deploy.sh"
 # shellcheck source=lib/run.sh
 source "$LAB_DIR/lib/run.sh"
+# shellcheck source=lib/spire.sh
+source "$LAB_DIR/lib/spire.sh"
 
 usage() {
 	cat <<USAGE
@@ -69,6 +71,23 @@ commands:
                             copy a guest run into the evidence directory
   refresh                   move the LXD servers to their channels' newest
                             revision, then offer a new snapshot
+  guest-up <server> <name> [--vm] [--privileged] [--no-files] [--target <member>]
+           [--project <project>] [--claim-name <name>]
+                            (plugins) launch an Ubuntu guest with SPIRE Agent
+                            and lxd-agent-plugin, lab-spire granted on it in
+                            project default (--no-files: without
+                            can_access_files; --claim-name: the agent claims
+                            another instance's name)
+  guest-down <server> <name> [--project <project>]
+                            (plugins) delete a guest and lab-spire's grants
+  guest-copy <server> <src> <dst> [--keep-agent]
+                            (plugins) copy a running guest container; without
+                            --keep-agent its SPIRE Agent data stays out of the
+                            copy
+  spire-mode file_pull|config_push|auto|default
+                            (plugins) set the server plugin's proof_mode and
+                            restart SPIRE Server (default: from
+                            LAB_SPIRE_MODES)
   test [-run REGEX] [--collect] [--record-host]
                             run the acceptance tests: the lab checks, then
                             the gate sessions (--collect: copy the sessions'
@@ -133,6 +152,9 @@ resolve_state() {
 	for server in $(lab_servers); do
 		lxd_resolve "$server"
 	done
+	if scenario_selected plugins; then
+		spire_resolve
+	fi
 }
 
 cmd_up() {
@@ -142,6 +164,9 @@ cmd_up() {
 	ensure_ssh_key
 	resolve_state
 	ensure_pki
+	if scenario_selected plugins; then
+		ensure_spire_pki
+	fi
 
 	section "VMs"
 	ensure_pool
@@ -163,6 +188,9 @@ cmd_up() {
 		lxd_init "$server"
 		lxd_check "$server"
 		auth_setup "$server"
+		if scenario_selected plugins; then
+			auth_spire "$server"
+		fi
 	done
 
 	section "Instances"
@@ -244,6 +272,10 @@ cmd_status() {
 	fi
 	section "Deployed"
 	info "lxd-probe $(env_get '.probe.version // "none (lab.sh deploy)"')"
+	if [[ -n "$(env_get '.spire.version // empty')" ]]; then
+		info "SPIRE $(env_get '.spire.version') on spire, trust domain $LAB_TRUST_DOMAIN, proof_mode $(spire_proof_mode)"
+		info "plugins $(env_get '.plugins.version // "none (lab.sh deploy --scenario plugins)"')"
+	fi
 }
 
 cmd_ssh() {
@@ -274,11 +306,14 @@ cmd_deploy() {
 	if scenario_selected probe; then
 		deploy_probe
 	fi
+	if scenario_selected plugins; then
+		deploy_plugins
+	fi
 }
 
 # cmd_refresh: moves the LXD servers whose revision the settings do not pin
 # to the newest revision of their channels, after confirmation, then offers a
-# new snapshot.
+# new snapshot (LAB_REFRESH_SNAPSHOT=no: never, so that LAB_ASSUME_YES keeps the old one).
 cmd_refresh() {
 	require_state
 	select_scenarios "$(env_get '.scenarios | join(" ")')"
@@ -304,7 +339,7 @@ cmd_refresh() {
 		read -r server current new version <<<"$plan"
 		lxd_refresh "$server" "$new"
 	done
-	if confirm "Replace the lab's snapshot with the refreshed lab?"; then
+	if [[ "$LAB_REFRESH_SNAPSHOT" != no ]] && confirm "Replace the lab's snapshot with the refreshed lab?"; then
 		section "Snapshot"
 		LAB_ASSUME_YES=1 lab_snapshot
 	else
@@ -336,8 +371,13 @@ cmd_test() {
 		*) die "$usage" ;;
 		esac
 	done
-	scenario_selected probe || die "no tests for the selected scenarios yet"
-	[[ -n "$(env_get '.probe.sha256 // empty')" ]] || die "lxd-probe is not deployed: run lab.sh deploy"
+	if scenario_selected probe; then
+		[[ -n "$(env_get '.probe.sha256 // empty')" ]] || die "lxd-probe is not deployed: run lab.sh deploy"
+	fi
+	if scenario_selected plugins; then
+		[[ -n "$(env_get '.plugins.version // empty')" ]] || die "the plugins are not deployed: run lab.sh deploy --scenario plugins"
+	fi
+	export LAB_SELECTED_SCENARIOS="${LAB_SELECTED[*]}"
 	export LAB_DIR REPO_DIR LAB_STATE_DIR LAB_EVIDENCE_DIR LAB_GUEST_VM_VCPUS LAB_GUEST_VM_RAM_GIB LAB_CLUSTER
 	export LAB_COLLECT="$collect"
 	# LAB_TEST_TIMEOUT: go test's timeout; a full stress soak (ST-3) may need more than the default
@@ -398,6 +438,10 @@ main() {
 	guest) cmd_guest "${args[@]}" ;;
 	pull) cmd_pull "${args[@]}" ;;
 	token) cmd_token "${args[@]}" ;;
+	guest-up) cmd_guest_up "${args[@]}" ;;
+	guest-down) cmd_guest_down "${args[@]}" ;;
+	guest-copy) cmd_guest_copy "${args[@]}" ;;
+	spire-mode) cmd_spire_mode "${args[@]}" ;;
 	refresh) cmd_refresh ;;
 	test) cmd_test "${args[@]}" ;;
 	help | -h | --help) usage ;;

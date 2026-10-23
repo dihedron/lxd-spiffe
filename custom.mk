@@ -60,7 +60,7 @@ proto: ## regenerate the Go code of the wire protocol (needs protoc; protoc-gen-
 	@command -v protoc >/dev/null 2>&1 || { echo "protoc is not installed" >&2; exit 1; }
 	@tmp="$$(mktemp -d)"; trap 'rm -rf "$$tmp"' EXIT; \
 		go build -o "$$tmp/protoc-gen-go" google.golang.org/protobuf/cmd/protoc-gen-go && \
-		protoc --plugin=protoc-gen-go="$$tmp/protoc-gen-go" --go_out=. --go_opt=paths=source_relative internal/proto/lxd_instance.proto
+		protoc --plugin=protoc-gen-go="$$tmp/protoc-gen-go" --go_out=. --go_opt=paths=source_relative internal/proto/lxd_iid.proto
 
 # FUZZTIME is how long make fuzz runs each fuzz target
 FUZZTIME ?= 30s

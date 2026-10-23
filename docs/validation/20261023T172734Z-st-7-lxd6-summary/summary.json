@@ -1,0 +1,831 @@
+{
+  "settings": {
+    "agent_ttl": "5m0s",
+    "attestation_timeout": "4m0s",
+    "duration": "1h0m0s",
+    "fault_every": "1m30s",
+    "fleet": "100",
+    "seed": "1792776246329213163",
+    "server": "lxd6"
+  },
+  "environment": "SPIRE 1.15.5, plugins 0.0.0-SNAPSHOT-e2f13e2, lxd6 LXD 6.9",
+  "succeeded_by_mode": {
+    "config_push": 1341,
+    "file_pull": 1120
+  },
+  "refused_by_reason": {
+    "lxd_unavailable": 19,
+    "project_unreadable": 1,
+    "rate_limited": 1
+  },
+  "duration_ms_by_mode": {
+    "config_push": {
+      "n": 1341,
+      "p50_p95_p99_max_ms": [
+        205,
+        252,
+        8357,
+        17829
+      ]
+    },
+    "file_pull": {
+      "n": 1120,
+      "p50_p95_p99_max_ms": [
+        161,
+        181,
+        207,
+        303
+      ]
+    }
+  },
+  "proof_ms_by_mode": {
+    "config_push": {
+      "n": 1341,
+      "p50_p95_p99_max_ms": [
+        83,
+        108,
+        3662,
+        10068
+      ]
+    },
+    "file_pull": {
+      "n": 1120,
+      "p50_p95_p99_max_ms": [
+        43,
+        49,
+        54,
+        113
+      ]
+    }
+  },
+  "attestations_per_second": 0.6815512492277167,
+  "challenge_keys_left": 0,
+  "events": [
+    {
+      "fault": "spire-restart",
+      "start": "2026-10-23T17:30:35.634049534Z",
+      "end": "2026-10-23T17:30:36.525581491Z",
+      "proof_mode": "file_pull"
+    },
+    {
+      "fault": "stop",
+      "target": "s-044",
+      "start": "2026-10-23T17:32:37.004865967Z",
+      "end": "2026-10-23T17:33:02.199418335Z",
+      "proof_mode": "file_pull",
+      "disturbed": [
+        "s-044"
+      ]
+    },
+    {
+      "fault": "stop",
+      "target": "s-099",
+      "start": "2026-10-23T17:35:14.100759787Z",
+      "end": "2026-10-23T17:35:49.01582731Z",
+      "proof_mode": "file_pull",
+      "disturbed": [
+        "s-099"
+      ]
+    },
+    {
+      "fault": "spire-restart",
+      "start": "2026-10-23T17:37:06.077032831Z",
+      "end": "2026-10-23T17:37:13.274728637Z",
+      "proof_mode": "file_pull"
+    },
+    {
+      "fault": "stop",
+      "target": "s-084",
+      "start": "2026-10-23T17:38:48.431995777Z",
+      "end": "2026-10-23T17:39:06.414708809Z",
+      "proof_mode": "file_pull",
+      "disturbed": [
+        "s-084"
+      ]
+    },
+    {
+      "fault": "plugin-kill",
+      "start": "2026-10-23T17:40:56.055634414Z",
+      "end": "2026-10-23T17:43:31.006738979Z",
+      "proof_mode": "file_pull",
+      "note": "NOT recovered by SPIRE: the plugin process did not come back in 150 s; SPIRE Server restarted"
+    },
+    {
+      "fault": "plugin-kill",
+      "start": "2026-10-23T17:45:30.479019472Z",
+      "end": "2026-10-23T17:48:05.617832038Z",
+      "proof_mode": "file_pull",
+      "note": "NOT recovered by SPIRE: the plugin process did not come back in 150 s; SPIRE Server restarted"
+    },
+    {
+      "fault": "stop",
+      "target": "s-089",
+      "start": "2026-10-23T17:49:31.807389056Z",
+      "end": "2026-10-23T17:49:59.765180825Z",
+      "proof_mode": "file_pull",
+      "disturbed": [
+        "s-089"
+      ]
+    },
+    {
+      "fault": "spire-restart",
+      "start": "2026-10-23T17:51:54.016060266Z",
+      "end": "2026-10-23T17:51:54.857995176Z",
+      "proof_mode": "file_pull"
+    },
+    {
+      "fault": "wipe",
+      "target": "s-039",
+      "start": "2026-10-23T17:53:44.129109228Z",
+      "end": "2026-10-23T17:53:44.849411036Z",
+      "proof_mode": "file_pull",
+      "disturbed": [
+        "s-039"
+      ]
+    },
+    {
+      "fault": "mode-switch",
+      "start": "2026-10-23T17:55:07.004030436Z",
+      "end": "2026-10-23T17:55:08.285025683Z",
+      "proof_mode": "config_push",
+      "note": "proof_mode config_push"
+    },
+    {
+      "fault": "daemon",
+      "start": "2026-10-23T17:55:46.213863591Z",
+      "end": "2026-10-23T17:56:47.624835848Z",
+      "proof_mode": "config_push",
+      "note": "the fleet's containers run again",
+      "disturbed": [
+        "s-001",
+        "s-002",
+        "s-003",
+        "s-004",
+        "s-005",
+        "s-006",
+        "s-007",
+        "s-008",
+        "s-009",
+        "s-010",
+        "s-011",
+        "s-012",
+        "s-013",
+        "s-014",
+        "s-015",
+        "s-016",
+        "s-017",
+        "s-018",
+        "s-019",
+        "s-020",
+        "s-021",
+        "s-022",
+        "s-023",
+        "s-024",
+        "s-025",
+        "s-026",
+        "s-027",
+        "s-028",
+        "s-029",
+        "s-030",
+        "s-031",
+        "s-032",
+        "s-033",
+        "s-034",
+        "s-035",
+        "s-036",
+        "s-037",
+        "s-038",
+        "s-039",
+        "s-040",
+        "s-041",
+        "s-042",
+        "s-043",
+        "s-044",
+        "s-045",
+        "s-046",
+        "s-047",
+        "s-048",
+        "s-049",
+        "s-050",
+        "s-051",
+        "s-052",
+        "s-053",
+        "s-054",
+        "s-055",
+        "s-056",
+        "s-057",
+        "s-058",
+        "s-059",
+        "s-060",
+        "s-061",
+        "s-062",
+        "s-063",
+        "s-064",
+        "s-065",
+        "s-066",
+        "s-067",
+        "s-068",
+        "s-069",
+        "s-070",
+        "s-071",
+        "s-072",
+        "s-073",
+        "s-074",
+        "s-075",
+        "s-076",
+        "s-077",
+        "s-078",
+        "s-079",
+        "s-080",
+        "s-081",
+        "s-082",
+        "s-083",
+        "s-084",
+        "s-085",
+        "s-086",
+        "s-087",
+        "s-088",
+        "s-089",
+        "s-090",
+        "s-091",
+        "s-092",
+        "s-093",
+        "s-094",
+        "s-095",
+        "s-096",
+        "s-097",
+        "s-098",
+        "s-099",
+        "s-100"
+      ]
+    },
+    {
+      "fault": "partition",
+      "start": "2026-10-23T17:58:32.030899536Z",
+      "end": "2026-10-23T17:58:42.91444783Z",
+      "proof_mode": "config_push",
+      "note": "10 s"
+    },
+    {
+      "fault": "partition",
+      "start": "2026-10-23T18:00:12.546662946Z",
+      "end": "2026-10-23T18:00:39.321977781Z",
+      "proof_mode": "config_push",
+      "note": "22 s"
+    },
+    {
+      "fault": "writer",
+      "target": "s-038",
+      "start": "2026-10-23T18:01:36.397067557Z",
+      "end": "2026-10-23T18:01:56.327894572Z",
+      "proof_mode": "config_push",
+      "disturbed": [
+        "s-038"
+      ]
+    },
+    {
+      "fault": "stop",
+      "target": "s-026",
+      "start": "2026-10-23T18:03:16.973550143Z",
+      "end": "2026-10-23T18:03:33.93744196Z",
+      "proof_mode": "config_push",
+      "disturbed": [
+        "s-026"
+      ]
+    },
+    {
+      "fault": "stop",
+      "target": "s-031",
+      "start": "2026-10-23T18:04:27.421264394Z",
+      "end": "2026-10-23T18:05:08.734638287Z",
+      "proof_mode": "config_push",
+      "disturbed": [
+        "s-031"
+      ]
+    },
+    {
+      "fault": "daemon",
+      "start": "2026-10-23T18:07:25.421838329Z",
+      "end": "2026-10-23T18:08:23.265629509Z",
+      "proof_mode": "config_push",
+      "note": "the fleet's containers run again",
+      "disturbed": [
+        "s-001",
+        "s-002",
+        "s-003",
+        "s-004",
+        "s-005",
+        "s-006",
+        "s-007",
+        "s-008",
+        "s-009",
+        "s-010",
+        "s-011",
+        "s-012",
+        "s-013",
+        "s-014",
+        "s-015",
+        "s-016",
+        "s-017",
+        "s-018",
+        "s-019",
+        "s-020",
+        "s-021",
+        "s-022",
+        "s-023",
+        "s-024",
+        "s-025",
+        "s-026",
+        "s-027",
+        "s-028",
+        "s-029",
+        "s-030",
+        "s-031",
+        "s-032",
+        "s-033",
+        "s-034",
+        "s-035",
+        "s-036",
+        "s-037",
+        "s-038",
+        "s-039",
+        "s-040",
+        "s-041",
+        "s-042",
+        "s-043",
+        "s-044",
+        "s-045",
+        "s-046",
+        "s-047",
+        "s-048",
+        "s-049",
+        "s-050",
+        "s-051",
+        "s-052",
+        "s-053",
+        "s-054",
+        "s-055",
+        "s-056",
+        "s-057",
+        "s-058",
+        "s-059",
+        "s-060",
+        "s-061",
+        "s-062",
+        "s-063",
+        "s-064",
+        "s-065",
+        "s-066",
+        "s-067",
+        "s-068",
+        "s-069",
+        "s-070",
+        "s-071",
+        "s-072",
+        "s-073",
+        "s-074",
+        "s-075",
+        "s-076",
+        "s-077",
+        "s-078",
+        "s-079",
+        "s-080",
+        "s-081",
+        "s-082",
+        "s-083",
+        "s-084",
+        "s-085",
+        "s-086",
+        "s-087",
+        "s-088",
+        "s-089",
+        "s-090",
+        "s-091",
+        "s-092",
+        "s-093",
+        "s-094",
+        "s-095",
+        "s-096",
+        "s-097",
+        "s-098",
+        "s-099",
+        "s-100"
+      ]
+    },
+    {
+      "fault": "spire-restart",
+      "start": "2026-10-23T18:10:39.472132823Z",
+      "end": "2026-10-23T18:10:46.713458686Z",
+      "proof_mode": "config_push"
+    },
+    {
+      "fault": "spire-restart",
+      "start": "2026-10-23T18:11:38.857027097Z",
+      "end": "2026-10-23T18:11:40.137921173Z",
+      "proof_mode": "config_push"
+    },
+    {
+      "fault": "stop",
+      "target": "s-097",
+      "start": "2026-10-23T18:13:41.108855218Z",
+      "end": "2026-10-23T18:14:11.049172894Z",
+      "proof_mode": "config_push",
+      "disturbed": [
+        "s-097"
+      ]
+    },
+    {
+      "fault": "plugin-kill",
+      "start": "2026-10-23T18:15:23.693721405Z",
+      "end": "2026-10-23T18:17:58.790059693Z",
+      "proof_mode": "config_push",
+      "note": "NOT recovered by SPIRE: the plugin process did not come back in 150 s; SPIRE Server restarted"
+    },
+    {
+      "fault": "wipe",
+      "target": "s-008",
+      "start": "2026-10-23T18:20:04.998914586Z",
+      "end": "2026-10-23T18:20:05.515718799Z",
+      "proof_mode": "config_push",
+      "disturbed": [
+        "s-008"
+      ]
+    },
+    {
+      "fault": "wipe",
+      "target": "s-073",
+      "start": "2026-10-23T18:22:19.754026172Z",
+      "end": "2026-10-23T18:22:20.465249159Z",
+      "proof_mode": "config_push",
+      "disturbed": [
+        "s-073"
+      ]
+    }
+  ],
+  "samples": [
+    {
+      "at": "2026-10-23T17:27:36.001478017Z",
+      "spire_server_rss_kib": 116532,
+      "server_plugin_rss_kib": 25700,
+      "lxd_rss_kib": 341444,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:28:38.122698022Z",
+      "spire_server_rss_kib": 113152,
+      "server_plugin_rss_kib": 25844,
+      "lxd_rss_kib": 341100,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:29:40.256301685Z",
+      "spire_server_rss_kib": 114860,
+      "server_plugin_rss_kib": 25708,
+      "lxd_rss_kib": 339876,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:30:43.131816426Z",
+      "spire_server_rss_kib": 98736,
+      "server_plugin_rss_kib": 24044,
+      "lxd_rss_kib": 341084,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:31:45.255468375Z",
+      "spire_server_rss_kib": 110208,
+      "server_plugin_rss_kib": 25236,
+      "lxd_rss_kib": 340920,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:33:03.473104202Z",
+      "spire_server_rss_kib": 112684,
+      "server_plugin_rss_kib": 25576,
+      "lxd_rss_kib": 339108,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:34:05.544025813Z",
+      "spire_server_rss_kib": 112228,
+      "server_plugin_rss_kib": 26036,
+      "lxd_rss_kib": 341180,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:35:07.607397923Z",
+      "spire_server_rss_kib": 112248,
+      "server_plugin_rss_kib": 26048,
+      "lxd_rss_kib": 342076,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:36:10.694715415Z",
+      "spire_server_rss_kib": 112656,
+      "server_plugin_rss_kib": 25824,
+      "lxd_rss_kib": 342036,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:37:14.612214279Z",
+      "spire_server_rss_kib": 89984,
+      "server_plugin_rss_kib": 24072,
+      "lxd_rss_kib": 343932,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:38:16.738612076Z",
+      "spire_server_rss_kib": 110192,
+      "server_plugin_rss_kib": 25244,
+      "lxd_rss_kib": 343420,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:39:18.191959749Z",
+      "spire_server_rss_kib": 112460,
+      "server_plugin_rss_kib": 25536,
+      "lxd_rss_kib": 341472,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:40:20.281347924Z",
+      "spire_server_rss_kib": 114160,
+      "server_plugin_rss_kib": 25668,
+      "lxd_rss_kib": 338920,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:43:32.396704721Z",
+      "spire_server_rss_kib": 90252,
+      "server_plugin_rss_kib": 21888,
+      "lxd_rss_kib": 344224,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:44:34.691797904Z",
+      "spire_server_rss_kib": 109404,
+      "server_plugin_rss_kib": 25324,
+      "lxd_rss_kib": 340072,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:48:06.999668297Z",
+      "spire_server_rss_kib": 89276,
+      "server_plugin_rss_kib": 22348,
+      "lxd_rss_kib": 341192,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:49:09.092975753Z",
+      "spire_server_rss_kib": 109132,
+      "server_plugin_rss_kib": 25400,
+      "lxd_rss_kib": 342600,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:50:11.487747128Z",
+      "spire_server_rss_kib": 111960,
+      "server_plugin_rss_kib": 25548,
+      "lxd_rss_kib": 340352,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:51:13.641571874Z",
+      "spire_server_rss_kib": 113956,
+      "server_plugin_rss_kib": 25536,
+      "lxd_rss_kib": 341636,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:52:16.605709824Z",
+      "spire_server_rss_kib": 104984,
+      "server_plugin_rss_kib": 25064,
+      "lxd_rss_kib": 342508,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:53:18.763762942Z",
+      "spire_server_rss_kib": 110420,
+      "server_plugin_rss_kib": 25160,
+      "lxd_rss_kib": 339476,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:54:21.614535307Z",
+      "spire_server_rss_kib": 111836,
+      "server_plugin_rss_kib": 25412,
+      "lxd_rss_kib": 342300,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:55:25.145405093Z",
+      "spire_server_rss_kib": 102764,
+      "server_plugin_rss_kib": 24852,
+      "lxd_rss_kib": 344540,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:56:48.985276932Z",
+      "spire_server_rss_kib": 113408,
+      "server_plugin_rss_kib": 25456,
+      "lxd_rss_kib": 312976,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:57:50.867536639Z",
+      "spire_server_rss_kib": 113644,
+      "server_plugin_rss_kib": 25636,
+      "lxd_rss_kib": 320732,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:58:54.484960362Z",
+      "spire_server_rss_kib": 114088,
+      "server_plugin_rss_kib": 25640,
+      "lxd_rss_kib": 323164,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T17:59:56.692247439Z",
+      "spire_server_rss_kib": 113904,
+      "server_plugin_rss_kib": 25856,
+      "lxd_rss_kib": 331636,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:01:01.036904831Z",
+      "spire_server_rss_kib": 113980,
+      "server_plugin_rss_kib": 26276,
+      "lxd_rss_kib": 336132,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:02:02.943680753Z",
+      "spire_server_rss_kib": 114536,
+      "server_plugin_rss_kib": 26216,
+      "lxd_rss_kib": 326920,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:03:05.096336931Z",
+      "spire_server_rss_kib": 113596,
+      "server_plugin_rss_kib": 26268,
+      "lxd_rss_kib": 334504,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:04:05.661469974Z",
+      "spire_server_rss_kib": 113340,
+      "server_plugin_rss_kib": 26168,
+      "lxd_rss_kib": 342576,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:05:10.038200239Z",
+      "spire_server_rss_kib": 113752,
+      "server_plugin_rss_kib": 26184,
+      "lxd_rss_kib": 348640,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:06:12.12388373Z",
+      "spire_server_rss_kib": 114672,
+      "server_plugin_rss_kib": 26564,
+      "lxd_rss_kib": 350820,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:07:14.289461176Z",
+      "spire_server_rss_kib": 114264,
+      "server_plugin_rss_kib": 26260,
+      "lxd_rss_kib": 360088,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:08:24.544978882Z",
+      "spire_server_rss_kib": 111084,
+      "server_plugin_rss_kib": 26296,
+      "lxd_rss_kib": 346288,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:09:26.842860221Z",
+      "spire_server_rss_kib": 113284,
+      "server_plugin_rss_kib": 26668,
+      "lxd_rss_kib": 353552,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:10:29.123983Z",
+      "spire_server_rss_kib": 114712,
+      "server_plugin_rss_kib": 26352,
+      "lxd_rss_kib": 357028,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:11:33.497683712Z",
+      "spire_server_rss_kib": 111840,
+      "server_plugin_rss_kib": 25152,
+      "lxd_rss_kib": 366960,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:12:37.301129548Z",
+      "spire_server_rss_kib": 110668,
+      "server_plugin_rss_kib": 25120,
+      "lxd_rss_kib": 373052,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:13:39.603733653Z",
+      "spire_server_rss_kib": 112304,
+      "server_plugin_rss_kib": 25396,
+      "lxd_rss_kib": 376868,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:14:42.861539505Z",
+      "spire_server_rss_kib": 113312,
+      "server_plugin_rss_kib": 25680,
+      "lxd_rss_kib": 386208,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:18:00.264219641Z",
+      "spire_server_rss_kib": 89648,
+      "server_plugin_rss_kib": 23864,
+      "lxd_rss_kib": 399456,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:19:02.511711109Z",
+      "spire_server_rss_kib": 109232,
+      "server_plugin_rss_kib": 25236,
+      "lxd_rss_kib": 405752,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:20:04.638640749Z",
+      "spire_server_rss_kib": 112536,
+      "server_plugin_rss_kib": 25560,
+      "lxd_rss_kib": 395260,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:21:07.302112718Z",
+      "spire_server_rss_kib": 112648,
+      "server_plugin_rss_kib": 25724,
+      "lxd_rss_kib": 403544,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:22:09.394289187Z",
+      "spire_server_rss_kib": 112004,
+      "server_plugin_rss_kib": 25784,
+      "lxd_rss_kib": 406932,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:22:36.677628288Z",
+      "spire_server_rss_kib": 111748,
+      "server_plugin_rss_kib": 25628,
+      "lxd_rss_kib": 412304,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:23:38.771074272Z",
+      "spire_server_rss_kib": 111840,
+      "server_plugin_rss_kib": 25744,
+      "lxd_rss_kib": 418252,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:24:40.847295175Z",
+      "spire_server_rss_kib": 112600,
+      "server_plugin_rss_kib": 25896,
+      "lxd_rss_kib": 421408,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:25:43.035147473Z",
+      "spire_server_rss_kib": 111212,
+      "server_plugin_rss_kib": 26036,
+      "lxd_rss_kib": 426344,
+      "agents": 100
+    },
+    {
+      "at": "2026-10-23T18:26:45.11820609Z",
+      "spire_server_rss_kib": 112296,
+      "server_plugin_rss_kib": 26216,
+      "lxd_rss_kib": 430188,
+      "agents": 100
+    }
+  ],
+  "violations": null,
+  "findings": [
+    "the server plugin killed at 17:40:56: NOT recovered by SPIRE: the plugin process did not come back in 150 s; SPIRE Server restarted",
+    "the server plugin killed at 17:45:30: NOT recovered by SPIRE: the plugin process did not come back in 150 s; SPIRE Server restarted",
+    "the server plugin killed at 18:15:23: NOT recovered by SPIRE: the plugin process did not come back in 150 s; SPIRE Server restarted",
+    "1 attestations were refused as rate_limited by the plugin's own limits"
+  ]
+}
