@@ -253,7 +253,7 @@ func (g *guest) timeout() time.Duration {
 
 // spiffeID is the SPIFFE ID the attestor gives the guest (FR-S7).
 func (l *lab) spiffeID(g *guest, uuid string) string {
-	return fmt.Sprintf("spiffe://%s/spire/agent/lxd_instance/%s/%s", labTrustDomain, g.server, uuid)
+	return fmt.Sprintf("spiffe://%s/spire/agent/lxd_iid/%s/%s", labTrustDomain, g.server, uuid)
 }
 
 const labTrustDomain = "lxd.lab"
@@ -562,7 +562,7 @@ func TestE2E5Cluster(t *testing.T) {
 						t.Errorf("%d challenge keys left", n)
 					}
 				}
-				if !strings.Contains(agent.spiffeID(), "/lxd_instance/"+cluster+"/") {
+				if !strings.Contains(agent.spiffeID(), "/lxd_iid/"+cluster+"/") {
 					t.Errorf("SPIFFE ID %s does not carry the server id %s", agent.spiffeID(), cluster)
 				}
 			})

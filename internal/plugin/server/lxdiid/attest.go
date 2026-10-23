@@ -1,4 +1,4 @@
-package lxdinstance
+package lxdiid
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
 	"github.com/dihedron/lxd-spiffe/internal/policy"
 	proofpkg "github.com/dihedron/lxd-spiffe/internal/proof"
-	lxdinstancev1 "github.com/dihedron/lxd-spiffe/internal/proto"
+	lxdiidv1 "github.com/dihedron/lxd-spiffe/internal/proto"
 	"github.com/dihedron/lxd-spiffe/internal/selectors"
 )
 
@@ -126,7 +126,7 @@ func (a *attestation) run(ctx context.Context) (*nodeattestorv1.AgentAttributes,
 	if err != nil {
 		return nil, fail(reasonPayloadInvalid, "receiving the payload: %v", err)
 	}
-	r, err := lxdinstancev1.DecodeAttestRequest(req.GetPayload())
+	r, err := lxdiidv1.DecodeAttestRequest(req.GetPayload())
 	if err != nil {
 		return nil, fail(reasonPayloadInvalid, "%v", err)
 	}
@@ -176,9 +176,9 @@ func (a *attestation) run(ctx context.Context) (*nodeattestorv1.AgentAttributes,
 
 // chooseMode applies Mode negotiation: the configured mode, which the agent
 // must offer; auto takes file_pull when offered, then config_push.
-func (a *attestation) chooseMode(offered []lxdinstancev1.ProofMode) (policy.Mode, error) {
-	filePull := slices.Contains(offered, lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL)
-	configPush := slices.Contains(offered, lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH)
+func (a *attestation) chooseMode(offered []lxdiidv1.ProofMode) (policy.Mode, error) {
+	filePull := slices.Contains(offered, lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL)
+	configPush := slices.Contains(offered, lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH)
 	switch {
 	case a.s.mode == modeNone:
 		return policy.ClaimOnly, nil
@@ -190,11 +190,11 @@ func (a *attestation) chooseMode(offered []lxdinstancev1.ProofMode) (policy.Mode
 	return "", fail(reasonPolicyDenied, "the agent offers %v, the server requires %s", offered, a.s.mode)
 }
 
-func typeHint(t lxdinstancev1.InstanceType) string {
+func typeHint(t lxdiidv1.InstanceType) string {
 	switch t {
-	case lxdinstancev1.InstanceType_INSTANCE_TYPE_CONTAINER:
+	case lxdiidv1.InstanceType_INSTANCE_TYPE_CONTAINER:
 		return string(api.InstanceTypeContainer)
-	case lxdinstancev1.InstanceType_INSTANCE_TYPE_VIRTUAL_MACHINE:
+	case lxdiidv1.InstanceType_INSTANCE_TYPE_VIRTUAL_MACHINE:
 		return string(api.InstanceTypeVM)
 	}
 	return ""
@@ -216,7 +216,7 @@ func client(ctx context.Context, srv *lxdServer) (*lxd.Client, error) {
 // project of the allow-lists, or only the claimed project (FR-S3, SEC-05).
 // A server that cannot be asked fails the attestation: without it, the
 // match could not be shown to be the only one.
-func (a *attestation) resolve(ctx context.Context, c *lxdinstancev1.Claim) (*match, error) {
+func (a *attestation) resolve(ctx context.Context, c *lxdiidv1.Claim) (*match, error) {
 	var matches []*match
 	scoped := false
 	for _, srv := range a.s.servers {
@@ -286,7 +286,7 @@ func (a *attestation) unique(ctx context.Context, m *match, uuid string) error {
 // filePull runs the file_pull challenge (Mode file_pull): a fresh server
 // nonce, valid for proof_timeout only (SEC-03), the proof path derived from
 // the agent nonce (SEC-04), and the proof file read back.
-func (a *attestation) filePull(ctx context.Context, m *match, r *lxdinstancev1.AttestRequest, owner uint32) error {
+func (a *attestation) filePull(ctx context.Context, m *match, r *lxdiidv1.AttestRequest, owner uint32) error {
 	serverNonce, err := proofpkg.NewNonce()
 	if err != nil {
 		return fail(reasonPolicyDenied, "%v", err)
@@ -302,9 +302,9 @@ func (a *attestation) filePull(ctx context.Context, m *match, r *lxdinstancev1.A
 	start := time.Now()
 	defer func() { a.proof = time.Since(start) }()
 	deadline := start.Add(a.s.proofTimeout)
-	challenge := &lxdinstancev1.Challenge{
-		Version:     lxdinstancev1.Version,
-		Mode:        lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL,
+	challenge := &lxdiidv1.Challenge{
+		Version:     lxdiidv1.Version,
+		Mode:        lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL,
 		ServerNonce: serverNonce,
 		ProofPath:   path,
 		TimeoutMs:   uint32(a.s.proofTimeout.Milliseconds()), //nolint:gosec // proof_timeout is at most 2 minutes
@@ -350,7 +350,7 @@ func (a *attestation) filePull(ctx context.Context, m *match, r *lxdinstancev1.A
 }
 
 // receive waits for the agent's ChallengeResponse until deadline.
-func (a *attestation) receive(deadline time.Time) (*lxdinstancev1.ChallengeResponse, error) {
+func (a *attestation) receive(deadline time.Time) (*lxdiidv1.ChallengeResponse, error) {
 	type result struct {
 		req *nodeattestorv1.AttestRequest
 		err error
@@ -370,7 +370,7 @@ func (a *attestation) receive(deadline time.Time) (*lxdinstancev1.ChallengeRespo
 		if res.err != nil {
 			return nil, fail(reasonProofTimeout, "receiving the answer: %v", res.err)
 		}
-		resp, err := lxdinstancev1.DecodeChallengeResponse(res.req.GetChallengeResponse())
+		resp, err := lxdiidv1.DecodeChallengeResponse(res.req.GetChallengeResponse())
 		if err != nil {
 			return nil, fail(reasonPayloadInvalid, "%v", err)
 		}

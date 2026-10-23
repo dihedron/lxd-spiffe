@@ -1,4 +1,4 @@
-package lxdinstance
+package lxdiid
 
 import (
 	"context"
@@ -88,7 +88,7 @@ var configKeys = []string{
 const serverError = "server %s: %v"
 
 // pluginName is the attestor's name, the first segment of the agent path.
-const pluginName = "lxd_instance"
+const pluginName = "lxd_iid"
 
 const (
 	defaultPathTemplate = "{{ .PluginName }}/{{ .ServerID }}/{{ .InstanceUUID }}"

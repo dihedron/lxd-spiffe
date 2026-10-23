@@ -1,4 +1,4 @@
-package lxdinstance
+package lxdiid
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
 	"github.com/dihedron/lxd-spiffe/internal/proof"
-	lxdinstancev1 "github.com/dihedron/lxd-spiffe/internal/proto"
+	lxdiidv1 "github.com/dihedron/lxd-spiffe/internal/proto"
 	"github.com/dihedron/lxd-spiffe/test/fakelxd"
 )
 
@@ -91,11 +91,11 @@ func (h *harness) addInstance(project, name, typ, uuid string) {
 // agent is a scripted SPIRE agent.
 type agent struct {
 	project, name, cloudInitID string
-	typ                        lxdinstancev1.InstanceType
-	modes                      []lxdinstancev1.ProofMode
+	typ                        lxdiidv1.InstanceType
+	modes                      []lxdiidv1.ProofMode
 	// answer handles the challenge; nil writes the right proof, as root,
 	// into the fake for project/name.
-	answer func(h *harness, a *agent, c *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse
+	answer func(h *harness, a *agent, c *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse
 	// payload, when set, is sent instead of a well-formed request.
 	payload    []byte
 	nonce      []byte
@@ -104,17 +104,17 @@ type agent struct {
 
 func newAgent(name string) *agent {
 	nonce, _ := proof.NewNonce()
-	return &agent{name: name, nonce: nonce, modes: []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL}}
+	return &agent{name: name, nonce: nonce, modes: []lxdiidv1.ProofMode{lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL}}
 }
 
 // writeProof stores the proof file of challenge c in the fake, as the
 // agent would write it, with the given owner, mode and content.
-func (h *harness) writeProof(project string, a *agent, c *lxdinstancev1.Challenge, uid, mode int, content string) {
+func (h *harness) writeProof(project string, a *agent, c *lxdiidv1.Challenge, uid, mode int, content string) {
 	h.fake.AddFile(project, a.name, c.GetProofPath(), fakelxd.File{Content: content, UID: uid, Mode: mode, Type: "file"})
 	h.fake.AddFile(project, a.name, defaultProofDir, fakelxd.File{UID: 0, Mode: 0o700, Type: "directory", Entries: []string{}})
 }
 
-func (a *agent) rightProof(c *lxdinstancev1.Challenge) string {
+func (a *agent) rightProof(c *lxdiidv1.Challenge) string {
 	sum, err := proof.Compute(a.project, a.name, c.GetServerNonce(), a.nonce)
 	if err != nil {
 		panic(err)
@@ -122,7 +122,7 @@ func (a *agent) rightProof(c *lxdinstancev1.Challenge) string {
 	return string(proof.Hex(sum))
 }
 
-var done = &lxdinstancev1.ChallengeResponse{Version: 1, Mode: lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL, Done: true}
+var done = &lxdiidv1.ChallengeResponse{Version: 1, Mode: lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL, Done: true}
 
 // attest runs one attestation of a against the instance in project
 // (where the default answer writes the proof).
@@ -162,9 +162,9 @@ func (a *agent) request(t *testing.T) []byte {
 	if a.payload != nil {
 		return a.payload
 	}
-	return marshal(t, &lxdinstancev1.AttestRequest{
+	return marshal(t, &lxdiidv1.AttestRequest{
 		Version:      1,
-		Claim:        &lxdinstancev1.Claim{Project: a.project, InstanceName: a.name, CloudInitInstanceId: a.cloudInitID},
+		Claim:        &lxdiidv1.Claim{Project: a.project, InstanceName: a.name, CloudInitInstanceId: a.cloudInitID},
 		AgentNonce:   a.nonce,
 		InstanceType: a.typ,
 		ProofModes:   a.modes,
@@ -173,10 +173,10 @@ func (a *agent) request(t *testing.T) []byte {
 
 // answer is a's answer to the challenge in data: a.answer's, or the right
 // proof written as root.
-func (h *harness) answer(project string, a *agent, data []byte) *lxdinstancev1.ChallengeResponse {
+func (h *harness) answer(project string, a *agent, data []byte) *lxdiidv1.ChallengeResponse {
 	h.t.Helper()
 	a.challenged = true
-	c, err := lxdinstancev1.DecodeChallenge(data)
+	c, err := lxdiidv1.DecodeChallenge(data)
 	if err != nil {
 		h.t.Fatalf("the server sent an invalid challenge: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestFRS1FilePullContainer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("attestation failed: %v\n%s", err, h.log)
 	}
-	if want := "spiffe://example.org/spire/agent/lxd_instance/lab/" + uuidA; attrs.GetSpiffeId() != want {
+	if want := "spiffe://example.org/spire/agent/lxd_iid/lab/" + uuidA; attrs.GetSpiffeId() != want {
 		t.Errorf("FR-S7 SPIFFE ID %q, want %q", attrs.GetSpiffeId(), want)
 	}
 	for _, sel := range []string{"server:lab", "uuid:" + uuidA, "project:default", "type:container"} {
@@ -238,7 +238,7 @@ func TestL7FilePullVMWaitsForAgent(t *testing.T) {
 	h.addInstance("default", "v1", "virtual-machine", uuidA)
 	h.fake.FailFiles("default", "v1", 2, 500, "LXD VM agent is not currently running")
 	a := newAgent("v1")
-	a.typ = lxdinstancev1.InstanceType_INSTANCE_TYPE_VIRTUAL_MACHINE
+	a.typ = lxdiidv1.InstanceType_INSTANCE_TYPE_VIRTUAL_MACHINE
 	attrs, err := h.attest("default", a)
 	if err != nil {
 		t.Fatalf("attestation failed: %v\n%s", err, h.log)
@@ -291,20 +291,20 @@ type refusal struct {
 // PermissionDenied "attestation failed" (SEC-10); the server's log names
 // the reason.
 func TestSEC10Refusals(t *testing.T) {
-	wrong := func(uid, mode int, content func(a *agent, c *lxdinstancev1.Challenge) string, typ string) func(*harness, *agent) {
+	wrong := func(uid, mode int, content func(a *agent, c *lxdiidv1.Challenge) string, typ string) func(*harness, *agent) {
 		return func(_ *harness, a *agent) {
-			a.answer = func(h *harness, a *agent, c *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse {
+			a.answer = func(h *harness, a *agent, c *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
 				h.fake.AddFile("default", a.name, c.GetProofPath(), fakelxd.File{Content: content(a, c), UID: uid, Mode: mode, Type: typ})
 				h.fake.AddFile("default", a.name, defaultProofDir, fakelxd.File{Mode: 0o700, Type: "directory", Entries: []string{}})
 				return done
 			}
 		}
 	}
-	right := func(a *agent, c *lxdinstancev1.Challenge) string { return a.rightProof(c) }
+	right := func(a *agent, c *lxdiidv1.Challenge) string { return a.rightProof(c) }
 	cases := map[string]refusal{
 		"FR-S2 bad payload": {setup: func(_ *harness, a *agent) { a.payload = []byte{0xff, 0x01} }, reason: "payload_invalid"},
 		"FR-S2 no file_pull offered": {setup: func(_ *harness, a *agent) {
-			a.modes = []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH}
+			a.modes = []lxdiidv1.ProofMode{lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH}
 		}, reason: "policy_denied"},
 		"FR-S3 unknown instance":      {setup: func(_ *harness, a *agent) { a.name = "nobody" }, reason: "instance_not_found"},
 		"FR-S3 project not allowed":   {setup: func(_ *harness, a *agent) { a.project = "elsewhere" }, reason: "scope_denied"},
@@ -319,54 +319,54 @@ func TestSEC10Refusals(t *testing.T) {
 		"FR-S5 privileged": {setup: func(h *harness, _ *agent) {
 			h.fake.SetInstanceConfig("default", "c1", "security.privileged", "true")
 		}, reason: "policy_denied"},
-		"FR-S5 type hint differs": {setup: func(_ *harness, a *agent) { a.typ = lxdinstancev1.InstanceType_INSTANCE_TYPE_VIRTUAL_MACHINE }, reason: "policy_denied"},
+		"FR-S5 type hint differs": {setup: func(_ *harness, a *agent) { a.typ = lxdiidv1.InstanceType_INSTANCE_TYPE_VIRTUAL_MACHINE }, reason: "policy_denied"},
 		"T2 disk over the proof directory": {setup: func(h *harness, _ *agent) {
 			h.fake.SetDevice("default", "c1", "shared", map[string]string{"type": "disk", "path": "/run", "source": "/srv/x"})
 		}, reason: "policy_denied"},
-		"proof content wrong":      {setup: wrong(0, 0o600, func(*agent, *lxdinstancev1.Challenge) string { return strings.Repeat("0", 64) }, "file"), reason: "proof_mismatch"},
-		"proof short":              {setup: wrong(0, 0o600, func(a *agent, c *lxdinstancev1.Challenge) string { return a.rightProof(c)[:63] }, "file"), reason: "proof_mismatch"},
+		"proof content wrong":      {setup: wrong(0, 0o600, func(*agent, *lxdiidv1.Challenge) string { return strings.Repeat("0", 64) }, "file"), reason: "proof_mismatch"},
+		"proof short":              {setup: wrong(0, 0o600, func(a *agent, c *lxdiidv1.Challenge) string { return a.rightProof(c)[:63] }, "file"), reason: "proof_mismatch"},
 		"proof not owned by root":  {setup: wrong(1000, 0o600, right, "file"), reason: "proof_mismatch"},
 		"proof readable by others": {setup: wrong(0, 0o644, right, "file"), reason: "proof_mismatch"},
 		"proof with a setuid bit":  {setup: wrong(0, 0o4600, right, "file"), reason: "proof_mismatch"},
 		"proof is a symlink":       {setup: wrong(0, 0o600, right, "symlink"), reason: "proof_mismatch"},
 		"proof file missing": {setup: func(_ *harness, a *agent) {
-			a.answer = func(*harness, *agent, *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse { return done }
+			a.answer = func(*harness, *agent, *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse { return done }
 		}, reason: "proof_mismatch"},
 		"proof directory open to others": {setup: func(_ *harness, a *agent) {
-			a.answer = func(h *harness, a *agent, c *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse {
+			a.answer = func(h *harness, a *agent, c *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
 				h.writeProof("default", a, c, 0, 0o600, a.rightProof(c))
 				h.fake.AddFile("default", a.name, defaultProofDir, fakelxd.File{Mode: 0o755, Type: "directory", Entries: []string{}})
 				return done
 			}
 		}, reason: "proof_mismatch"},
 		"guest step failed": {setup: func(_ *harness, a *agent) {
-			a.answer = func(*harness, *agent, *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse {
-				return &lxdinstancev1.ChallengeResponse{Version: 1, Mode: lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL}
+			a.answer = func(*harness, *agent, *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
+				return &lxdiidv1.ChallengeResponse{Version: 1, Mode: lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL}
 			}
 		}, reason: "proof_mismatch"},
 		"SEC-03 agent never answers": {top: `proof_timeout = "1s"`, setup: func(_ *harness, a *agent) {
-			a.answer = func(*harness, *agent, *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse { return nil }
+			a.answer = func(*harness, *agent, *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse { return nil }
 		}, reason: "proof_timeout"},
 		"L7 VM agent never up": {top: `proof_timeout = "1s"`, setup: func(h *harness, a *agent) {
 			h.fake.SetType("default", "c1", "virtual-machine")
 			h.fake.FailFiles("default", "c1", 1000, 500, "LXD VM agent is not currently running")
 		}, reason: "vm_agent_unavailable"},
 		"FR-S10 moved during the proof": {setup: func(_ *harness, a *agent) {
-			a.answer = func(h *harness, a *agent, c *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse {
+			a.answer = func(h *harness, a *agent, c *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
 				h.writeProof("default", a, c, 0, 0o600, a.rightProof(c))
 				h.fake.SetLocation("default", a.name, "member2")
 				return done
 			}
 		}, reason: "instance_moved"},
 		"FR-S10 stopped during the proof": {setup: func(_ *harness, a *agent) {
-			a.answer = func(h *harness, a *agent, c *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse {
+			a.answer = func(h *harness, a *agent, c *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
 				h.writeProof("default", a, c, 0, 0o600, a.rightProof(c))
 				h.fake.SetStatus("default", a.name, "Stopped")
 				return done
 			}
 		}, reason: "not_running"},
 		"FR-S10 replaced during the proof": {setup: func(_ *harness, a *agent) {
-			a.answer = func(h *harness, a *agent, c *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse {
+			a.answer = func(h *harness, a *agent, c *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
 				h.writeProof("default", a, c, 0, 0o600, a.rightProof(c))
 				h.fake.SetInstanceConfig("default", a.name, "volatile.uuid", uuidB)
 				return done
@@ -447,7 +447,7 @@ func TestSEC09InflightRefused(t *testing.T) {
 	h.addInstance("default", "c2", "container", uuidB)
 	challenged, release := make(chan struct{}), make(chan struct{})
 	first := newAgent("c1")
-	first.answer = func(h *harness, a *agent, c *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse {
+	first.answer = func(h *harness, a *agent, c *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
 		close(challenged)
 		<-release
 		h.writeProof("default", a, c, 0, 0o600, a.rightProof(c))

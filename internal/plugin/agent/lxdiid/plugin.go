@@ -1,9 +1,9 @@
-// Package lxdinstance implements the agent side of the lxd_instance SPIRE
+// Package lxdiid implements the agent side of the lxd_iid SPIRE
 // node attestor: it sends the instance's claim and a nonce, then proves it
 // runs inside that instance by the mode the server asks for.
 //
 // It proves with file_pull, or config_push when devLXD answers.
-package lxdinstance
+package lxdiid
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Plugin is the agent-side lxd_instance node attestor.
+// Plugin is the agent-side lxd_iid node attestor.
 type Plugin struct {
 	nodeattestorv1.UnimplementedNodeAttestorServer
 	configv1.UnimplementedConfigServer
@@ -82,7 +82,7 @@ func (p *Plugin) AidAttestation(stream nodeattestorv1.NodeAttestor_AidAttestatio
 		if errors.Is(err, context.DeadlineExceeded) {
 			code = codes.DeadlineExceeded
 		}
-		return status.Error(code, "lxd_instance: "+err.Error())
+		return status.Error(code, "lxd_iid: "+err.Error())
 	}
 	return nil
 }

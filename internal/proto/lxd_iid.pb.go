@@ -1,4 +1,4 @@
-// The lxd_instance wire protocol: a copy of attestor spec Overview → Wire
+// The lxd_iid wire protocol: a copy of attestor spec Overview → Wire
 // protocol (.specs/lxd-spire-plugins.md), which is normative. Field numbers
 // MUST NOT change or be reused after the first release. Regenerate the Go
 // code with make proto.
@@ -7,9 +7,9 @@
 // versions:
 // 	protoc-gen-go v1.36.12
 // 	protoc        v3.21.12
-// source: internal/proto/lxd_instance.proto
+// source: internal/proto/lxd_iid.proto
 
-package lxdinstancev1
+package lxdiidv1
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -59,11 +59,11 @@ func (x InstanceType) String() string {
 }
 
 func (InstanceType) Descriptor() protoreflect.EnumDescriptor {
-	return file_internal_proto_lxd_instance_proto_enumTypes[0].Descriptor()
+	return file_internal_proto_lxd_iid_proto_enumTypes[0].Descriptor()
 }
 
 func (InstanceType) Type() protoreflect.EnumType {
-	return &file_internal_proto_lxd_instance_proto_enumTypes[0]
+	return &file_internal_proto_lxd_iid_proto_enumTypes[0]
 }
 
 func (x InstanceType) Number() protoreflect.EnumNumber {
@@ -72,7 +72,7 @@ func (x InstanceType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use InstanceType.Descriptor instead.
 func (InstanceType) EnumDescriptor() ([]byte, []int) {
-	return file_internal_proto_lxd_instance_proto_rawDescGZIP(), []int{0}
+	return file_internal_proto_lxd_iid_proto_rawDescGZIP(), []int{0}
 }
 
 type ProofMode int32
@@ -108,11 +108,11 @@ func (x ProofMode) String() string {
 }
 
 func (ProofMode) Descriptor() protoreflect.EnumDescriptor {
-	return file_internal_proto_lxd_instance_proto_enumTypes[1].Descriptor()
+	return file_internal_proto_lxd_iid_proto_enumTypes[1].Descriptor()
 }
 
 func (ProofMode) Type() protoreflect.EnumType {
-	return &file_internal_proto_lxd_instance_proto_enumTypes[1]
+	return &file_internal_proto_lxd_iid_proto_enumTypes[1]
 }
 
 func (x ProofMode) Number() protoreflect.EnumNumber {
@@ -121,7 +121,7 @@ func (x ProofMode) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ProofMode.Descriptor instead.
 func (ProofMode) EnumDescriptor() ([]byte, []int) {
-	return file_internal_proto_lxd_instance_proto_rawDescGZIP(), []int{1}
+	return file_internal_proto_lxd_iid_proto_rawDescGZIP(), []int{1}
 }
 
 type ClaimSource int32
@@ -160,11 +160,11 @@ func (x ClaimSource) String() string {
 }
 
 func (ClaimSource) Descriptor() protoreflect.EnumDescriptor {
-	return file_internal_proto_lxd_instance_proto_enumTypes[2].Descriptor()
+	return file_internal_proto_lxd_iid_proto_enumTypes[2].Descriptor()
 }
 
 func (ClaimSource) Type() protoreflect.EnumType {
-	return &file_internal_proto_lxd_instance_proto_enumTypes[2]
+	return &file_internal_proto_lxd_iid_proto_enumTypes[2]
 }
 
 func (x ClaimSource) Number() protoreflect.EnumNumber {
@@ -173,7 +173,7 @@ func (x ClaimSource) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ClaimSource.Descriptor instead.
 func (ClaimSource) EnumDescriptor() ([]byte, []int) {
-	return file_internal_proto_lxd_instance_proto_rawDescGZIP(), []int{2}
+	return file_internal_proto_lxd_iid_proto_rawDescGZIP(), []int{2}
 }
 
 // What the guest says about itself. Untrusted lookup hints.
@@ -182,14 +182,14 @@ type Claim struct {
 	Project             string                 `protobuf:"bytes,1,opt,name=project,proto3" json:"project,omitempty"`                                                        // may be empty; <= 63 chars
 	InstanceName        string                 `protobuf:"bytes,2,opt,name=instance_name,json=instanceName,proto3" json:"instance_name,omitempty"`                          // required; <= 63 chars
 	CloudInitInstanceId string                 `protobuf:"bytes,3,opt,name=cloud_init_instance_id,json=cloudInitInstanceId,proto3" json:"cloud_init_instance_id,omitempty"` // optional UUID
-	NameSource          ClaimSource            `protobuf:"varint,4,opt,name=name_source,json=nameSource,proto3,enum=spire.plugin.lxd_instance.v1.ClaimSource" json:"name_source,omitempty"`
+	NameSource          ClaimSource            `protobuf:"varint,4,opt,name=name_source,json=nameSource,proto3,enum=spire.plugin.lxd_iid.v1.ClaimSource" json:"name_source,omitempty"`
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
 
 func (x *Claim) Reset() {
 	*x = Claim{}
-	mi := &file_internal_proto_lxd_instance_proto_msgTypes[0]
+	mi := &file_internal_proto_lxd_iid_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -201,7 +201,7 @@ func (x *Claim) String() string {
 func (*Claim) ProtoMessage() {}
 
 func (x *Claim) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_lxd_instance_proto_msgTypes[0]
+	mi := &file_internal_proto_lxd_iid_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -214,7 +214,7 @@ func (x *Claim) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Claim.ProtoReflect.Descriptor instead.
 func (*Claim) Descriptor() ([]byte, []int) {
-	return file_internal_proto_lxd_instance_proto_rawDescGZIP(), []int{0}
+	return file_internal_proto_lxd_iid_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *Claim) GetProject() string {
@@ -250,17 +250,17 @@ type AttestRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Version       uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"` // MUST be 1
 	Claim         *Claim                 `protobuf:"bytes,2,opt,name=claim,proto3" json:"claim,omitempty"`
-	AgentNonce    []byte                 `protobuf:"bytes,3,opt,name=agent_nonce,json=agentNonce,proto3" json:"agent_nonce,omitempty"`                                                       // exactly 32 bytes
-	InstanceType  InstanceType           `protobuf:"varint,4,opt,name=instance_type,json=instanceType,proto3,enum=spire.plugin.lxd_instance.v1.InstanceType" json:"instance_type,omitempty"` // from devLXD when available
-	ProofModes    []ProofMode            `protobuf:"varint,5,rep,packed,name=proof_modes,json=proofModes,proto3,enum=spire.plugin.lxd_instance.v1.ProofMode" json:"proof_modes,omitempty"`   // <= 2, no duplicates
-	PluginVersion string                 `protobuf:"bytes,6,opt,name=plugin_version,json=pluginVersion,proto3" json:"plugin_version,omitempty"`                                              // <= 128 bytes
+	AgentNonce    []byte                 `protobuf:"bytes,3,opt,name=agent_nonce,json=agentNonce,proto3" json:"agent_nonce,omitempty"`                                                  // exactly 32 bytes
+	InstanceType  InstanceType           `protobuf:"varint,4,opt,name=instance_type,json=instanceType,proto3,enum=spire.plugin.lxd_iid.v1.InstanceType" json:"instance_type,omitempty"` // from devLXD when available
+	ProofModes    []ProofMode            `protobuf:"varint,5,rep,packed,name=proof_modes,json=proofModes,proto3,enum=spire.plugin.lxd_iid.v1.ProofMode" json:"proof_modes,omitempty"`   // <= 2, no duplicates
+	PluginVersion string                 `protobuf:"bytes,6,opt,name=plugin_version,json=pluginVersion,proto3" json:"plugin_version,omitempty"`                                         // <= 128 bytes
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AttestRequest) Reset() {
 	*x = AttestRequest{}
-	mi := &file_internal_proto_lxd_instance_proto_msgTypes[1]
+	mi := &file_internal_proto_lxd_iid_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -272,7 +272,7 @@ func (x *AttestRequest) String() string {
 func (*AttestRequest) ProtoMessage() {}
 
 func (x *AttestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_lxd_instance_proto_msgTypes[1]
+	mi := &file_internal_proto_lxd_iid_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -285,7 +285,7 @@ func (x *AttestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttestRequest.ProtoReflect.Descriptor instead.
 func (*AttestRequest) Descriptor() ([]byte, []int) {
-	return file_internal_proto_lxd_instance_proto_rawDescGZIP(), []int{1}
+	return file_internal_proto_lxd_iid_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *AttestRequest) GetVersion() uint32 {
@@ -334,7 +334,7 @@ func (x *AttestRequest) GetPluginVersion() string {
 type Challenge struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Version       uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
-	Mode          ProofMode              `protobuf:"varint,2,opt,name=mode,proto3,enum=spire.plugin.lxd_instance.v1.ProofMode" json:"mode,omitempty"`
+	Mode          ProofMode              `protobuf:"varint,2,opt,name=mode,proto3,enum=spire.plugin.lxd_iid.v1.ProofMode" json:"mode,omitempty"`
 	ServerNonce   []byte                 `protobuf:"bytes,3,opt,name=server_nonce,json=serverNonce,proto3" json:"server_nonce,omitempty"` // FILE_PULL: exactly 32 bytes. Other modes: empty.
 	ProofPath     string                 `protobuf:"bytes,4,opt,name=proof_path,json=proofPath,proto3" json:"proof_path,omitempty"`       // FILE_PULL: absolute path under the agent's proof_dir
 	ProofKey      string                 `protobuf:"bytes,5,opt,name=proof_key,json=proofKey,proto3" json:"proof_key,omitempty"`          // CONFIG_PUSH: devLXD config key to read
@@ -345,7 +345,7 @@ type Challenge struct {
 
 func (x *Challenge) Reset() {
 	*x = Challenge{}
-	mi := &file_internal_proto_lxd_instance_proto_msgTypes[2]
+	mi := &file_internal_proto_lxd_iid_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -357,7 +357,7 @@ func (x *Challenge) String() string {
 func (*Challenge) ProtoMessage() {}
 
 func (x *Challenge) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_lxd_instance_proto_msgTypes[2]
+	mi := &file_internal_proto_lxd_iid_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -370,7 +370,7 @@ func (x *Challenge) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Challenge.ProtoReflect.Descriptor instead.
 func (*Challenge) Descriptor() ([]byte, []int) {
-	return file_internal_proto_lxd_instance_proto_rawDescGZIP(), []int{2}
+	return file_internal_proto_lxd_iid_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Challenge) GetVersion() uint32 {
@@ -419,16 +419,16 @@ func (x *Challenge) GetTimeoutMs() uint32 {
 type ChallengeResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Version       uint32                 `protobuf:"varint,1,opt,name=version,proto3" json:"version,omitempty"`
-	Mode          ProofMode              `protobuf:"varint,2,opt,name=mode,proto3,enum=spire.plugin.lxd_instance.v1.ProofMode" json:"mode,omitempty"` // MUST equal Challenge.mode
-	Done          bool                   `protobuf:"varint,3,opt,name=done,proto3" json:"done,omitempty"`                                             // guest-side step completed
-	Echo          []byte                 `protobuf:"bytes,4,opt,name=echo,proto3" json:"echo,omitempty"`                                              // CONFIG_PUSH: the 64 hex bytes read via devLXD. Others: empty.
+	Mode          ProofMode              `protobuf:"varint,2,opt,name=mode,proto3,enum=spire.plugin.lxd_iid.v1.ProofMode" json:"mode,omitempty"` // MUST equal Challenge.mode
+	Done          bool                   `protobuf:"varint,3,opt,name=done,proto3" json:"done,omitempty"`                                        // guest-side step completed
+	Echo          []byte                 `protobuf:"bytes,4,opt,name=echo,proto3" json:"echo,omitempty"`                                         // CONFIG_PUSH: the 64 hex bytes read via devLXD. Others: empty.
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChallengeResponse) Reset() {
 	*x = ChallengeResponse{}
-	mi := &file_internal_proto_lxd_instance_proto_msgTypes[3]
+	mi := &file_internal_proto_lxd_iid_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -440,7 +440,7 @@ func (x *ChallengeResponse) String() string {
 func (*ChallengeResponse) ProtoMessage() {}
 
 func (x *ChallengeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_proto_lxd_instance_proto_msgTypes[3]
+	mi := &file_internal_proto_lxd_iid_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -453,7 +453,7 @@ func (x *ChallengeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChallengeResponse.ProtoReflect.Descriptor instead.
 func (*ChallengeResponse) Descriptor() ([]byte, []int) {
-	return file_internal_proto_lxd_instance_proto_rawDescGZIP(), []int{3}
+	return file_internal_proto_lxd_iid_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ChallengeResponse) GetVersion() uint32 {
@@ -484,38 +484,38 @@ func (x *ChallengeResponse) GetEcho() []byte {
 	return nil
 }
 
-var File_internal_proto_lxd_instance_proto protoreflect.FileDescriptor
+var File_internal_proto_lxd_iid_proto protoreflect.FileDescriptor
 
-const file_internal_proto_lxd_instance_proto_rawDesc = "" +
+const file_internal_proto_lxd_iid_proto_rawDesc = "" +
 	"\n" +
-	"!internal/proto/lxd_instance.proto\x12\x1cspire.plugin.lxd_instance.v1\"\xc7\x01\n" +
+	"\x1cinternal/proto/lxd_iid.proto\x12\x17spire.plugin.lxd_iid.v1\"\xc2\x01\n" +
 	"\x05Claim\x12\x18\n" +
 	"\aproject\x18\x01 \x01(\tR\aproject\x12#\n" +
 	"\rinstance_name\x18\x02 \x01(\tR\finstanceName\x123\n" +
-	"\x16cloud_init_instance_id\x18\x03 \x01(\tR\x13cloudInitInstanceId\x12J\n" +
-	"\vname_source\x18\x04 \x01(\x0e2).spire.plugin.lxd_instance.v1.ClaimSourceR\n" +
-	"nameSource\"\xc7\x02\n" +
+	"\x16cloud_init_instance_id\x18\x03 \x01(\tR\x13cloudInitInstanceId\x12E\n" +
+	"\vname_source\x18\x04 \x01(\x0e2$.spire.plugin.lxd_iid.v1.ClaimSourceR\n" +
+	"nameSource\"\xb8\x02\n" +
 	"\rAttestRequest\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\rR\aversion\x129\n" +
-	"\x05claim\x18\x02 \x01(\v2#.spire.plugin.lxd_instance.v1.ClaimR\x05claim\x12\x1f\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x124\n" +
+	"\x05claim\x18\x02 \x01(\v2\x1e.spire.plugin.lxd_iid.v1.ClaimR\x05claim\x12\x1f\n" +
 	"\vagent_nonce\x18\x03 \x01(\fR\n" +
-	"agentNonce\x12O\n" +
-	"\rinstance_type\x18\x04 \x01(\x0e2*.spire.plugin.lxd_instance.v1.InstanceTypeR\finstanceType\x12H\n" +
-	"\vproof_modes\x18\x05 \x03(\x0e2'.spire.plugin.lxd_instance.v1.ProofModeR\n" +
+	"agentNonce\x12J\n" +
+	"\rinstance_type\x18\x04 \x01(\x0e2%.spire.plugin.lxd_iid.v1.InstanceTypeR\finstanceType\x12C\n" +
+	"\vproof_modes\x18\x05 \x03(\x0e2\".spire.plugin.lxd_iid.v1.ProofModeR\n" +
 	"proofModes\x12%\n" +
-	"\x0eplugin_version\x18\x06 \x01(\tR\rpluginVersion\"\xf4\x01\n" +
+	"\x0eplugin_version\x18\x06 \x01(\tR\rpluginVersion\"\xef\x01\n" +
 	"\tChallenge\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\rR\aversion\x12;\n" +
-	"\x04mode\x18\x02 \x01(\x0e2'.spire.plugin.lxd_instance.v1.ProofModeR\x04mode\x12!\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x126\n" +
+	"\x04mode\x18\x02 \x01(\x0e2\".spire.plugin.lxd_iid.v1.ProofModeR\x04mode\x12!\n" +
 	"\fserver_nonce\x18\x03 \x01(\fR\vserverNonce\x12\x1d\n" +
 	"\n" +
 	"proof_path\x18\x04 \x01(\tR\tproofPath\x12\x1b\n" +
 	"\tproof_key\x18\x05 \x01(\tR\bproofKey\x12\x1d\n" +
 	"\n" +
-	"timeout_ms\x18\a \x01(\rR\ttimeoutMsJ\x04\b\x06\x10\aR\fready_target\"\x92\x01\n" +
+	"timeout_ms\x18\a \x01(\rR\ttimeoutMsJ\x04\b\x06\x10\aR\fready_target\"\x8d\x01\n" +
 	"\x11ChallengeResponse\x12\x18\n" +
-	"\aversion\x18\x01 \x01(\rR\aversion\x12;\n" +
-	"\x04mode\x18\x02 \x01(\x0e2'.spire.plugin.lxd_instance.v1.ProofModeR\x04mode\x12\x12\n" +
+	"\aversion\x18\x01 \x01(\rR\aversion\x126\n" +
+	"\x04mode\x18\x02 \x01(\x0e2\".spire.plugin.lxd_iid.v1.ProofModeR\x04mode\x12\x12\n" +
 	"\x04done\x18\x03 \x01(\bR\x04done\x12\x12\n" +
 	"\x04echo\x18\x04 \x01(\fR\x04echo*m\n" +
 	"\fInstanceType\x12\x1d\n" +
@@ -530,38 +530,38 @@ const file_internal_proto_lxd_instance_proto_rawDesc = "" +
 	"\x18CLAIM_SOURCE_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17CLAIM_SOURCE_CONFIGURED\x10\x01\x12 \n" +
 	"\x1cCLAIM_SOURCE_DEVLXD_METADATA\x10\x02\x12\x19\n" +
-	"\x15CLAIM_SOURCE_HOSTNAME\x10\x03B=Z;github.com/dihedron/lxd-spiffe/internal/proto;lxdinstancev1b\x06proto3"
+	"\x15CLAIM_SOURCE_HOSTNAME\x10\x03B8Z6github.com/dihedron/lxd-spiffe/internal/proto;lxdiidv1b\x06proto3"
 
 var (
-	file_internal_proto_lxd_instance_proto_rawDescOnce sync.Once
-	file_internal_proto_lxd_instance_proto_rawDescData []byte
+	file_internal_proto_lxd_iid_proto_rawDescOnce sync.Once
+	file_internal_proto_lxd_iid_proto_rawDescData []byte
 )
 
-func file_internal_proto_lxd_instance_proto_rawDescGZIP() []byte {
-	file_internal_proto_lxd_instance_proto_rawDescOnce.Do(func() {
-		file_internal_proto_lxd_instance_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_proto_lxd_instance_proto_rawDesc), len(file_internal_proto_lxd_instance_proto_rawDesc)))
+func file_internal_proto_lxd_iid_proto_rawDescGZIP() []byte {
+	file_internal_proto_lxd_iid_proto_rawDescOnce.Do(func() {
+		file_internal_proto_lxd_iid_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_internal_proto_lxd_iid_proto_rawDesc), len(file_internal_proto_lxd_iid_proto_rawDesc)))
 	})
-	return file_internal_proto_lxd_instance_proto_rawDescData
+	return file_internal_proto_lxd_iid_proto_rawDescData
 }
 
-var file_internal_proto_lxd_instance_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_internal_proto_lxd_instance_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-var file_internal_proto_lxd_instance_proto_goTypes = []any{
-	(InstanceType)(0),         // 0: spire.plugin.lxd_instance.v1.InstanceType
-	(ProofMode)(0),            // 1: spire.plugin.lxd_instance.v1.ProofMode
-	(ClaimSource)(0),          // 2: spire.plugin.lxd_instance.v1.ClaimSource
-	(*Claim)(nil),             // 3: spire.plugin.lxd_instance.v1.Claim
-	(*AttestRequest)(nil),     // 4: spire.plugin.lxd_instance.v1.AttestRequest
-	(*Challenge)(nil),         // 5: spire.plugin.lxd_instance.v1.Challenge
-	(*ChallengeResponse)(nil), // 6: spire.plugin.lxd_instance.v1.ChallengeResponse
+var file_internal_proto_lxd_iid_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_internal_proto_lxd_iid_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_internal_proto_lxd_iid_proto_goTypes = []any{
+	(InstanceType)(0),         // 0: spire.plugin.lxd_iid.v1.InstanceType
+	(ProofMode)(0),            // 1: spire.plugin.lxd_iid.v1.ProofMode
+	(ClaimSource)(0),          // 2: spire.plugin.lxd_iid.v1.ClaimSource
+	(*Claim)(nil),             // 3: spire.plugin.lxd_iid.v1.Claim
+	(*AttestRequest)(nil),     // 4: spire.plugin.lxd_iid.v1.AttestRequest
+	(*Challenge)(nil),         // 5: spire.plugin.lxd_iid.v1.Challenge
+	(*ChallengeResponse)(nil), // 6: spire.plugin.lxd_iid.v1.ChallengeResponse
 }
-var file_internal_proto_lxd_instance_proto_depIdxs = []int32{
-	2, // 0: spire.plugin.lxd_instance.v1.Claim.name_source:type_name -> spire.plugin.lxd_instance.v1.ClaimSource
-	3, // 1: spire.plugin.lxd_instance.v1.AttestRequest.claim:type_name -> spire.plugin.lxd_instance.v1.Claim
-	0, // 2: spire.plugin.lxd_instance.v1.AttestRequest.instance_type:type_name -> spire.plugin.lxd_instance.v1.InstanceType
-	1, // 3: spire.plugin.lxd_instance.v1.AttestRequest.proof_modes:type_name -> spire.plugin.lxd_instance.v1.ProofMode
-	1, // 4: spire.plugin.lxd_instance.v1.Challenge.mode:type_name -> spire.plugin.lxd_instance.v1.ProofMode
-	1, // 5: spire.plugin.lxd_instance.v1.ChallengeResponse.mode:type_name -> spire.plugin.lxd_instance.v1.ProofMode
+var file_internal_proto_lxd_iid_proto_depIdxs = []int32{
+	2, // 0: spire.plugin.lxd_iid.v1.Claim.name_source:type_name -> spire.plugin.lxd_iid.v1.ClaimSource
+	3, // 1: spire.plugin.lxd_iid.v1.AttestRequest.claim:type_name -> spire.plugin.lxd_iid.v1.Claim
+	0, // 2: spire.plugin.lxd_iid.v1.AttestRequest.instance_type:type_name -> spire.plugin.lxd_iid.v1.InstanceType
+	1, // 3: spire.plugin.lxd_iid.v1.AttestRequest.proof_modes:type_name -> spire.plugin.lxd_iid.v1.ProofMode
+	1, // 4: spire.plugin.lxd_iid.v1.Challenge.mode:type_name -> spire.plugin.lxd_iid.v1.ProofMode
+	1, // 5: spire.plugin.lxd_iid.v1.ChallengeResponse.mode:type_name -> spire.plugin.lxd_iid.v1.ProofMode
 	6, // [6:6] is the sub-list for method output_type
 	6, // [6:6] is the sub-list for method input_type
 	6, // [6:6] is the sub-list for extension type_name
@@ -569,27 +569,27 @@ var file_internal_proto_lxd_instance_proto_depIdxs = []int32{
 	0, // [0:6] is the sub-list for field type_name
 }
 
-func init() { file_internal_proto_lxd_instance_proto_init() }
-func file_internal_proto_lxd_instance_proto_init() {
-	if File_internal_proto_lxd_instance_proto != nil {
+func init() { file_internal_proto_lxd_iid_proto_init() }
+func file_internal_proto_lxd_iid_proto_init() {
+	if File_internal_proto_lxd_iid_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_proto_lxd_instance_proto_rawDesc), len(file_internal_proto_lxd_instance_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_proto_lxd_iid_proto_rawDesc), len(file_internal_proto_lxd_iid_proto_rawDesc)),
 			NumEnums:      3,
 			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_internal_proto_lxd_instance_proto_goTypes,
-		DependencyIndexes: file_internal_proto_lxd_instance_proto_depIdxs,
-		EnumInfos:         file_internal_proto_lxd_instance_proto_enumTypes,
-		MessageInfos:      file_internal_proto_lxd_instance_proto_msgTypes,
+		GoTypes:           file_internal_proto_lxd_iid_proto_goTypes,
+		DependencyIndexes: file_internal_proto_lxd_iid_proto_depIdxs,
+		EnumInfos:         file_internal_proto_lxd_iid_proto_enumTypes,
+		MessageInfos:      file_internal_proto_lxd_iid_proto_msgTypes,
 	}.Build()
-	File_internal_proto_lxd_instance_proto = out.File
-	file_internal_proto_lxd_instance_proto_goTypes = nil
-	file_internal_proto_lxd_instance_proto_depIdxs = nil
+	File_internal_proto_lxd_iid_proto = out.File
+	file_internal_proto_lxd_iid_proto_goTypes = nil
+	file_internal_proto_lxd_iid_proto_depIdxs = nil
 }

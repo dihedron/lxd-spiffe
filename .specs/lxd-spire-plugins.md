@@ -8,7 +8,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 |---|---|
 | Status | Draft v0.7 for spec-driven development: gates L1–L15 resolved by lab evidence (L5 withdrawn), implementation may start |
 | Components | Agent NodeAttestor plugin + Server NodeAttestor plugin |
-| Plugin name | `lxd_instance` (both sides) |
+| Plugin name | `lxd_iid` (both sides) |
 | Binaries | `lxd-agent-plugin` (SPIRE Agent), `lxd-server-plugin` (SPIRE Server) |
 | Node definition | One LXD **instance** (container or virtual machine) running a SPIRE agent |
 | Language / SDK | Go, `github.com/spiffe/spire-plugin-sdk`. LXD access through the **LXD Go client SDK** (`github.com/canonical/lxd/client` and `github.com/canonical/lxd/shared/...`), wrapped by `internal/lxd` (FR-S17). These packages are Apache-2.0 (their own `COPYING` files) although the rest of the LXD repository is AGPL-3.0-only; no other LXD package is imported (NFR-03, gate L10). |
@@ -59,10 +59,11 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Oct 23, 2026 (plugins, chunk 7b) | FR-A5: `config_push` is offered only when devLXD answers. FR-A8: the challenge key must be the one of the agent's own nonce and the value lowercase hex. *Testing → Tests*: `config_push` in process. |
 | Oct 23, 2026 (plugins, chunk 8.2) | Lab end-to-end tests E2E-1..4 on LXD 5.21.8 and 6.9: *T14* and *Operational guidance* item 7 state that a copy inheriting the agent's data never attests and is issued the original's workload SVIDs, with the mitigations (evict, remove the data, tmpfs under evaluation). |
 | Oct 23, 2026 (plugins, soak ST-7 on 6.9) | *Operational guidance* item 7: agents attest again at about half their SVID's life (measured), so a short TTL bounds a copy's window; new items 17 (SPIRE does not restart a crashed plugin) and 18 (SPIRE's per-IP attestation rate limit and `attestation_timeout` for many agents behind one address). |
+| Oct 23, 2026 (rename) | The plugin name is `lxd_iid` (was `lxd_instance`), in line with SPIRE's `*_iid` node attestors: the name SPIRE configurations use, the SPIFFE ID path (`spire/agent/lxd_iid/...`), the selector type, the wire protocol's package (`spire.plugin.lxd_iid.v1`, `internal/proto/lxd_iid.proto`) and the Go packages (`internal/plugin/{agent,server}/lxdiid`). Changed before the first release; the recorded evidence was rewritten to the new name (`docs/validation/README.md`). |
 
 ## Overview
 
-This spec defines a matched pair of SPIRE plugins, `lxd_instance`, that attest an LXD instance's identity to a SPIRE Server.
+This spec defines a matched pair of SPIRE plugins, `lxd_iid`, that attest an LXD instance's identity to a SPIRE Server.
 
 - **Agent-side plugin** (`lxd-agent-plugin`): runs inside SPIRE Agent on the instance. Sends a claim and a nonce, then answers the server's co-location challenge.
 - **Server-side plugin** (`lxd-server-plugin`): runs inside SPIRE Server. Resolves the instance through the LXD API, verifies the co-location proof, then emits the agent's SPIFFE ID and selectors.
@@ -95,7 +96,7 @@ Agent and server plugins, wire protocol, LXD API usage (through the LXD Go clien
   LXD host / cluster                          Instance X (container or VM)
   +-------------------------------+           +-----------------------------------+
   | LXD daemon                    |           | SPIRE agent                       |
-  |  - instance X: volatile.*,    |           |  + lxd_instance agent plugin      |
+  |  - instance X: volatile.*,    |           |  + lxd_iid agent plugin           |
   |    config, devices, status    |           |                                   |
   |  - files API, config API      |           |  (a) writes proof file in /run    |
   +---------------^---------------+           |      (default mode)               |
@@ -104,20 +105,20 @@ Agent and server plugins, wire protocol, LXD API usage (through the LXD Go clien
                   | (TLS, mTLS, port 8443)    +-----------------+-----------------+
   +---------------+---------------+                             |
   | SPIRE server                  |<--- attestation stream -----+
-  |  + lxd_instance server plugin |     (SPIRE TLS, trust bundle)
+  |  + lxd_iid server plugin      |     (SPIRE TLS, trust bundle)
   +-------------------------------+
 ```
 
 ### Wire protocol
 
-Protobuf messages carried in the SPIRE `payload`/`challenge`/`response` byte fields. File `internal/proto/lxd_instance.proto` is normative; field numbers MUST NOT change or be reused after the first release.
+Protobuf messages carried in the SPIRE `payload`/`challenge`/`response` byte fields. File `internal/proto/lxd_iid.proto` is normative; field numbers MUST NOT change or be reused after the first release.
 
 ```proto
 syntax = "proto3";
 
-package spire.plugin.lxd_instance.v1;
+package spire.plugin.lxd_iid.v1;
 
-option go_package = "github.com/dihedron/lxd-spiffe/internal/proto;lxdinstancev1";
+option go_package = "github.com/dihedron/lxd-spiffe/internal/proto;lxdiidv1";
 
 enum InstanceType {
   INSTANCE_TYPE_UNSPECIFIED = 0;  // devLXD not available; allowed
@@ -188,11 +189,11 @@ cmd/lxd-agent-plugin/                # agent plugin binary (SPIRE Agent starts i
 cmd/lxd-server-plugin/               # server plugin binary (SPIRE Server starts it without arguments)
 cmd/lxd-probe/                       # validation harness (own specification, lxd-probe.md)
 internal/command/                    # command line commands shared by the binaries (version)
-internal/plugin/agent/lxdinstance/   # agent NodeAttestor (FR-A*)
-internal/plugin/server/lxdinstance/  # server NodeAttestor (FR-S*)
+internal/plugin/agent/lxdiid/   # agent NodeAttestor (FR-A*)
+internal/plugin/server/lxdiid/  # server NodeAttestor (FR-S*)
 internal/plugin/config/              # plugin_data decoding, unknown keys rejected
 internal/plugin/logging/             # log/slog to SPIRE's hclog
-internal/proto/lxd_instance.proto
+internal/proto/lxd_iid.proto
 internal/claim/                      # claim collection
 internal/devlxd/                     # devLXD client on the SDK's ConnectDevLXD; shared by the agent and lxd-probe
 internal/proof/                      # nonce, hash, constant-time compare
@@ -238,7 +239,7 @@ Status: **out of scope for v1.** The server plugin is built on the interfaces `I
 
 Mechanics: the operator runs `spire-server token generate` (one SPIFFE ID, short TTL), places the token in the instance (cloud-init user data, or an LXD `user.*` key, or a file pushed by the orchestrator), and the agent presents it once.
 
-| Aspect | `join_token` | `lxd_instance` (this spec) |
+| Aspect | `join_token` | `lxd_iid` (this spec) |
 |---|---|---|
 | Pre-shared secret | Yes: a bearer token that must be delivered and can leak | None: server-initiated challenge |
 | Visible to | Anyone who can read the delivery channel (instance config is visible to every `can_view` user; cloud-init user data likewise) | Challenge values live seconds; the proof is a hash |
@@ -522,8 +523,8 @@ Recommendations (SEC-16, *Configuration → Operational guidance*):
 | FR-S4 | Obtain all decision data from **one** instance read (including its `ETag`); a later re-read is used only for the post-proof check (FR-S10) and for ETag failure retries. |
 | FR-S5 | **Policy checks** on the data read: `status` is `Running`; project is in the allow-list; `type` matches the agent hint when given; `volatile.uuid` is present and a valid UUID; `security.privileged` is not `true` unless `policy.allow_privileged`; none of `policy.deny_config_keys` is set; for the selected proof mode, mode-specific isolation checks (*Proof of co-location → Mode `file_pull`* point 5, *Proof of co-location → Mode `config_push`*) and, for `file_pull`, the expected-owner rule (*Proof of co-location → Mode `file_pull`* point 6, *Proof of co-location → UID translation*). |
 | FR-S6 | Run the proof-of-co-location challenge (*Trust model → Proof of co-location*) before issuing any identity. |
-| FR-S7 | Build the agent SPIFFE ID from `volatile.uuid` and the configured `server_id`: `spiffe://<trust-domain>/spire/agent/lxd_instance/<server_id>/<volatile.uuid>`, via the Go template `agent_path_template` (default `{{ .PluginName }}/{{ .ServerID }}/{{ .InstanceUUID }}`). |
-| FR-S8 | Return the selectors (*Server-side plugin → Selectors*) of type `lxd_instance` that are enabled by configuration. |
+| FR-S7 | Build the agent SPIFFE ID from `volatile.uuid` and the configured `server_id`: `spiffe://<trust-domain>/spire/agent/lxd_iid/<server_id>/<volatile.uuid>`, via the Go template `agent_path_template` (default `{{ .PluginName }}/{{ .ServerID }}/{{ .InstanceUUID }}`). |
+| FR-S8 | Return the selectors (*Server-side plugin → Selectors*) of type `lxd_iid` that are enabled by configuration. |
 | FR-S9 | `can_reattest` follows `reattest = "allow" \| "deny"` (default `allow`; `deny` is RECOMMENDED where operations accept evicting an agent before a re-attestation, SEC-12). |
 | FR-S10 | **Post-proof re-verification**: re-read the instance; it MUST still be `Running` with the same `volatile.uuid`, the same `volatile.uuid.generation`, project/name and `location`; otherwise fail (SEC-06), with reason `instance_moved` when only `location` differs (T21). Identity keys survive moves and evacuations **[E:L11]**, so `location` is the only field that shows one. |
 | FR-S11 | Support multiple LXD servers/clusters (`servers` map) with independent credentials, pinned certificates, project allow-lists and `server_id`. The key of each entry is its `server_id`, so it is unique by construction: a SPIFFE ID path segment of 1 to 63 letters, digits, `.`, `-` and `_`, neither `.` nor `..`. A cluster is **one** entry with one `url`: any member forwards every call the plugin makes (instance read, files API, conditional `PATCH`, filtered list) to the member holding the instance, with no redirect **[E:L11]**, so the client has no cluster-specific logic. Failover between members is not provided: point `url` at a load balancer or virtual address in front of the members. |
@@ -538,26 +539,26 @@ Recommendations (SEC-16, *Configuration → Operational guidance*):
 
 ### Selectors
 
-Type: `lxd_instance`. SPIRE treats a selector value as an opaque string, colons included, so values are not escaped. A value that is not valid UTF-8, contains a control character or is longer than 256 bytes is left out, with a WARN naming the selector and the instance, and never truncated: two long values cut to the same prefix would give the same selector. `Trust` follows the tiers of *Trust model → What claims can be made reliably*.
+Type: `lxd_iid`. SPIRE treats a selector value as an opaque string, colons included, so values are not escaped. A value that is not valid UTF-8, contains a control character or is longer than 256 bytes is left out, with a WARN naming the selector and the instance, and never truncated: two long values cut to the same prefix would give the same selector. `Trust` follows the tiers of *Trust model → What claims can be made reliably*.
 
 | Selector | Trust | Default | Notes |
 |---|---|---|---|
-| `lxd_instance:server:<server_id>` | High | on | Operator-configured |
-| `lxd_instance:uuid:<volatile.uuid>` | High (R1) | on | |
-| `lxd_instance:project:<name>` | Medium (R2) | on | |
-| `lxd_instance:type:<container\|virtual-machine>` | High (R1) | on | |
-| `lxd_instance:arch:<architecture>` | High (R1) | off | |
-| `lxd_instance:privileged:<true\|false>` | Medium (R2) | on (containers) | Basis of "unprivileged only" registration entries |
-| `lxd_instance:profile:<name>` | Medium (R2) | on | One per applied profile |
-| `lxd_instance:network:<project>/<network>` | Medium (R2) | on | One per NIC device with a managed `network`, with the project that holds the network (below); unmanaged NICs give `nic-parent:<parent>` instead |
-| `lxd_instance:member:<cluster-member>` | High, volatile | off | The member at attestation time; changes on migration and evacuation **[E:L11]** |
-| `lxd_instance:base-image:<fingerprint>` | High, historic (R1) | off | Only if `volatile.base_image` is present **[E:L6]** |
-| `lxd_instance:image:<os>/<release>` | Medium (R2) | off | From `image.os`, `image.release` |
-| `lxd_instance:secureboot:<true\|false>` | Medium (R2) | off | VMs. LXD 6.x replaced `security.secureboot` and `security.csm` with `boot.mode` (API extension `instance_boot_mode`; fixtures: 5.21.8 shows the former, 6.9 the latter): `true` when `boot.mode` is `uefi-secureboot`, or, without `boot.mode`, when `security.secureboot` is true and `security.csm` is not; unset keys default to secure boot on in both versions |
-| `lxd_instance:config:<key>:<value>` | Medium (R2) | off | Only keys in `selectors.config_keys` |
-| `lxd_instance:user:<key>:<value>` | Medium (R2) | off | Only keys in `selectors.user_keys` |
-| `lxd_instance:generation:<uuid>` | High (R1) | off | Pins entries to one "timeline"; changes on restore |
-| `lxd_instance:name:<name>` | Low (R2, renamable) | off | |
+| `lxd_iid:server:<server_id>` | High | on | Operator-configured |
+| `lxd_iid:uuid:<volatile.uuid>` | High (R1) | on | |
+| `lxd_iid:project:<name>` | Medium (R2) | on | |
+| `lxd_iid:type:<container\|virtual-machine>` | High (R1) | on | |
+| `lxd_iid:arch:<architecture>` | High (R1) | off | |
+| `lxd_iid:privileged:<true\|false>` | Medium (R2) | on (containers) | Basis of "unprivileged only" registration entries |
+| `lxd_iid:profile:<name>` | Medium (R2) | on | One per applied profile |
+| `lxd_iid:network:<project>/<network>` | Medium (R2) | on | One per NIC device with a managed `network`, with the project that holds the network (below); unmanaged NICs give `nic-parent:<parent>` instead |
+| `lxd_iid:member:<cluster-member>` | High, volatile | off | The member at attestation time; changes on migration and evacuation **[E:L11]** |
+| `lxd_iid:base-image:<fingerprint>` | High, historic (R1) | off | Only if `volatile.base_image` is present **[E:L6]** |
+| `lxd_iid:image:<os>/<release>` | Medium (R2) | off | From `image.os`, `image.release` |
+| `lxd_iid:secureboot:<true\|false>` | Medium (R2) | off | VMs. LXD 6.x replaced `security.secureboot` and `security.csm` with `boot.mode` (API extension `instance_boot_mode`; fixtures: 5.21.8 shows the former, 6.9 the latter): `true` when `boot.mode` is `uefi-secureboot`, or, without `boot.mode`, when `security.secureboot` is true and `security.csm` is not; unset keys default to secure boot on in both versions |
+| `lxd_iid:config:<key>:<value>` | Medium (R2) | off | Only keys in `selectors.config_keys` |
+| `lxd_iid:user:<key>:<value>` | Medium (R2) | off | Only keys in `selectors.user_keys` |
+| `lxd_iid:generation:<uuid>` | High (R1) | off | Pins entries to one "timeline"; changes on restore |
+| `lxd_iid:name:<name>` | Low (R2, renamable) | off | |
 
 Guest-asserted data (hostname, addresses, OS data) MUST NOT become selectors (SEC-15). Selector sets are configurable with `selectors.enable`, which takes the names of the table (`server`, `uuid`, …, `name`) except `config` and `user`: listing keys in `selectors.config_keys` (full keys, not `user.*`) or `selectors.user_keys` (the part after `user.`) enables those. All values come from `expanded_config` and `expanded_devices`, so values set through profiles count. `privileged` is emitted for containers only, `secureboot` for VMs only, `member` only on a cluster (`location` is `none` on a standalone server). An unset key that has an LXD default gives the default (`privileged:false`; `secureboot` as in its row); an unset key without one (`volatile.base_image`, `image.os` or `image.release`, a listed config or user key) gives no selector.
 
@@ -620,7 +621,7 @@ The fields below are the **only** ones the plugin consumes. They were first draw
 ### Agent (`agent.conf`)
 
 ```hcl
-NodeAttestor "lxd_instance" {
+NodeAttestor "lxd_iid" {
   plugin_cmd      = "/usr/bin/lxd-agent-plugin"
   plugin_checksum = "<sha256>"
   plugin_data {
@@ -641,7 +642,7 @@ Validation at `Configure`: unknown keys rejected; the agent runs as root (FR-A7)
 ### Server (`server.conf`)
 
 ```hcl
-NodeAttestor "lxd_instance" {
+NodeAttestor "lxd_iid" {
   plugin_cmd      = "/usr/bin/lxd-server-plugin"
   plugin_checksum = "<sha256>"
   plugin_data {
@@ -703,7 +704,7 @@ Validation at `Configure`: unknown keys rejected; missing pin/CA (SEC-07); per s
     - **A power-off can empty a member's image cache.** A member powered off while LXD wrote its image-stream cache came back with empty files under `/var/snap/lxd/common/lxd/cache` (5.21.8). Every launch from a remote image on that member then failed, and launches hung once the files were removed, until LXD was restarted there. Remove the empty files and restart LXD on that member (`systemctl restart snap.lxd.daemon`, which is the same as `snap restart lxd` and so stops every instance there: item 13).
 
 16. **Agent timeouts** (FR-A11). `attestation_timeout` (default 30 s) bounds one attestation on the agent: the devLXD reads, the wait for the server's challenge (which includes the server's LXD lookups and its queue under `limits`), and the time the proof stays. `proof_timeout` (default 15 s) is how long the agent keeps the proof file after answering, while the server reads it. Set the agent's `proof_timeout` at least as long as the server's (10 s by default), or the file can vanish while the server still retries, and `attestation_timeout` longer than `proof_timeout` plus a few seconds for the lookups. *Too short:* attestations fail with an error naming the timeout, mostly for VMs whose `lxd-agent` is still starting (item 10) or when the server is busy; the SPIRE Agent retries with backoff. *Too long:* an attestation against a stalled server holds the agent that much longer before its retry, and the proof file stays that long (harmless: it is bound to this attestation's nonces). For VMs whose agent cannot start after `lxd-agent`, with the server's `proof_timeout` at 90 s: `proof_timeout = "90s"` and `attestation_timeout = "2m"` on the agent.
-17. **SPIRE does not restart a crashed plugin.** SPIRE 1.15.5 keeps running when the `lxd-server-plugin` process dies (soak ST-7: killed 3 times, never restarted): every attestation then fails with `connection refused`, agents whose SVID expires cannot attest again, and nothing is logged beyond the errors. Only a restart of SPIRE Server brings the plugin back. Supervising SPIRE Server's own process does not help, since it stays up: alert on `plugin process exited` in its log or on `Nodeattestor(lxd_instance): connection error`.
+17. **SPIRE does not restart a crashed plugin.** SPIRE 1.15.5 keeps running when the `lxd-server-plugin` process dies (soak ST-7: killed 3 times, never restarted): every attestation then fails with `connection refused`, agents whose SVID expires cannot attest again, and nothing is logged beyond the errors. Only a restart of SPIRE Server brings the plugin back. Supervising SPIRE Server's own process does not help, since it stays up: alert on `plugin process exited` in its log or on `Nodeattestor(lxd_iid): connection error`.
 18. **Many agents behind one address.** SPIRE Server rate-limits `AttestAgent` per source IP (`ratelimit { attestation }`, default one a second) before any plugin runs, and queues the excess. Containers behind one LXD bridge share one address, so a daemon restart (item 13) or a SPIRE Server restart lines every agent of the host up in that queue: with 100 agents the last one waits about 100 s. Set the agent's `attestation_timeout` (item 16) longer than the longest wait you expect (the lab soak uses `4m` for 100 agents; with the default 30 s only 41 of 100 attested), or turn `ratelimit.attestation` off, or give the agents separate addresses.
 
 #### Choosing the proof mode (operators)

@@ -129,7 +129,7 @@ agent {
   trust_domain      = "%[6]s"
 }
 plugins {
-  NodeAttestor "lxd_instance" {
+  NodeAttestor "lxd_iid" {
     plugin_cmd      = "/usr/bin/lxd-agent-plugin"
     plugin_checksum = "%[4]s"
     plugin_data {

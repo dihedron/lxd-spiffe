@@ -1,10 +1,10 @@
-// Package lxdinstance implements the server side of the lxd_instance SPIRE
+// Package lxdiid implements the server side of the lxd_iid SPIRE
 // node attestor. It will verify the evidence an LXD instance's SPIRE Agent
 // presents, then return the agent's SPIFFE ID and selectors.
 //
 // It attests with file_pull or config_push, or on the claim alone when
 // proof_mode is none.
-package lxdinstance
+package lxdiid
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Plugin is the server-side lxd_instance node attestor.
+// Plugin is the server-side lxd_iid node attestor.
 type Plugin struct {
 	nodeattestorv1.UnimplementedNodeAttestorServer
 	configv1.UnimplementedConfigServer

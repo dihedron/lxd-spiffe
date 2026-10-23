@@ -1,4 +1,4 @@
-package lxdinstance
+package lxdiid
 
 import (
 	"context"
@@ -104,7 +104,7 @@ func TestConfigureDefaults(t *testing.T) {
 		t.Fatalf("servers: %+v", s.servers)
 	}
 	path, err := s.agentPath("lxd-prod", "fbf73246-b07c-4291-afd9-12ae2be70828")
-	if err != nil || path != "lxd_instance/lxd-prod/fbf73246-b07c-4291-afd9-12ae2be70828" {
+	if err != nil || path != "lxd_iid/lxd-prod/fbf73246-b07c-4291-afd9-12ae2be70828" {
 		t.Errorf("FR-S7 default path %q, %v", path, err)
 	}
 }

@@ -313,7 +313,7 @@ cmd_deploy() {
 
 # cmd_refresh: moves the LXD servers whose revision the settings do not pin
 # to the newest revision of their channels, after confirmation, then offers a
-# new snapshot.
+# new snapshot (LAB_REFRESH_SNAPSHOT=no: never, so that LAB_ASSUME_YES keeps the old one).
 cmd_refresh() {
 	require_state
 	select_scenarios "$(env_get '.scenarios | join(" ")')"
@@ -339,7 +339,7 @@ cmd_refresh() {
 		read -r server current new version <<<"$plan"
 		lxd_refresh "$server" "$new"
 	done
-	if confirm "Replace the lab's snapshot with the refreshed lab?"; then
+	if [[ "$LAB_REFRESH_SNAPSHOT" != no ]] && confirm "Replace the lab's snapshot with the refreshed lab?"; then
 		section "Snapshot"
 		LAB_ASSUME_YES=1 lab_snapshot
 	else

@@ -188,7 +188,7 @@ plugins {
       keys_path = "/var/lib/spire/server/keys.json"
     }
   }
-  NodeAttestor "lxd_instance" {
+  NodeAttestor "lxd_iid" {
     plugin_cmd      = "/usr/bin/lxd-server-plugin"
     plugin_checksum = "$(env_get .plugins.server_checksum)"
     plugin_data {
@@ -324,7 +324,7 @@ $(sed 's/^/      /' <<<"$bundle")
         trust_domain      = "$LAB_TRUST_DOMAIN"
       }
       plugins {
-        NodeAttestor "lxd_instance" {
+        NodeAttestor "lxd_iid" {
           plugin_cmd      = "/usr/bin/lxd-agent-plugin"
           plugin_checksum = "$(env_get .plugins.agent_checksum)"
           plugin_data {

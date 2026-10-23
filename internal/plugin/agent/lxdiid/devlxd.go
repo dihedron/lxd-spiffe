@@ -1,4 +1,4 @@
-package lxdinstance
+package lxdiid
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/dihedron/lxd-spiffe/internal/claim"
 	"github.com/dihedron/lxd-spiffe/internal/devlxd"
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
-	lxdinstancev1 "github.com/dihedron/lxd-spiffe/internal/proto"
+	lxdiidv1 "github.com/dihedron/lxd-spiffe/internal/proto"
 )
 
 // guest is devLXD as the agent reads it (FR-A3).
@@ -35,7 +35,7 @@ func (s *settings) connectDevLXD(ctx context.Context) (*guest, error) {
 }
 
 // instanceType reads GET /1.0's instance_type.
-func (g *guest) instanceType(ctx context.Context) (lxdinstancev1.InstanceType, error) {
+func (g *guest) instanceType(ctx context.Context) (lxdiidv1.InstanceType, error) {
 	resp, err := g.c.Get(ctx, "/1.0")
 	if err != nil {
 		return 0, err
@@ -48,9 +48,9 @@ func (g *guest) instanceType(ctx context.Context) (lxdinstancev1.InstanceType, e
 	}
 	switch info.InstanceType {
 	case "container":
-		return lxdinstancev1.InstanceType_INSTANCE_TYPE_CONTAINER, nil
+		return lxdiidv1.InstanceType_INSTANCE_TYPE_CONTAINER, nil
 	case "virtual-machine":
-		return lxdinstancev1.InstanceType_INSTANCE_TYPE_VIRTUAL_MACHINE, nil
+		return lxdiidv1.InstanceType_INSTANCE_TYPE_VIRTUAL_MACHINE, nil
 	}
 	return 0, fmt.Errorf("devLXD reports instance type %q", info.InstanceType)
 }

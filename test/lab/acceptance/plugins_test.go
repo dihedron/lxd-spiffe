@@ -81,8 +81,8 @@ func TestLAB4Spire(t *testing.T) {
 	if installed != p.Plugins.ServerChecksum || !strings.Contains(l.ssh(t, "spire", "cat /etc/spire/server.conf"), `plugin_checksum = "`+installed+`"`) {
 		t.Errorf("lxd-server-plugin %s, configured checksum or env.json %s differ", installed, p.Plugins.ServerChecksum)
 	}
-	if log := l.ssh(t, "spire", "sudo journalctl -u spire-server --no-pager -b"); !strings.Contains(log, "Plugin loaded") || !strings.Contains(log, "lxd_instance") {
-		t.Errorf("SPIRE Server's log shows no lxd_instance plugin loaded:\n%s", log)
+	if log := l.ssh(t, "spire", "sudo journalctl -u spire-server --no-pager -b"); !strings.Contains(log, "Plugin loaded") || !strings.Contains(log, "lxd_iid") {
+		t.Errorf("SPIRE Server's log shows no lxd_iid plugin loaded:\n%s", log)
 	}
 	s := check(t)
 	for _, server := range append(l.servers(), l.clusters()...) {

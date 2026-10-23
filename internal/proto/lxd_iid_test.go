@@ -1,4 +1,4 @@
-package lxdinstancev1
+package lxdiidv1
 
 import (
 	"fmt"
@@ -38,16 +38,16 @@ func TestProtoMatchesSpec(t *testing.T) {
 	if !ok {
 		t.Fatal("the spec's proto block is not closed")
 	}
-	file, err := os.ReadFile("lxd_instance.proto")
+	file, err := os.ReadFile("lxd_iid.proto")
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, body, ok := strings.Cut(string(file), "\n\nsyntax")
 	if !ok {
-		t.Fatal("lxd_instance.proto has no syntax line after its leading comment")
+		t.Fatal("lxd_iid.proto has no syntax line after its leading comment")
 	}
 	if got := "syntax" + strings.TrimSuffix(body, "\n"); got != block {
-		t.Errorf("lxd_instance.proto differs from the spec's Wire protocol block")
+		t.Errorf("lxd_iid.proto differs from the spec's Wire protocol block")
 	}
 }
 
@@ -90,8 +90,8 @@ func describeMessage(m protoreflect.MessageDescriptor) string {
 }
 
 func TestWireSchemaIsStable(t *testing.T) {
-	fd := File_internal_proto_lxd_instance_proto
-	if got := string(fd.Package()); got != "spire.plugin.lxd_instance.v1" {
+	fd := File_internal_proto_lxd_iid_proto
+	if got := string(fd.Package()); got != "spire.plugin.lxd_iid.v1" {
 		t.Errorf("package %q", got)
 	}
 	var b strings.Builder

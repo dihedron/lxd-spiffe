@@ -1,4 +1,4 @@
-package lxdinstance
+package lxdiid
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	lxdinstancev1 "github.com/dihedron/lxd-spiffe/internal/proto"
+	lxdiidv1 "github.com/dihedron/lxd-spiffe/internal/proto"
 	"github.com/dihedron/lxd-spiffe/test/fakelxd"
 )
 
@@ -17,19 +17,19 @@ const configPush = `proof_mode = "config_push"`
 // as devLXD would show it.
 func pushAgent(name string) *agent {
 	a := newAgent(name)
-	a.modes = []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH}
+	a.modes = []lxdiidv1.ProofMode{lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH}
 	a.answer = echo(nil)
 	return a
 }
 
 // echo answers with the key's value, after before (if any) has run.
-func echo(before func(h *harness, a *agent)) func(h *harness, a *agent, c *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse {
-	return func(h *harness, a *agent, c *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse {
+func echo(before func(h *harness, a *agent)) func(h *harness, a *agent, c *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
+	return func(h *harness, a *agent, c *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
 		config, _ := h.fake.Config("default", a.name)
 		if before != nil {
 			before(h, a)
 		}
-		return &lxdinstancev1.ChallengeResponse{Version: 1, Mode: lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH, Done: true, Echo: []byte(config[c.GetProofKey()])}
+		return &lxdiidv1.ChallengeResponse{Version: 1, Mode: lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH, Done: true, Echo: []byte(config[c.GetProofKey()])}
 	}
 }
 
@@ -81,7 +81,7 @@ func TestModeConfigPush(t *testing.T) {
 			if err != nil {
 				t.Fatalf("attestation failed: %v\n%s", err, h.log)
 			}
-			if attrs.GetSpiffeId() != "spiffe://example.org/spire/agent/lxd_instance/lab/"+uuidA {
+			if attrs.GetSpiffeId() != "spiffe://example.org/spire/agent/lxd_iid/lab/"+uuidA {
 				t.Errorf("SPIFFE ID %q", attrs.GetSpiffeId())
 			}
 			if n := len(h.patches()); n != 2 {
@@ -105,15 +105,15 @@ func TestModeConfigPushRefusals(t *testing.T) {
 		writes int
 	}{
 		"wrong echo": {setup: func(_ *harness, a *agent) {
-			a.answer = func(*harness, *agent, *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse {
-				return &lxdinstancev1.ChallengeResponse{Version: 1, Mode: lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH, Done: true, Echo: []byte(strings.Repeat("0", 64))}
+			a.answer = func(*harness, *agent, *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
+				return &lxdiidv1.ChallengeResponse{Version: 1, Mode: lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH, Done: true, Echo: []byte(strings.Repeat("0", 64))}
 			}
 		}, reason: "proof_mismatch", writes: 2},
 		"answer as file_pull": {setup: func(_ *harness, a *agent) {
-			a.answer = func(*harness, *agent, *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse { return done }
+			a.answer = func(*harness, *agent, *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse { return done }
 		}, reason: "proof_mismatch", writes: 2},
 		"no answer": {top: `proof_timeout = "1s"`, setup: func(_ *harness, a *agent) {
-			a.answer = func(*harness, *agent, *lxdinstancev1.Challenge) *lxdinstancev1.ChallengeResponse { return nil }
+			a.answer = func(*harness, *agent, *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse { return nil }
 		}, reason: "proof_timeout", writes: 2},
 		"security.devlxd off": {setup: func(h *harness, _ *agent) {
 			h.fake.SetInstanceConfig("default", "c1", "security.devlxd", "false")
@@ -230,12 +230,12 @@ func TestFRS13CleanupFailure(t *testing.T) {
 // TestModeNegotiation: auto takes file_pull when offered, then config_push;
 // a fixed mode needs the agent to offer it.
 func TestModeNegotiation(t *testing.T) {
-	both := []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL, lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH}
-	push := []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH}
-	pull := []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL}
+	both := []lxdiidv1.ProofMode{lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL, lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH}
+	push := []lxdiidv1.ProofMode{lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH}
+	pull := []lxdiidv1.ProofMode{lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL}
 	for _, c := range []struct {
 		server  string
-		offered []lxdinstancev1.ProofMode
+		offered []lxdiidv1.ProofMode
 		want    string // the mode used, "" for a refusal
 	}{
 		{"auto", both, "file_pull"},

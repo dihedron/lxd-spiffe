@@ -1,4 +1,4 @@
-// Package selectors builds the lxd_instance selectors of attestor spec
+// Package selectors builds the lxd_iid selectors of attestor spec
 // Server-side plugin → Selectors (FR-S8) from one instance read. Every value
 // comes from LXD (SEC-15): Build takes no claim.
 package selectors

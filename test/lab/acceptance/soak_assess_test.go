@@ -317,7 +317,7 @@ func TestST7Soak(t *testing.T) {
 // TestParseAttest reads the plugin's two attestation lines as SPIRE
 // Server logs them, and ignores any other.
 func TestParseAttest(t *testing.T) {
-	ok, found := parseAttest(`time="2026-10-23T11:41:12Z" level=info msg="attestation succeeded" correlation_id=ad14abe5 duration_ms=119 external=true inflight=1 instance_uuid=6ff15e8c-8847-47d4-9769-939ae825988e outcome=success plugin_name=lxd_instance project=default proof_mode=file_pull proof_ms=39 reason_code=ok selectors="[server:lxd5 type:container]"`)
+	ok, found := parseAttest(`time="2026-10-23T11:41:12Z" level=info msg="attestation succeeded" correlation_id=ad14abe5 duration_ms=119 external=true inflight=1 instance_uuid=6ff15e8c-8847-47d4-9769-939ae825988e outcome=success plugin_name=lxd_iid project=default proof_mode=file_pull proof_ms=39 reason_code=ok selectors="[server:lxd5 type:container]"`)
 	if !found || !ok.OK || ok.UUID != "6ff15e8c-8847-47d4-9769-939ae825988e" || ok.Mode != "file_pull" || ok.DurationMS != 119 || ok.ProofMS != 39 || ok.Time.Second() != 12 {
 		t.Errorf("success: %+v %v", ok, found)
 	}

@@ -1,4 +1,4 @@
-package lxdinstancev1
+package lxdiidv1
 
 import (
 	"errors"

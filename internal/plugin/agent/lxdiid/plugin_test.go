@@ -1,4 +1,4 @@
-package lxdinstance
+package lxdiid
 
 import (
 	"bytes"
@@ -24,7 +24,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/dihedron/lxd-spiffe/internal/proof"
-	lxdinstancev1 "github.com/dihedron/lxd-spiffe/internal/proto"
+	lxdiidv1 "github.com/dihedron/lxd-spiffe/internal/proto"
 	"github.com/dihedron/lxd-spiffe/test/fakelxd"
 )
 
@@ -87,7 +87,7 @@ type session struct {
 	h       *harness
 	stream  nodeattestorv1.NodeAttestor_AidAttestationClient
 	cancel  context.CancelFunc
-	request *lxdinstancev1.AttestRequest
+	request *lxdiidv1.AttestRequest
 }
 
 // start opens the stream and reads the claim.
@@ -103,7 +103,7 @@ func (h *harness) start() *session {
 	if err != nil {
 		h.t.Fatalf("reading the payload: %v", err)
 	}
-	r, err := lxdinstancev1.DecodeAttestRequest(m.GetPayload())
+	r, err := lxdiidv1.DecodeAttestRequest(m.GetPayload())
 	if err != nil {
 		h.t.Fatalf("payload: %v", err)
 	}
@@ -111,18 +111,18 @@ func (h *harness) start() *session {
 }
 
 // challenge is the challenge the server sends for s's request.
-func (s *session) challenge() *lxdinstancev1.Challenge {
+func (s *session) challenge() *lxdiidv1.Challenge {
 	s.h.t.Helper()
 	nonce, _ := proof.NewNonce()
 	p, err := proof.Path(s.h.proofDir, s.request.GetAgentNonce())
 	if err != nil {
 		s.h.t.Fatal(err)
 	}
-	return &lxdinstancev1.Challenge{Version: 1, Mode: lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL, ServerNonce: nonce, ProofPath: p, TimeoutMs: 10000}
+	return &lxdiidv1.Challenge{Version: 1, Mode: lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL, ServerNonce: nonce, ProofPath: p, TimeoutMs: 10000}
 }
 
 // send sends c and returns the agent's answer.
-func (s *session) send(c *lxdinstancev1.Challenge) (*lxdinstancev1.ChallengeResponse, error) {
+func (s *session) send(c *lxdiidv1.Challenge) (*lxdiidv1.ChallengeResponse, error) {
 	data, err := proto.Marshal(c)
 	if err != nil {
 		s.h.t.Fatal(err)
@@ -134,11 +134,11 @@ func (s *session) send(c *lxdinstancev1.Challenge) (*lxdinstancev1.ChallengeResp
 	if err != nil {
 		return nil, err
 	}
-	return lxdinstancev1.DecodeChallengeResponse(m.GetChallengeResponse())
+	return lxdiidv1.DecodeChallengeResponse(m.GetChallengeResponse())
 }
 
 // rightProof is the proof the server expects for c.
-func (s *session) rightProof(c *lxdinstancev1.Challenge) string {
+func (s *session) rightProof(c *lxdiidv1.Challenge) string {
 	sum, err := proof.Compute(s.request.GetClaim().GetProject(), s.request.GetClaim().GetInstanceName(), c.GetServerNonce(), s.request.GetAgentNonce())
 	if err != nil {
 		s.h.t.Fatal(err)
@@ -169,10 +169,10 @@ func TestFRA1FilePull(t *testing.T) {
 	case r.GetVersion() != 1,
 		r.GetClaim().GetProject() != "spire-nodes",
 		r.GetClaim().GetInstanceName() != "c1",
-		r.GetClaim().GetNameSource() != lxdinstancev1.ClaimSource_CLAIM_SOURCE_DEVLXD_METADATA,
+		r.GetClaim().GetNameSource() != lxdiidv1.ClaimSource_CLAIM_SOURCE_DEVLXD_METADATA,
 		r.GetClaim().GetCloudInitInstanceId() != "7c64d5b4-63d7-4bd6-9a5e-0d3b5a1c2f10",
-		r.GetInstanceType() != lxdinstancev1.InstanceType_INSTANCE_TYPE_CONTAINER,
-		!slices.Equal(r.GetProofModes(), []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL, lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH}),
+		r.GetInstanceType() != lxdiidv1.InstanceType_INSTANCE_TYPE_CONTAINER,
+		!slices.Equal(r.GetProofModes(), []lxdiidv1.ProofMode{lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL, lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH}),
 		r.GetPluginVersion() == "":
 		t.Fatalf("payload %v", r)
 	}
@@ -181,7 +181,7 @@ func TestFRA1FilePull(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !resp.GetDone() || resp.GetMode() != lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL || len(resp.GetEcho()) != 0 {
+	if !resp.GetDone() || resp.GetMode() != lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL || len(resp.GetEcho()) != 0 {
 		t.Fatalf("response %v", resp)
 	}
 	got, err := os.ReadFile(c.GetProofPath())
@@ -219,12 +219,12 @@ func TestFRA2ClaimSources(t *testing.T) {
 	cases := map[string]struct {
 		hcl    string
 		name   string
-		source lxdinstancev1.ClaimSource
-		typ    lxdinstancev1.InstanceType
+		source lxdiidv1.ClaimSource
+		typ    lxdiidv1.InstanceType
 	}{
-		"configured name": {fmt.Sprintf("devlxd_socket = %q\nclaim { instance_name = \"n1\" }", dev.Socket), "n1", lxdinstancev1.ClaimSource_CLAIM_SOURCE_CONFIGURED, lxdinstancev1.InstanceType_INSTANCE_TYPE_CONTAINER},
-		"devLXD off":      {`use_devlxd = "off"`, hostname, lxdinstancev1.ClaimSource_CLAIM_SOURCE_HOSTNAME, lxdinstancev1.InstanceType_INSTANCE_TYPE_UNSPECIFIED},
-		"devLXD absent":   {`devlxd_socket = "/nonexistent/sock"`, hostname, lxdinstancev1.ClaimSource_CLAIM_SOURCE_HOSTNAME, lxdinstancev1.InstanceType_INSTANCE_TYPE_UNSPECIFIED},
+		"configured name": {fmt.Sprintf("devlxd_socket = %q\nclaim { instance_name = \"n1\" }", dev.Socket), "n1", lxdiidv1.ClaimSource_CLAIM_SOURCE_CONFIGURED, lxdiidv1.InstanceType_INSTANCE_TYPE_CONTAINER},
+		"devLXD off":      {`use_devlxd = "off"`, hostname, lxdiidv1.ClaimSource_CLAIM_SOURCE_HOSTNAME, lxdiidv1.InstanceType_INSTANCE_TYPE_UNSPECIFIED},
+		"devLXD absent":   {`devlxd_socket = "/nonexistent/sock"`, hostname, lxdiidv1.ClaimSource_CLAIM_SOURCE_HOSTNAME, lxdiidv1.InstanceType_INSTANCE_TYPE_UNSPECIFIED},
 	}
 	for label, c := range cases {
 		t.Run(label, func(t *testing.T) {
@@ -241,7 +241,7 @@ func TestFRA3DevLXDEnvelope(t *testing.T) {
 	dev := fakelxd.NewDevLXD(t)
 	dev.Envelope, dev.InstanceType = true, "virtual-machine"
 	r := newHarness(t, fmt.Sprintf("use_devlxd = \"required\"\ndevlxd_socket = %q", dev.Socket)).start().request
-	if r.GetClaim().GetInstanceName() != "c1" || r.GetInstanceType() != lxdinstancev1.InstanceType_INSTANCE_TYPE_VIRTUAL_MACHINE {
+	if r.GetClaim().GetInstanceName() != "c1" || r.GetInstanceType() != lxdiidv1.InstanceType_INSTANCE_TYPE_VIRTUAL_MACHINE {
 		t.Errorf("claim %v, type %v", r.GetClaim(), r.GetInstanceType())
 	}
 }
@@ -263,20 +263,20 @@ devlxd_socket = "/nonexistent/sock"`)
 // TestFRA6Refusals: a challenge the agent cannot answer ends the
 // attestation with an error and leaves no proof file.
 func TestFRA6Refusals(t *testing.T) {
-	cases := map[string]func(s *session, c *lxdinstancev1.Challenge){
-		"config_push": func(_ *session, c *lxdinstancev1.Challenge) {
-			c.Mode, c.ServerNonce, c.ProofPath, c.ProofKey = lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH, nil, "", "user.spire.challenge.0123456789abcdef"
+	cases := map[string]func(s *session, c *lxdiidv1.Challenge){
+		"config_push": func(_ *session, c *lxdiidv1.Challenge) {
+			c.Mode, c.ServerNonce, c.ProofPath, c.ProofKey = lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH, nil, "", "user.spire.challenge.0123456789abcdef"
 		},
-		"version 2":           func(_ *session, c *lxdinstancev1.Challenge) { c.Version = 2 },
-		"short server nonce":  func(_ *session, c *lxdinstancev1.Challenge) { c.ServerNonce = c.ServerNonce[:31] },
-		"path in another dir": func(s *session, c *lxdinstancev1.Challenge) { c.ProofPath = "/tmp/" + filepath.Base(c.ProofPath) },
-		"path of another nonce": func(s *session, c *lxdinstancev1.Challenge) {
+		"version 2":           func(_ *session, c *lxdiidv1.Challenge) { c.Version = 2 },
+		"short server nonce":  func(_ *session, c *lxdiidv1.Challenge) { c.ServerNonce = c.ServerNonce[:31] },
+		"path in another dir": func(s *session, c *lxdiidv1.Challenge) { c.ProofPath = "/tmp/" + filepath.Base(c.ProofPath) },
+		"path of another nonce": func(s *session, c *lxdiidv1.Challenge) {
 			c.ProofPath = filepath.Join(s.h.proofDir, "proof-0123456789abcdef")
 		},
-		"path with a dot dot": func(s *session, c *lxdinstancev1.Challenge) {
+		"path with a dot dot": func(s *session, c *lxdiidv1.Challenge) {
 			c.ProofPath = filepath.Join(s.h.proofDir, "x") + "/../" + filepath.Base(c.ProofPath)
 		},
-		"proof dir world-readable": func(s *session, c *lxdinstancev1.Challenge) {
+		"proof dir world-readable": func(s *session, c *lxdiidv1.Challenge) {
 			if err := os.MkdirAll(s.h.proofDir, 0o755); err != nil {
 				s.h.t.Fatal(err)
 			}
@@ -390,9 +390,9 @@ func TestAidAttestationNotConfigured(t *testing.T) {
 // TestFRA5ProofModes: config_push is offered only when devLXD answers.
 func TestFRA5ProofModes(t *testing.T) {
 	dev := fakelxd.NewDevLXD(t)
-	pull := []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL}
-	both := append(slices.Clone(pull), lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH)
-	for hcl, want := range map[string][]lxdinstancev1.ProofMode{
+	pull := []lxdiidv1.ProofMode{lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL}
+	both := append(slices.Clone(pull), lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH)
+	for hcl, want := range map[string][]lxdiidv1.ProofMode{
 		fmt.Sprintf("devlxd_socket = %q", dev.Socket): both,
 		`use_devlxd = "off"`:                          pull,
 		`devlxd_socket = "/nonexistent/sock"`:         pull,
@@ -405,13 +405,13 @@ func TestFRA5ProofModes(t *testing.T) {
 
 // pushChallenge is the config_push challenge for s, with the key of s's
 // nonce.
-func (s *session) pushChallenge() *lxdinstancev1.Challenge {
+func (s *session) pushChallenge() *lxdiidv1.Challenge {
 	s.h.t.Helper()
 	key, err := proof.Key(s.request.GetAgentNonce())
 	if err != nil {
 		s.h.t.Fatal(err)
 	}
-	return &lxdinstancev1.Challenge{Version: 1, Mode: lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH, ProofKey: key, TimeoutMs: 10000}
+	return &lxdiidv1.Challenge{Version: 1, Mode: lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH, ProofKey: key, TimeoutMs: 10000}
 }
 
 // TestFRA8ConfigPush: the agent echoes the challenge key's value read
@@ -428,7 +428,7 @@ func TestFRA8ConfigPush(t *testing.T) {
 		if err != nil {
 			t.Fatalf("envelope %v: %v", envelope, err)
 		}
-		if !resp.GetDone() || resp.GetMode() != lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH || string(resp.GetEcho()) != value {
+		if !resp.GetDone() || resp.GetMode() != lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH || string(resp.GetEcho()) != value {
 			t.Errorf("envelope %v: response %v", envelope, resp)
 		}
 		checkSecretsNotLogged(t, s.h.log.String(), s.request.GetAgentNonce(), []byte(value))
@@ -438,16 +438,16 @@ func TestFRA8ConfigPush(t *testing.T) {
 // TestFRA8Refusals: a key not derived from the agent's nonce, a missing
 // key or a value that is not a proof end the attestation with an error.
 func TestFRA8Refusals(t *testing.T) {
-	cases := map[string]func(dev *fakelxd.DevLXD, c *lxdinstancev1.Challenge){
-		"key of another nonce": func(dev *fakelxd.DevLXD, c *lxdinstancev1.Challenge) {
+	cases := map[string]func(dev *fakelxd.DevLXD, c *lxdiidv1.Challenge){
+		"key of another nonce": func(dev *fakelxd.DevLXD, c *lxdiidv1.Challenge) {
 			c.ProofKey = "user.spire.challenge.0123456789abcdef"
 			dev.SetConfig(c.ProofKey, strings.Repeat("ab", 32))
 		},
-		"missing key": func(*fakelxd.DevLXD, *lxdinstancev1.Challenge) {},
-		"short value": func(dev *fakelxd.DevLXD, c *lxdinstancev1.Challenge) {
+		"missing key": func(*fakelxd.DevLXD, *lxdiidv1.Challenge) {},
+		"short value": func(dev *fakelxd.DevLXD, c *lxdiidv1.Challenge) {
 			dev.SetConfig(c.GetProofKey(), strings.Repeat("ab", 31))
 		},
-		"upper-case hex": func(dev *fakelxd.DevLXD, c *lxdinstancev1.Challenge) {
+		"upper-case hex": func(dev *fakelxd.DevLXD, c *lxdiidv1.Challenge) {
 			dev.SetConfig(c.GetProofKey(), strings.Repeat("AB", 32))
 		},
 	}
@@ -474,7 +474,7 @@ func TestFRA3DevLXDServerUnreadable(t *testing.T) {
 	dev.InstanceType = "unknown"
 	s := newHarness(t, fmt.Sprintf("devlxd_socket = %q", dev.Socket)).start()
 	r := s.request
-	if r.GetClaim().GetNameSource() != lxdinstancev1.ClaimSource_CLAIM_SOURCE_DEVLXD_METADATA || !slices.Equal(r.GetProofModes(), []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL}) {
+	if r.GetClaim().GetNameSource() != lxdiidv1.ClaimSource_CLAIM_SOURCE_DEVLXD_METADATA || !slices.Equal(r.GetProofModes(), []lxdiidv1.ProofMode{lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL}) {
 		t.Fatalf("claim %v, modes %v", r.GetClaim(), r.GetProofModes())
 	}
 	if _, err := s.send(s.pushChallenge()); status.Code(err) != codes.Internal || !strings.Contains(err.Error(), "does not offer") {

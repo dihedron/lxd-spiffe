@@ -1,4 +1,4 @@
-package lxdinstance
+package lxdiid
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"github.com/dihedron/lxd-spiffe/internal/agentproof"
 	"github.com/dihedron/lxd-spiffe/internal/claim"
 	"github.com/dihedron/lxd-spiffe/internal/proof"
-	lxdinstancev1 "github.com/dihedron/lxd-spiffe/internal/proto"
+	lxdiidv1 "github.com/dihedron/lxd-spiffe/internal/proto"
 	"github.com/dihedron/lxd-spiffe/pkg/metadata"
 	nodeattestorv1 "github.com/spiffe/spire-plugin-sdk/proto/spire/plugin/agent/nodeattestor/v1"
 	"google.golang.org/grpc/codes"
@@ -44,14 +44,14 @@ func (s *settings) attest(ctx context.Context, stream nodeattestorv1.NodeAttesto
 	if err != nil {
 		return err
 	}
-	source := lxdinstancev1.ClaimSource(c.NameSource) //nolint:gosec // G115: one of claim's four sources
+	source := lxdiidv1.ClaimSource(c.NameSource) //nolint:gosec // G115: one of claim's four sources
 	nonce, err := proof.NewNonce()
 	if err != nil {
 		return err
 	}
-	payload, err := proto.Marshal(&lxdinstancev1.AttestRequest{
-		Version: lxdinstancev1.Version,
-		Claim: &lxdinstancev1.Claim{
+	payload, err := proto.Marshal(&lxdiidv1.AttestRequest{
+		Version: lxdiidv1.Version,
+		Claim: &lxdiidv1.Claim{
 			Project: c.Project, InstanceName: c.InstanceName, CloudInitInstanceId: c.CloudInitInstanceID,
 			NameSource: source,
 		},
@@ -105,11 +105,11 @@ func (s *settings) attest(ctx context.Context, stream nodeattestorv1.NodeAttesto
 // probeDevLXD connects to devLXD and reads the instance type (FR-A3); the
 // guest is nil without a socket, and config_push is offered only when
 // devLXD answers (FR-A5).
-func (s *settings) probeDevLXD(ctx context.Context) (*guest, lxdinstancev1.InstanceType, []lxdinstancev1.ProofMode, error) {
-	modes := []lxdinstancev1.ProofMode{lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL}
+func (s *settings) probeDevLXD(ctx context.Context) (*guest, lxdiidv1.InstanceType, []lxdiidv1.ProofMode, error) {
+	modes := []lxdiidv1.ProofMode{lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL}
 	g, err := s.connectDevLXD(ctx)
 	if err != nil || g == nil {
-		return nil, lxdinstancev1.InstanceType_INSTANCE_TYPE_UNSPECIFIED, modes, err
+		return nil, lxdiidv1.InstanceType_INSTANCE_TYPE_UNSPECIFIED, modes, err
 	}
 	typ, err := g.instanceType(ctx)
 	switch {
@@ -117,26 +117,26 @@ func (s *settings) probeDevLXD(ctx context.Context) (*guest, lxdinstancev1.Insta
 		return nil, 0, nil, fmt.Errorf("reading devLXD: %w", err)
 	case err != nil:
 		slog.Debug("devLXD gave no instance type", "error", err.Error())
-		return g, lxdinstancev1.InstanceType_INSTANCE_TYPE_UNSPECIFIED, modes, nil
+		return g, lxdiidv1.InstanceType_INSTANCE_TYPE_UNSPECIFIED, modes, nil
 	}
-	return g, typ, append(modes, lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH), nil
+	return g, typ, append(modes, lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH), nil
 }
 
 // prove checks the challenge and answers it: file_pull writes the proof
 // file (FR-A7), config_push reads the challenge key through devLXD
 // (FR-A8). remove deletes what the answer left in the guest.
-func (s *settings) prove(ctx context.Context, g *guest, offered []lxdinstancev1.ProofMode, c claim.Claim, nonce, data []byte) (remove func(), answer *lxdinstancev1.ChallengeResponse, err error) {
-	ch, err := lxdinstancev1.DecodeChallenge(data)
+func (s *settings) prove(ctx context.Context, g *guest, offered []lxdiidv1.ProofMode, c claim.Claim, nonce, data []byte) (remove func(), answer *lxdiidv1.ChallengeResponse, err error) {
+	ch, err := lxdiidv1.DecodeChallenge(data)
 	if err != nil {
 		return nil, nil, fmt.Errorf("the challenge: %w", err)
 	}
-	answer = &lxdinstancev1.ChallengeResponse{Version: lxdinstancev1.Version, Mode: ch.GetMode(), Done: true}
+	answer = &lxdiidv1.ChallengeResponse{Version: lxdiidv1.Version, Mode: ch.GetMode(), Done: true}
 	switch {
 	case !slices.Contains(offered, ch.GetMode()):
 		err = fmt.Errorf("the server asks for %v, which this agent does not offer", ch.GetMode())
-	case ch.GetMode() == lxdinstancev1.ProofMode_PROOF_MODE_FILE_PULL:
+	case ch.GetMode() == lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL:
 		remove, err = s.filePull(c, nonce, ch)
-	case ch.GetMode() == lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH:
+	case ch.GetMode() == lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH:
 		remove = func() {
 			// nothing to remove: the server removes its challenge key
 		}
@@ -151,7 +151,7 @@ func (s *settings) prove(ctx context.Context, g *guest, offered []lxdinstancev1.
 }
 
 // filePull writes the proof file of the challenge (FR-A7).
-func (s *settings) filePull(c claim.Claim, nonce []byte, ch *lxdinstancev1.Challenge) (remove func(), err error) {
+func (s *settings) filePull(c claim.Claim, nonce []byte, ch *lxdiidv1.Challenge) (remove func(), err error) {
 	want, err := proof.Path(s.proofDir, nonce)
 	if err != nil {
 		return nil, err
@@ -172,7 +172,7 @@ func (s *settings) filePull(c claim.Claim, nonce []byte, ch *lxdinstancev1.Chall
 // configPush reads the challenge key, which must be the one derived from
 // this agent's nonce (SEC-04), and returns its value, 64 hex characters
 // (FR-A8).
-func configPush(ctx context.Context, g *guest, nonce []byte, ch *lxdinstancev1.Challenge) ([]byte, error) {
+func configPush(ctx context.Context, g *guest, nonce []byte, ch *lxdiidv1.Challenge) ([]byte, error) {
 	want, err := proof.Key(nonce)
 	if err != nil {
 		return nil, err

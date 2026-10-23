@@ -1,4 +1,4 @@
-package lxdinstance
+package lxdiid
 
 import (
 	"cmp"

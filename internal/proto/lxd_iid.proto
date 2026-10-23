@@ -1,13 +1,13 @@
-// The lxd_instance wire protocol: a copy of attestor spec Overview → Wire
+// The lxd_iid wire protocol: a copy of attestor spec Overview → Wire
 // protocol (.specs/lxd-spire-plugins.md), which is normative. Field numbers
 // MUST NOT change or be reused after the first release. Regenerate the Go
 // code with make proto.
 
 syntax = "proto3";
 
-package spire.plugin.lxd_instance.v1;
+package spire.plugin.lxd_iid.v1;
 
-option go_package = "github.com/dihedron/lxd-spiffe/internal/proto;lxdinstancev1";
+option go_package = "github.com/dihedron/lxd-spiffe/internal/proto;lxdiidv1";
 
 enum InstanceType {
   INSTANCE_TYPE_UNSPECIFIED = 0;  // devLXD not available; allowed

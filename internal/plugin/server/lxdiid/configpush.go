@@ -1,4 +1,4 @@
-package lxdinstance
+package lxdiid
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
 	"github.com/dihedron/lxd-spiffe/internal/policy"
 	proofpkg "github.com/dihedron/lxd-spiffe/internal/proof"
-	lxdinstancev1 "github.com/dihedron/lxd-spiffe/internal/proto"
+	lxdiidv1 "github.com/dihedron/lxd-spiffe/internal/proto"
 )
 
 const (
@@ -69,7 +69,7 @@ func (c *challenges) running(instance string) map[string]bool {
 // under If-Match, stale challenge keys removed by the same write; the
 // agent's echo must equal the value; the key is removed afterwards
 // whatever the outcome, once the write succeeded.
-func (a *attestation) configPush(ctx context.Context, m *match, r *lxdinstancev1.AttestRequest) error {
+func (a *attestation) configPush(ctx context.Context, m *match, r *lxdiidv1.AttestRequest) error {
 	serverNonce, err := proofpkg.NewNonce()
 	if err != nil {
 		return fail(reasonPolicyDenied, "%v", err)
@@ -103,9 +103,9 @@ func (a *attestation) configPush(ctx context.Context, m *match, r *lxdinstancev1
 	}
 	a.log = a.log.With("config_push_stale_keys_removed_total", stale)
 	defer a.cleanup(ctx, m, key)
-	challenge := &lxdinstancev1.Challenge{
-		Version:   lxdinstancev1.Version,
-		Mode:      lxdinstancev1.ProofMode_PROOF_MODE_CONFIG_PUSH,
+	challenge := &lxdiidv1.Challenge{
+		Version:   lxdiidv1.Version,
+		Mode:      lxdiidv1.ProofMode_PROOF_MODE_CONFIG_PUSH,
 		ProofKey:  key,
 		TimeoutMs: uint32(time.Until(deadline).Milliseconds()), //nolint:gosec // proof_timeout is at most 2 minutes
 	}

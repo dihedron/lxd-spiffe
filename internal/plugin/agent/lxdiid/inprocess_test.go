@@ -1,4 +1,4 @@
-package lxdinstance
+package lxdiid
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
-	server "github.com/dihedron/lxd-spiffe/internal/plugin/server/lxdinstance"
+	server "github.com/dihedron/lxd-spiffe/internal/plugin/server/lxdiid"
 	"github.com/dihedron/lxd-spiffe/test/fakelxd"
 )
 
@@ -185,7 +185,7 @@ func TestInProcessFilePull(t *testing.T) {
 			if err != nil {
 				t.Fatalf("attestation failed: %v\n%s", err, l.log)
 			}
-			if want := "spiffe://example.org/spire/agent/lxd_instance/lab/" + uuidOf(1); attrs.GetSpiffeId() != want {
+			if want := "spiffe://example.org/spire/agent/lxd_iid/lab/" + uuidOf(1); attrs.GetSpiffeId() != want {
 				t.Errorf("SPIFFE ID %q, want %q", attrs.GetSpiffeId(), want)
 			}
 			for _, sel := range []string{"server:lab", "uuid:" + uuidOf(1), "project:default", "type:" + typ} {
@@ -270,7 +270,7 @@ func TestInProcessConcurrent(t *testing.T) {
 	}
 	wg.Wait()
 	for i := range n {
-		if want := "spiffe://example.org/spire/agent/lxd_instance/lab/" + uuidOf(i); errs[i] != nil || ids[i] != want {
+		if want := "spiffe://example.org/spire/agent/lxd_iid/lab/" + uuidOf(i); errs[i] != nil || ids[i] != want {
 			t.Errorf("agent %d: %q, %v; want %q", i, ids[i], errs[i], want)
 		}
 	}
@@ -314,7 +314,7 @@ func TestInProcessConfigPush(t *testing.T) {
 			if err != nil {
 				t.Fatalf("attestation failed: %v\n%s", err, l.log)
 			}
-			if want := "spiffe://example.org/spire/agent/lxd_instance/lab/" + uuidOf(1); attrs.GetSpiffeId() != want {
+			if want := "spiffe://example.org/spire/agent/lxd_iid/lab/" + uuidOf(1); attrs.GetSpiffeId() != want {
 				t.Errorf("SPIFFE ID %q, want %q", attrs.GetSpiffeId(), want)
 			}
 			if !strings.Contains(l.log.String(), "config_push_stale_keys_removed_total=1") {
