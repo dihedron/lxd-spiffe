@@ -22,9 +22,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -70,6 +74,14 @@ type Server struct {
 	// fileFailures answers the files API of an instance with an error a
 	// number of times first, as a VM whose lxd-agent is not up yet.
 	fileFailures map[string]*fileFailure // key: project/name
+	// mounts serve a guest directory of an instance from a host directory.
+	mounts map[string]mount // key: project/name
+}
+
+// mount is a guest directory served from a host directory.
+type mount struct {
+	guestDir, hostDir string
+	uidShift          int
 }
 
 type fileFailure struct {
@@ -186,6 +198,58 @@ func (s *Server) AddFile(project, name, path string, f File) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.files[project+"/"+name+"/"+path] = &f
+}
+
+// Mount serves the files API of the instance under guestDir from hostDir,
+// read at each request, so that a real agent's files can be read through
+// the fake. Owners are reported as the host uid minus uidShift: inside the
+// instance, as the files API reports them (gate L1).
+func (s *Server) Mount(project, name, guestDir, hostDir string, uidShift int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.mounts == nil {
+		s.mounts = map[string]mount{}
+	}
+	s.mounts[project+"/"+name] = mount{guestDir: guestDir, hostDir: hostDir, uidShift: uidShift}
+}
+
+// mounted returns the file at guestPath under the instance's mount; ok is
+// false when the path is not under it.
+func (s *Server) mounted(project, name, guestPath string) (f *File, ok bool) {
+	m, found := s.mounts[project+"/"+name]
+	if !found || path.Clean(guestPath) != guestPath {
+		return nil, false
+	}
+	rel, err := filepath.Rel(m.guestDir, guestPath)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, "../") {
+		return nil, false
+	}
+	host := filepath.Join(m.hostDir, rel)
+	fi, err := os.Lstat(host)
+	if err != nil {
+		return nil, true
+	}
+	f = &File{Mode: int(fi.Mode().Perm()), Type: "file"}
+	if st, ok := fi.Sys().(*syscall.Stat_t); ok {
+		f.UID, f.GID = int(st.Uid)-m.uidShift, int(st.Gid)
+	}
+	switch {
+	case fi.Mode()&os.ModeSymlink != 0:
+		f.Type = "symlink"
+	case fi.IsDir():
+		f.Type, f.Entries = "directory", []string{}
+		entries, _ := os.ReadDir(host)
+		for _, e := range entries {
+			f.Entries = append(f.Entries, e.Name())
+		}
+	default:
+		data, err := os.ReadFile(host) //nolint:gosec // G304: a test's mounted directory
+		if err != nil {
+			return nil, true
+		}
+		f.Content = string(data)
+	}
+	return f, true
 }
 
 // Deny answers 403 to every request whose path starts with prefix.
@@ -577,8 +641,11 @@ func (s *Server) file(w http.ResponseWriter, r *http.Request, project, name stri
 		writeError(w, f.status, f.msg)
 		return
 	}
-	f, ok := s.files[project+"/"+name+"/"+r.URL.Query().Get("path")]
+	f, ok := s.mounted(project, name, r.URL.Query().Get("path"))
 	if !ok {
+		f, ok = s.files[project+"/"+name+"/"+r.URL.Query().Get("path")]
+	}
+	if !ok || f == nil {
 		writeError(w, http.StatusNotFound, "Not found")
 		return
 	}
