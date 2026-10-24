@@ -1,0 +1,26 @@
+{
+  "status": 500,
+  "header": {
+    "Content-Length": [
+      "142"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sat, 24 Oct 2026 07:28:39 GMT"
+    ],
+    "X-Content-Type-Options": [
+      "nosniff"
+    ]
+  },
+  "body": {
+    "error": "LXD VM agent is not currently running",
+    "error_code": 500,
+    "metadata": null,
+    "operation": "",
+    "status": "",
+    "status_code": 0,
+    "type": "error"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "status": 202,
+  "header": {
+    "Content-Length": [
+      "671"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sat, 24 Oct 2026 07:23:30 GMT"
+    ],
+    "Location": [
+      "/1.0/operations/01a16ccb-1155-7e98-b3ea-6c9148a125aa"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "child_count": 0,
+      "class": "task",
+      "created_at": "2026-10-24T07:23:30.005957424Z",
+      "description": "Updating instance",
+      "err": "",
+      "err_code": 0,
+      "id": "01a16ccb-1155-7e98-b3ea-6c9148a125aa",
+      "location": "none",
+      "may_cancel": true,
+      "metadata": {
+        "entity_url": "/1.0/instances/c-unpriv"
+      },
+      "requestor": {
+        "address": "10.251.0.1:46514",
+        "protocol": "tls",
+        "username": "117802962b412158d05031b49ad1c82e11d6b94e33388915611ecc09f785ea16"
+      },
+      "resources": {},
+      "status": "Running",
+      "status_code": 103,
+      "updated_at": "2026-10-24T07:23:30.005957424Z"
+    },
+    "operation": "/1.0/operations/01a16ccb-1155-7e98-b3ea-6c9148a125aa",
+    "status": "Operation created",
+    "status_code": 100,
+    "type": "async"
+  }
+}

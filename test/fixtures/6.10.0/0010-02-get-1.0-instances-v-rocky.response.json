@@ -1,0 +1,98 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sat, 24 Oct 2026 07:19:19 GMT"
+    ],
+    "Etag": [
+      "\"04d751320a5be5e4d8835ca5e8a40ebfec939893ead89049c0e0acbf31d79eae\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "RockyLinux 9 (cloud)",
+        "image.os": "RockyLinux",
+        "image.release": "9",
+        "image.serial": "20261016_0805",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "a7060da3d7167e3c0bc06e8fb3c30a99dc4629f0949770fd67b84ade292129bf",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "71ede502-e8be-4881-bf94-d1e6356d0c73",
+        "volatile.cpu.maxcpus": "4",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tap70bac0d6",
+        "volatile.eth0.hwaddr": "mac-8",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "e2b7f96d-f955-4f36-9c51-7177ee415b97",
+        "volatile.uuid.generation": "e2b7f96d-f955-4f36-9c51-7177ee415b97",
+        "volatile.vsock_id": "1989480900"
+      },
+      "created_at": "2026-10-17T20:07:01.374227529Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "RockyLinux 9 (cloud)",
+        "image.os": "RockyLinux",
+        "image.release": "9",
+        "image.serial": "20261016_0805",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "a7060da3d7167e3c0bc06e8fb3c30a99dc4629f0949770fd67b84ade292129bf",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "71ede502-e8be-4881-bf94-d1e6356d0c73",
+        "volatile.cpu.maxcpus": "4",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tap70bac0d6",
+        "volatile.eth0.hwaddr": "mac-8",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "e2b7f96d-f955-4f36-9c51-7177ee415b97",
+        "volatile.uuid.generation": "e2b7f96d-f955-4f36-9c51-7177ee415b97",
+        "volatile.vsock_id": "1989480900"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-24T06:31:01.939807804Z",
+      "location": "none",
+      "name": "v-rocky",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "virtual-machine"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

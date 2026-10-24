@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "path": "/",
+  "query": "",
+  "header": {
+    "User-Agent": [
+      "lxd-spiffe/34ec48a-dirty"
+    ]
+  }
+}

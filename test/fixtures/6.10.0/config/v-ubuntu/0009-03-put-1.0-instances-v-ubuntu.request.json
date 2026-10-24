@@ -1,0 +1,51 @@
+{
+  "method": "PUT",
+  "path": "/1.0/instances/v-ubuntu",
+  "query": "project=default",
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "If-Match": [
+      "\"f33f2407abbe538d1de9eeced6f7e41c16c3a14931becea30e50b6cca2be0999\""
+    ],
+    "User-Agent": [
+      "lxd-spiffe/34ec48a-dirty"
+    ]
+  },
+  "body": {
+    "architecture": "x86_64",
+    "config": {
+      "cloud-init.user-data": "[redacted]",
+      "image.architecture": "amd64",
+      "image.description": "ubuntu 24.04 LTS (release)",
+      "image.label": "release",
+      "image.os": "ubuntu",
+      "image.release": "noble",
+      "image.serial": "20260926",
+      "image.type": "disk1.img",
+      "image.version": "24.04",
+      "limits.cpu": "1",
+      "limits.memory": "1GiB",
+      "volatile.base_image": "d4ff18198fb2ed8c88d408421e610c143cf1f5c1c0178e57178fb586880c3e56",
+      "volatile.bus.mode": "persistent",
+      "volatile.cloud-init.instance-id": "17bf3610-af64-4d01-951c-ac3d06879428",
+      "volatile.cpu.maxcpus": "4",
+      "volatile.eth0.bus": "4",
+      "volatile.eth0.host_name": "tap4b7e5fa9",
+      "volatile.eth0.hwaddr": "mac-1",
+      "volatile.last_state.power": "RUNNING",
+      "volatile.last_state.ready": "false",
+      "volatile.uuid": "416e3437-49d3-4f05-83af-41e92bd5d39e",
+      "volatile.uuid.generation": "416e3437-49d3-4f05-83af-41e92bd5d39e",
+      "volatile.vsock_id": "1363019023"
+    },
+    "description": "",
+    "devices": {},
+    "ephemeral": false,
+    "profiles": [
+      "default"
+    ],
+    "stateful": false
+  }
+}
