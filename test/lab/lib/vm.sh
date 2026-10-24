@@ -243,7 +243,7 @@ resize_vm() {
 		done
 	fi
 	vsh start "$domain" >/dev/null
-	LAB_BASELINE_CHANGED=1
+	LAB_BASELINE_CHANGED+=" $(vm_server "$vm")"
 }
 
 # wait_for_vm VM: waits until VM answers over SSH and cloud-init is done.
@@ -264,17 +264,25 @@ wait_for_vm() {
 
 # --- Teardown -----------------------------------------------------------------
 
+# destroy_vm VM: removes VM with its disks and snapshots, if it exists, and
+# its host key: a VM built again at the address has a new one.
+destroy_vm() {
+	local domain
+	domain="$(vm_domain "$1")"
+	[[ ! -f "$LAB_STATE_DIR/known_hosts" ]] || ssh-keygen -q -R "$(vm_ip "$1")" -f "$LAB_STATE_DIR/known_hosts" >/dev/null 2>&1 || true
+	vsh dominfo "$domain" >/dev/null 2>&1 || return 0
+	info "destroying VM $1"
+	vsh destroy "$domain" >/dev/null 2>&1 || true
+	vsh undefine "$domain" --remove-all-storage --snapshots-metadata >/dev/null 2>&1 ||
+		vsh undefine "$domain" --snapshots-metadata >/dev/null
+}
+
 # destroy_all: removes every VM the lab can have, whatever the scenario, then
 # the pool and the network.
 destroy_all() {
-	local vm domain volume
+	local vm volume
 	for vm in "${LAB_ALL_VMS[@]}"; do
-		domain="$(vm_domain "$vm")"
-		vsh dominfo "$domain" >/dev/null 2>&1 || continue
-		info "destroying VM $vm"
-		vsh destroy "$domain" >/dev/null 2>&1 || true
-		vsh undefine "$domain" --remove-all-storage --snapshots-metadata >/dev/null 2>&1 ||
-			vsh undefine "$domain" --snapshots-metadata >/dev/null
+		destroy_vm "$vm"
 	done
 	if vsh pool-info "$LAB_POOL" >/dev/null 2>&1; then
 		info "destroying storage pool $LAB_POOL"
