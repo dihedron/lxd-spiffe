@@ -1,0 +1,37 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "311"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sat, 24 Oct 2026 07:29:08 GMT"
+    ],
+    "Etag": [
+      "\"8477b2e06deee7df520177b9d7238bdb100793e151850b840c1c466ba4b5711e\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "config": {
+        "features.images": "true",
+        "features.networks": "true",
+        "features.profiles": "true",
+        "features.storage.buckets": "true",
+        "features.storage.volumes": "true"
+      },
+      "description": "",
+      "name": "l16-on",
+      "used_by": []
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

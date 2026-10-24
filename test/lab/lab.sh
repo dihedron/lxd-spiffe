@@ -5,8 +5,8 @@
 set -euo pipefail
 
 LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# set when up changes the baseline (instances added, VMs resized): up then takes a new snapshot
-LAB_BASELINE_CHANGED=0
+# the servers (clusters, spire) whose baseline up changed (instances added, VMs resized), space separated: up then snapshots them anew
+LAB_BASELINE_CHANGED=""
 REPO_DIR="$(cd "$LAB_DIR/../.." && pwd)"
 
 # shellcheck source=lib/common.sh
@@ -41,13 +41,17 @@ commands:
                             install the missing software after confirmation
                             (--no-install: only report)
   up                        build the lab (or complete a partial one)
-  down                      destroy the lab: VMs, network, storage, state
+  down [--only <server>]    destroy the lab: VMs, network, storage, state
+                            (--only lxd5|lxd6|c5|c6: that server's VMs and
+                            snapshots alone; up builds it again)
   status                    show the VMs, the LXD servers and the instances
   ssh <vm> [command]        open a shell, or run a command, on a VM
   logs <vm> [unit]          show a VM's cloud-init log, or a unit's journal
-  snapshot                  save the lab's disks as its baseline (the VMs are
+  snapshot [--only <name>]  save the lab's disks as its baseline (the VMs are
                             shut down for it)
-  reset                     return the lab to its baseline (cold boot)
+  reset [--only <name>]     return the lab to its baseline (cold boot);
+                            --only lxd5|lxd6|c5|c6|spire: that server's (a
+                            cluster's three members) or spire's VMs alone
   stop                      stop the instances and shut every VM down
                             cleanly; disks, snapshot and state stay
   start                     boot the VMs as they were left (no revert, no
@@ -69,8 +73,11 @@ commands:
                             probe --as bearer-short (L13)
   pull <server> <instance> [--project <project>] [--user <uid>] <run_id>
                             copy a guest run into the evidence directory
-  refresh                   move the LXD servers to their channels' newest
-                            revision, then offer a new snapshot
+  refresh [--only <server>] move the LXD servers to their channels' newest
+                            revision, and the chosen clusters to their
+                            siblings', then offer a new snapshot (--only
+                            lxd5|lxd6|c5|c6: that server alone; a cluster
+                            to its sibling's recorded revision)
   guest-up <server> <name> [--vm] [--privileged] [--no-files] [--target <member>]
            [--project <project>] [--claim-name <name>]
                             (plugins) launch an Ubuntu guest with SPIRE Agent
@@ -202,14 +209,23 @@ cmd_up() {
 		start_instances "$server"
 		wait_instances "$server"
 		ensure_selinux "$server"
+		ensure_tar "$server"
 		baseline_grants "$server"
 	done
 
-	# a snapshot on the first success, and a new one when this up added
-	# baseline instances or resized VMs: reset would otherwise undo them
-	if ! all_snapshots_exist || ((LAB_BASELINE_CHANGED)); then
+	# a snapshot on the first success, then a new one of each server whose
+	# baseline this up changed (instances added, VMs resized: reset would
+	# otherwise undo them) or that has none (rebuilt after down --only); the
+	# others' snapshots stay
+	if ! any_snapshot_exists; then
 		section "Snapshot"
 		LAB_ASSUME_YES=1 lab_snapshot
+	else
+		for server in $(lab_servers) $(scenario_selected plugins && echo spire); do
+			[[ " $LAB_BASELINE_CHANGED " == *" $server "* ]] || ! LAB_ONLY="$server" all_snapshots_exist || continue
+			section "Snapshot of $server"
+			LAB_ONLY="$server" LAB_ASSUME_YES=1 lab_snapshot
+		done
 	fi
 
 	cmd_deploy
@@ -233,6 +249,10 @@ shutdown_unchosen_clusters() {
 }
 
 cmd_down() {
+	if [[ -n "$LAB_ONLY" ]]; then
+		down_only
+		return
+	fi
 	if ! confirm "Destroy the lab (its VMs, network $LAB_NETWORK, storage pool $LAB_POOL and $LAB_STATE_DIR)?"; then
 		info "nothing destroyed"
 		return 1
@@ -240,6 +260,25 @@ cmd_down() {
 	destroy_all
 	rm -rf "$LAB_STATE_DIR"
 	info "the lab is gone (the download cache in $LAB_CACHE_DIR stays)"
+}
+
+# down_only: destroys one LXD server's VMs (a cluster's members) with their
+# snapshots and forgets the server in env.json; the rest of the lab stays,
+# and up builds the server again.
+down_only() {
+	local vm
+	[[ "$LAB_ONLY" != spire ]] || die "lab.sh down --only takes lxd5, lxd6, c5 or c6"
+	if ! confirm "Destroy $LAB_ONLY (VMs $(server_vms "$LAB_ONLY" | paste -sd' '), with their disks and snapshots)?"; then
+		info "nothing destroyed"
+		return 1
+	fi
+	for vm in $(server_vms "$LAB_ONLY"); do
+		destroy_vm "$vm"
+		env_del ".vms[\"$vm\"]"
+	done
+	env_del ".servers[\"$LAB_ONLY\"]"
+	env_del ".snapshot.only[\"$LAB_ONLY\"]"
+	info "$LAB_ONLY is gone: lab.sh up builds it again"
 }
 
 cmd_status() {
@@ -267,6 +306,9 @@ cmd_status() {
 	section "Snapshot"
 	if all_snapshots_exist; then
 		info "taken $(env_get '.snapshot.taken')"
+		# shellcheck disable=SC2016 # a jq program
+		env_get '.snapshot.only // {} | to_entries[] | "\(.key): taken \(.value)"' |
+			while IFS= read -r line; do info "$line"; done
 	else
 		info "none (lab.sh snapshot)"
 	fi
@@ -317,11 +359,27 @@ cmd_deploy() {
 cmd_refresh() {
 	require_state
 	select_scenarios "$(env_get '.scenarios | join(" ")')"
+	select_only "$1"
+	[[ "$LAB_ONLY" != spire ]] || die "lab.sh refresh --only takes lxd5, lxd6, c5 or c6"
 	section "Refresh"
-	local server plans=() plan current new version
+	local server sibling plans=() plan current new version
+	# the revision and version of each standalone server after this refresh,
+	# which its cluster follows
+	local -A revisions=() versions=()
 	for server in $(lab_servers); do
-		plan="$(lxd_refresh_plan "$server")"
+		if is_cluster "$server"; then
+			sibling="$(cluster_sibling "$server")"
+			plan="$(lxd_refresh_plan "$server" \
+				"${revisions[$sibling]:-$(env_get ".servers[\"$sibling\"].revision")}" \
+				"${versions[$sibling]:-$(env_get ".servers[\"$sibling\"].version")}")"
+		else
+			plan="$(lxd_refresh_plan "$server")"
+		fi
 		[[ -z "$plan" ]] || plans+=("$plan")
+		if [[ -n "$plan" ]]; then
+			read -r _ _ new version <<<"$plan"
+			revisions[$server]="$new" versions[$server]="$version"
+		fi
 	done
 	if ((${#plans[@]} == 0)); then
 		info "nothing to refresh"
@@ -339,7 +397,7 @@ cmd_refresh() {
 		read -r server current new version <<<"$plan"
 		lxd_refresh "$server" "$new"
 	done
-	if [[ "$LAB_REFRESH_SNAPSHOT" != no ]] && confirm "Replace the lab's snapshot with the refreshed lab?"; then
+	if [[ "${LAB_REFRESH_SNAPSHOT:-}" != no ]] && confirm "Replace the snapshot of ${LAB_ONLY:-the whole lab} with the refreshed state?"; then
 		section "Snapshot"
 		LAB_ASSUME_YES=1 lab_snapshot
 	else
@@ -393,9 +451,18 @@ main() {
 	load_ssh
 
 	# --scenario applies to the commands that build or use a scenario
-	local scenario="" args=()
+	local scenario="" only="" args=()
 	while (($#)); do
 		case "$1" in
+		--only)
+			[[ $# -ge 2 ]] || die "--only needs a value: lxd5, lxd6, c5, c6 or spire"
+			only="$2"
+			shift 2
+			;;
+		--only=*)
+			only="${1#--only=}"
+			shift
+			;;
 		--scenario)
 			[[ $# -ge 2 ]] || die "--scenario needs a value: probe, plugins or all"
 			scenario="$2"
@@ -419,11 +486,27 @@ main() {
 	preflight | up | deploy | reset | start | test) select_scenarios "$scenario" ;;
 	*) [[ -z "$scenario" ]] || die "lab.sh $command does not take --scenario" ;;
 	esac
+	# --only scopes the commands that act on the VMs' disks
+	case "$command" in
+	down | snapshot | reset | refresh) ;;
+	*) [[ -z "$only" ]] || die "lab.sh $command does not take --only" ;;
+	esac
 
 	case "$command" in
 	preflight) run_preflight "${args[@]}" ;;
 	up) cmd_up "${args[@]}" ;;
-	down) cmd_down ;;
+	down)
+		# any built server, chosen by LAB_CLUSTER or not
+		if [[ -n "$only" ]]; then
+			require_state
+			case "$only" in
+			lxd5 | lxd6 | c5 | c6) ;;
+			*) die "lab.sh down --only takes lxd5, lxd6, c5 or c6, not \"$only\"" ;;
+			esac
+			LAB_ONLY="$only"
+		fi
+		cmd_down
+		;;
 	status) cmd_status ;;
 	ssh) cmd_ssh "${args[@]}" ;;
 	logs) cmd_logs "${args[@]}" ;;
@@ -431,6 +514,7 @@ main() {
 		# the whole lab: every scenario built so far
 		require_state
 		select_scenarios "$(env_get '.scenarios | join(" ")')"
+		select_only "$only"
 		"lab_$command"
 		;;
 	deploy) cmd_deploy ;;
@@ -442,7 +526,7 @@ main() {
 	guest-down) cmd_guest_down "${args[@]}" ;;
 	guest-copy) cmd_guest_copy "${args[@]}" ;;
 	spire-mode) cmd_spire_mode "${args[@]}" ;;
-	refresh) cmd_refresh ;;
+	refresh) cmd_refresh "$only" ;;
 	test) cmd_test "${args[@]}" ;;
 	help | -h | --help) usage ;;
 	*)

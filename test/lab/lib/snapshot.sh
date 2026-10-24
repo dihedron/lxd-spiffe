@@ -7,7 +7,9 @@
 # shutdown, but may not start again a VM that powers off quickly (seen with
 # LXD 5.21): the lab stops and starts its instances itself.
 
-readonly LAB_SNAPSHOT=lab-base
+# The libvirt snapshot every VM is returned to; a second one (LAB_SNAPSHOT in
+# lab.local.env, e.g. lab-base-6.10) lets two LXD revisions sit side by side.
+: "${LAB_SNAPSHOT:=lab-base}"
 
 snapshot_exists() {
 	vsh snapshot-info "$(vm_domain "$1")" "$LAB_SNAPSHOT" >/dev/null 2>&1
@@ -18,6 +20,20 @@ all_snapshots_exist() {
 	for vm in $(lab_vms); do
 		snapshot_exists "$vm" || return 1
 	done
+}
+
+any_snapshot_exists() {
+	local vm
+	for vm in $(lab_vms); do
+		snapshot_exists "$vm" && return 0
+	done
+	return 1
+}
+
+# snapshot_taken: when the snapshot of LAB_ONLY, or of the whole lab, was
+# taken.
+snapshot_taken() {
+	env_get "(.snapshot.only[\"$LAB_ONLY\"] // .snapshot.taken) // \"at an unknown time\""
 }
 
 # vm_shutdown VM: shuts VM down cleanly, never by force.
@@ -54,7 +70,7 @@ lab_snapshot() {
 	for vm in $(lab_vms); do
 		[[ "$(vm_state "$vm")" == running ]] || die "$vm is not running: run lab.sh up first"
 	done
-	if all_snapshots_exist && ! confirm "Replace the lab's snapshot, taken $(env_get '.snapshot.taken // "at an unknown time"')?"; then
+	if all_snapshots_exist && ! confirm "Replace the snapshot of ${LAB_ONLY:-the whole lab}, taken $(snapshot_taken)?"; then
 		info "snapshot kept"
 		return 1
 	fi
@@ -72,7 +88,12 @@ lab_snapshot() {
 		vsh snapshot-create-as "$(vm_domain "$vm")" "$LAB_SNAPSHOT" \
 			--description "lxd-spiffe lab baseline" --atomic >/dev/null
 	done
-	env_set .snapshot.taken "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+	if [[ -n "$LAB_ONLY" ]]; then
+		env_set ".snapshot.only[\"$LAB_ONLY\"]" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+	else
+		env_set .snapshot.taken "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+		env_del .snapshot.only
+	fi
 	for vm in $(lab_vms); do
 		vsh start "$(vm_domain "$vm")" >/dev/null
 	done
@@ -83,7 +104,7 @@ lab_snapshot() {
 # lab_reset: powers every VM off, reverts its disks to the snapshot and boots
 # it, then checks the servers and the instances.
 lab_reset() {
-	all_snapshots_exist || die "no snapshot of the whole lab: run lab.sh up (or lab.sh snapshot)"
+	all_snapshots_exist || die "no snapshot of ${LAB_ONLY:-the whole lab}: run lab.sh up (or lab.sh snapshot)"
 	local vm
 	for vm in $(lab_vms); do
 		info "reverting $vm"
@@ -93,7 +114,7 @@ lab_reset() {
 		[[ "$(vm_state "$vm")" == running ]] || vsh start "$(vm_domain "$vm")" >/dev/null
 	done
 	lab_ready
-	info "the lab is back to the snapshot taken $(env_get '.snapshot.taken')"
+	info "${LAB_ONLY:-the lab} is back to the snapshot taken $(snapshot_taken)"
 }
 
 # server_vms SERVER: the VMs a server runs on, one or a cluster's members.

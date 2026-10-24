@@ -1,0 +1,26 @@
+{
+  "status": 403,
+  "header": {
+    "Content-Length": [
+      "114"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sat, 24 Oct 2026 07:23:33 GMT"
+    ],
+    "X-Content-Type-Options": [
+      "nosniff"
+    ]
+  },
+  "body": {
+    "error": "Forbidden",
+    "error_code": 403,
+    "metadata": null,
+    "operation": "",
+    "status": "",
+    "status_code": 0,
+    "type": "error"
+  }
+}

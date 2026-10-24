@@ -6,8 +6,13 @@
 readonly LXD_PORT=8443
 
 # lab_servers: the LXD servers of the selected topology: the standalone ones,
-# then the chosen clusters (each after its sibling, whose revision it runs).
+# then the chosen clusters (each after its sibling, whose revision it runs);
+# with --only, that server alone (none for spire).
 lab_servers() {
+	if [[ -n "$LAB_ONLY" ]]; then
+		[[ "$LAB_ONLY" == spire ]] || echo "$LAB_ONLY"
+		return
+	fi
 	echo lxd5
 	echo lxd6
 	lab_clusters
@@ -337,17 +342,22 @@ lxd_verify() {
 	fi
 }
 
-# lxd_refresh_plan SERVER: prints "SERVER CURRENT NEW VERSION" when the
-# server's channel has a newer revision than the one installed; tells why
-# not otherwise.
+# lxd_refresh_plan SERVER [REVISION VERSION]: prints "SERVER CURRENT NEW
+# VERSION" when the server's channel has a newer revision than the one
+# installed; tells why not otherwise. A cluster follows its sibling: REVISION
+# and VERSION are the sibling's after this refresh.
 lxd_refresh_plan() {
 	local server="$1" channel current pinned found
-	if is_cluster "$server"; then
-		info "$server: follows $(cluster_sibling "$server") (up installs the sibling's revision on a new cluster): left alone" >&2
-		return
-	fi
 	channel="$(env_get ".servers[\"$server\"].channel")"
 	current="$(env_get ".servers[\"$server\"].revision")"
+	if is_cluster "$server"; then
+		if [[ "$current" == "$2" ]]; then
+			info "$server: at $(cluster_sibling "$server")'s revision $current" >&2
+			return
+		fi
+		echo "$server $current $2 $3"
+		return
+	fi
 	pinned="$(lxd_pinned_revision "$server")"
 	if [[ -n "$pinned" ]]; then
 		info "$server: pinned at revision $pinned by the settings: left alone" >&2
@@ -362,17 +372,29 @@ lxd_refresh_plan() {
 }
 
 # lxd_refresh SERVER REVISION: moves the server to REVISION of its channel,
-# holds refreshes again and records the server anew.
+# holds refreshes again and records the server anew. A cluster's members are
+# refreshed all at once: a refreshed member waits for the others to reach
+# its version before it serves, so one at a time would gain nothing here.
 lxd_refresh() {
-	local server="$1" revision="$2" channel
+	local server="$1" revision="$2" channel vm pids=() failed=()
 	channel="$(env_get ".servers[\"$server\"].channel")"
 	info "$server: refreshing LXD to revision $revision of $channel"
-	vm_ssh "$server" "set -e
-		sudo snap refresh --unhold lxd >/dev/null
-		sudo snap refresh lxd --channel=$channel --revision=$revision >/dev/null
-		sudo snap refresh --hold lxd >/dev/null
-		sudo lxd waitready --timeout=300" ||
-		die "$server: the refresh to revision $revision failed (lab.sh logs $server snap.lxd.daemon); refreshes may be unheld: lab.sh ssh $server sudo snap refresh --hold lxd"
+	for vm in $(server_vms "$server"); do
+		vm_ssh "$vm" "set -e
+			sudo snap refresh --unhold lxd >/dev/null
+			sudo timeout 900 snap refresh lxd --channel=$channel --revision=$revision >/dev/null
+			sudo snap refresh --hold lxd >/dev/null" &
+		pids+=("$vm:$!")
+	done
+	for vm in "${pids[@]}"; do
+		wait "${vm#*:}" || failed+=("${vm%%:*}")
+	done
+	((${#failed[@]} == 0)) ||
+		die "$server: the refresh to revision $revision failed on ${failed[*]} (lab.sh logs <vm> snap.lxd.daemon); refreshes may be unheld: lab.sh ssh <vm> sudo snap refresh --hold lxd"
+	for vm in $(server_vms "$server"); do
+		vm_ssh "$vm" "sudo lxd waitready --timeout=600" ||
+			die "$vm: LXD is not ready after the refresh to revision $revision (lab.sh logs $vm snap.lxd.daemon)"
+	done
 	env_set ".servers[\"$server\"].revision" "$revision"
 	lxd_check "$server"
 }

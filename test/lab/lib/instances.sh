@@ -119,7 +119,7 @@ ensure_instances() {
 			args+=(-c "${config//_/ }")
 		done
 		info "$server: launching $project/$name ($kind, $image)"
-		LAB_BASELINE_CHANGED=1
+		LAB_BASELINE_CHANGED+=" $server"
 		if ! vm_lxc "$server" "${args[@]}" >/dev/null; then
 			# a launch that fails to start leaves the instance created: the
 			# next up would take it as done
@@ -194,7 +194,7 @@ ensure_selinux() {
 		guest_exec "$server" "$project" "$name" "$(selinux_setup_script)" >/dev/null ||
 			die "$server: cannot set up SELinux in $project/$name (the package mirrors may be unreachable: run lab.sh up again)"
 		vm_lxc "$server" restart --force "$name" --project "$project" >/dev/null
-		LAB_BASELINE_CHANGED=1
+		LAB_BASELINE_CHANGED+=" $server"
 		deadline=$((SECONDS + 1200))
 		until [[ "$(guest_exec "$server" "$project" "$name" getenforce 2>/dev/null)" == Enforcing ]]; do
 			((SECONDS < deadline)) || die "$server: $project/$name does not come up enforcing (lab.sh ssh $server sudo lxc console $name --project $project)"
@@ -205,6 +205,21 @@ ensure_selinux() {
 		label="$(guest_exec "$server" "$project" "$name" "ps -eo label,comm | awk '\$2 == \"lxd-agent\" { print \$1 }'")"
 		[[ "$label" == *:unconfined_service_t:* ]] || die "$server: lxd-agent in $project/$name runs as \"$label\", not unconfined_service_t"
 		info "$server: $project/$name runs SELinux enforcing, lxd-agent as $label"
+	done 3< <(baseline_instances "$server")
+}
+
+# ensure_tar SERVER: gives the baseline VMs from rpm distributions the tar
+# that "lab.sh pull" streams evidence through (Rocky's and Alma's cloud images
+# ship none); one that has it is left alone.
+ensure_tar() {
+	local server="$1" project name
+	while read -r -u 3 project name _; do
+		[[ "$name" == v-rocky || "$name" == v-alma ]] || continue
+		guest_exec "$server" "$project" "$name" "command -v tar >/dev/null" 2>/dev/null && continue
+		info "$server: installing tar in $project/$name"
+		guest_exec "$server" "$project" "$name" 'for t in 1 2 3 4 5; do dnf -y -q install tar >/dev/null 2>&1 && break; sleep 15; done; command -v tar >/dev/null' >/dev/null ||
+			die "$server: cannot install tar in $project/$name (the package mirrors may be unreachable: run lab.sh up again)"
+		LAB_BASELINE_CHANGED+=" $server"
 	done 3< <(baseline_instances "$server")
 }
 

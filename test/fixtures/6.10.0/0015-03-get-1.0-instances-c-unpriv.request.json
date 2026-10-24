@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "path": "/1.0/instances/c-unpriv",
+  "query": "project=default\u0026recursion=1",
+  "header": {
+    "User-Agent": [
+      "lxd-spiffe/34ec48a-dirty"
+    ]
+  }
+}

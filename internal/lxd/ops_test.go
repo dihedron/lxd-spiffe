@@ -24,7 +24,7 @@ import (
 // operations are verified against them (FR-S17 (11), gate L15). Any other
 // folder under test/fixtures, a version the lab recorded later, is
 // replayed too.
-var supportedVersions = []string{"5.21.8", "6.9"}
+var supportedVersions = []string{"5.21.8", "6.9", "6.10.0"}
 
 func fixtureDir(version string) string {
 	return filepath.Join("..", "..", "test", "fixtures", version)

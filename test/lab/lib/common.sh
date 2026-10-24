@@ -106,9 +106,39 @@ server_vms() {
 	fi
 }
 
-# lab_vms: the VMs of the selected scenarios and topology, one per line.
+# vm_server VM: the server VM belongs to (a cluster for its members), or spire.
+vm_server() {
+	case "$1" in
+	c[56]n[1-3]) echo "${1%n?}" ;;
+	*) echo "$1" ;;
+	esac
+}
+
+# The one server (a cluster: its members) or spire the command acts on, set
+# by --only (select_only); empty: the whole lab.
+LAB_ONLY=""
+
+# select_only NAME: sets LAB_ONLY, once the scenarios are selected; NAME must
+# be one of the VMs or servers the command would otherwise act on.
+select_only() {
+	[[ -n "$1" ]] || return 0
+	case "$1" in
+	lxd5 | lxd6 | c5 | c6 | spire) ;;
+	*) die "--only takes lxd5, lxd6, c5, c6 or spire, not \"$1\"" ;;
+	esac
+	lab_vms | grep -qx "$(server_vms "$1" | head -n1)" ||
+		die "--only $1: not in the lab this command acts on (LAB_CLUSTER=$LAB_CLUSTER, scenarios ${LAB_SELECTED[*]})"
+	LAB_ONLY="$1"
+}
+
+# lab_vms: the VMs of the selected scenarios and topology, one per line;
+# with --only, its VMs alone.
 lab_vms() {
 	local cluster
+	if [[ -n "$LAB_ONLY" ]]; then
+		server_vms "$LAB_ONLY"
+		return
+	fi
 	echo lxd5
 	echo lxd6
 	for cluster in $(lab_clusters); do
@@ -280,4 +310,11 @@ env_set() {
 	local tmp
 	tmp="$(mktemp "$LAB_STATE_DIR/env.XXXXXX")"
 	jq --arg v "$2" "$1 = \$v" "$(env_file)" >"$tmp" && mv "$tmp" "$(env_file)"
+}
+
+# env_del PATH: removes a value from env.json, if there.
+env_del() {
+	local tmp
+	tmp="$(mktemp "$LAB_STATE_DIR/env.XXXXXX")"
+	jq "del($1)" "$(env_file)" >"$tmp" && mv "$tmp" "$(env_file)"
 }

@@ -325,7 +325,14 @@ func TestWriteDir(t *testing.T) {
 // The committed evidence renders, and the gates' statuses are those of the
 // decisions recorded so far.
 func TestCommittedEvidence(t *testing.T) {
-	runs, err := filepath.Glob("../../../docs/validation/*")
+	entries, err := filepath.Glob("../../../docs/validation/*")
+	// the runs are the directories; README.md documents them
+	var runs []string
+	for _, e := range entries {
+		if info, err := os.Stat(e); err == nil && info.IsDir() {
+			runs = append(runs, e)
+		}
+	}
 	if err != nil || len(runs) == 0 {
 		t.Skipf("no committed evidence (%v)", err)
 	}

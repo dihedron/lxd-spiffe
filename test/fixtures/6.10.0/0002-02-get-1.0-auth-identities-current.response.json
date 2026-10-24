@@ -1,0 +1,44 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "1118"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sat, 24 Oct 2026 07:19:18 GMT"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "authentication_method": "tls",
+      "effective_groups": [
+        "lab-full"
+      ],
+      "effective_permissions": [
+        {
+          "entitlement": "admin",
+          "entity_type": "server",
+          "url": "/1.0"
+        }
+      ],
+      "expires_at": "2028-10-16T19:54:07Z",
+      "fine_grained": true,
+      "groups": [
+        "lab-full"
+      ],
+      "id": "7180b96bc06a6df0522a945cd299c61ade5ab1188c62758d7de84d472b28abf6",
+      "name": "lab-full",
+      "tls_certificate": "[redacted]\n",
+      "type": "Client certificate"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}
