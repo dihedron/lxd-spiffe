@@ -69,11 +69,14 @@ type labEnv struct {
 }
 
 // servers returns the lab's standalone servers in name order; the gate
-// sessions run on them. Clusters are separate (clusters).
+// sessions run on them. LAB_SERVERS (names, space separated) narrows them,
+// for a session that records one server's fixtures without touching the
+// others'. Clusters are separate (clusters).
 func (l *lab) servers() []string {
+	only := strings.Fields(os.Getenv("LAB_SERVERS"))
 	var out []string
 	for name, s := range l.env.Servers {
-		if s.Cluster != "yes" {
+		if s.Cluster != "yes" && (len(only) == 0 || slices.Contains(only, name)) {
 			out = append(out, name)
 		}
 	}

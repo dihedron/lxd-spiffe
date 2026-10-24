@@ -7,7 +7,9 @@
 # shutdown, but may not start again a VM that powers off quickly (seen with
 # LXD 5.21): the lab stops and starts its instances itself.
 
-readonly LAB_SNAPSHOT=lab-base
+# The libvirt snapshot every VM is returned to; a second one (LAB_SNAPSHOT in
+# lab.local.env, e.g. lab-base-6.10) lets two LXD revisions sit side by side.
+: "${LAB_SNAPSHOT:=lab-base}"
 
 snapshot_exists() {
 	vsh snapshot-info "$(vm_domain "$1")" "$LAB_SNAPSHOT" >/dev/null 2>&1

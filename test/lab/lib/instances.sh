@@ -208,6 +208,21 @@ ensure_selinux() {
 	done 3< <(baseline_instances "$server")
 }
 
+# ensure_tar SERVER: gives the baseline VMs from rpm distributions the tar
+# that "lab.sh pull" streams evidence through (Rocky's and Alma's cloud images
+# ship none); one that has it is left alone.
+ensure_tar() {
+	local server="$1" project name
+	while read -r -u 3 project name _; do
+		[[ "$name" == v-rocky || "$name" == v-alma ]] || continue
+		guest_exec "$server" "$project" "$name" "command -v tar >/dev/null" 2>/dev/null && continue
+		info "$server: installing tar in $project/$name"
+		guest_exec "$server" "$project" "$name" 'for t in 1 2 3 4 5; do dnf -y -q install tar >/dev/null 2>&1 && break; sleep 15; done; command -v tar >/dev/null' >/dev/null ||
+			die "$server: cannot install tar in $project/$name (the package mirrors may be unreachable: run lab.sh up again)"
+		LAB_BASELINE_CHANGED=1
+	done 3< <(baseline_instances "$server")
+}
+
 # baseline_grants SERVER: the identities' grants on the baseline instances.
 baseline_grants() {
 	local server="$1" project

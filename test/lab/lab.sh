@@ -202,6 +202,7 @@ cmd_up() {
 		start_instances "$server"
 		wait_instances "$server"
 		ensure_selinux "$server"
+		ensure_tar "$server"
 		baseline_grants "$server"
 	done
 

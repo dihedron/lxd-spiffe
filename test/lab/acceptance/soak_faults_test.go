@@ -212,14 +212,8 @@ func (r *soakRun) restartSpire() soakEvent {
 	return e
 }
 
-// attestations counts the successes in SPIRE Server's log since t.
-func (r *soakRun) attestations(since time.Time) int {
-	out, _ := r.spire(60*time.Second, fmt.Sprintf(`journalctl -u spire-server --since "@%d" --no-pager -o cat | grep -c 'attestation succeeded'`, since.Unix()))
-	return atoi(out)
-}
-
 // killPlugin kills the server plugin's process. Does SPIRE restart it? If
-// no attestation succeeds within 150 s, the finding is recorded and SPIRE
+// the plugin process is not back within 150 s, the finding is recorded and SPIRE
 // Server restarted.
 func (r *soakRun) killPlugin() soakEvent {
 	_, _ = r.spire(30*time.Second, "pkill -9 -x lxd-server-plugin")
