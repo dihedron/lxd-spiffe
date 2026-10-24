@@ -1,0 +1,175 @@
+{
+  "settings": {
+    "arms": "idle,files,files-vm",
+    "cluster": "c6",
+    "containers": "3",
+    "cycles": "10",
+    "evacuee": "c6n3",
+    "harness": "d4bfd88",
+    "session": "ST-6",
+    "sparse_period": "60",
+    "version": "6.10.0",
+    "vms": "3"
+  },
+  "groups": [
+    {
+      "version": "6.10.0",
+      "arm": "files",
+      "type": "container",
+      "evacuate_attempted": 10,
+      "evacuate_failed": 10,
+      "restore_attempted": 0,
+      "restore_failed": 0,
+      "evacuate_skipped": 20,
+      "restore_skipped": 0,
+      "volumes_left": 10,
+      "busy_errors": 10
+    },
+    {
+      "version": "6.10.0",
+      "arm": "files",
+      "type": "virtual-machine",
+      "evacuate_attempted": 0,
+      "evacuate_failed": 0,
+      "restore_attempted": 0,
+      "restore_failed": 0,
+      "evacuate_skipped": 30,
+      "restore_skipped": 0,
+      "volumes_left": 0,
+      "busy_errors": 0
+    },
+    {
+      "version": "6.10.0",
+      "arm": "files-vm",
+      "type": "container",
+      "evacuate_attempted": 30,
+      "evacuate_failed": 0,
+      "restore_attempted": 30,
+      "restore_failed": 0,
+      "evacuate_skipped": 0,
+      "restore_skipped": 0,
+      "volumes_left": 0,
+      "busy_errors": 0
+    },
+    {
+      "version": "6.10.0",
+      "arm": "files-vm",
+      "type": "virtual-machine",
+      "evacuate_attempted": 30,
+      "evacuate_failed": 0,
+      "restore_attempted": 30,
+      "restore_failed": 0,
+      "evacuate_skipped": 0,
+      "restore_skipped": 0,
+      "volumes_left": 0,
+      "busy_errors": 0
+    },
+    {
+      "version": "6.10.0",
+      "arm": "idle",
+      "type": "container",
+      "evacuate_attempted": 30,
+      "evacuate_failed": 0,
+      "restore_attempted": 30,
+      "restore_failed": 0,
+      "evacuate_skipped": 0,
+      "restore_skipped": 0,
+      "volumes_left": 0,
+      "busy_errors": 0
+    },
+    {
+      "version": "6.10.0",
+      "arm": "idle",
+      "type": "virtual-machine",
+      "evacuate_attempted": 30,
+      "evacuate_failed": 0,
+      "restore_attempted": 30,
+      "restore_failed": 0,
+      "evacuate_skipped": 0,
+      "restore_skipped": 0,
+      "volumes_left": 0,
+      "busy_errors": 0
+    }
+  ],
+  "cycles": [
+    {
+      "version": "6.10.0",
+      "arm": "files",
+      "cycles": 10,
+      "blocked": 10,
+      "evacuate_errors": 10,
+      "restore_errors": 10,
+      "evacuate": {
+        "count": 10,
+        "p50_ms": 16812,
+        "p95_ms": 20422,
+        "p99_ms": 20422,
+        "max_ms": 20422
+      },
+      "restore": {
+        "count": 10,
+        "p50_ms": 24173,
+        "p95_ms": 36032,
+        "p99_ms": 36032,
+        "max_ms": 36032
+      }
+    },
+    {
+      "version": "6.10.0",
+      "arm": "files-vm",
+      "cycles": 10,
+      "blocked": 0,
+      "evacuate_errors": 0,
+      "restore_errors": 0,
+      "evacuate": {
+        "count": 10,
+        "p50_ms": 127983,
+        "p95_ms": 138360,
+        "p99_ms": 138360,
+        "max_ms": 138360
+      },
+      "restore": {
+        "count": 10,
+        "p50_ms": 126553,
+        "p95_ms": 142740,
+        "p99_ms": 142740,
+        "max_ms": 142740
+      }
+    },
+    {
+      "version": "6.10.0",
+      "arm": "idle",
+      "cycles": 10,
+      "blocked": 0,
+      "evacuate_errors": 0,
+      "restore_errors": 0,
+      "evacuate": {
+        "count": 10,
+        "p50_ms": 121241,
+        "p95_ms": 128556,
+        "p99_ms": 128556,
+        "max_ms": 128556
+      },
+      "restore": {
+        "count": 10,
+        "p50_ms": 120614,
+        "p95_ms": 128349,
+        "p99_ms": 128349,
+        "max_ms": 128349
+      }
+    }
+  ],
+  "holders": [
+    "cycle 1, c6n3, default/containers/e-c1: c6n3: 185006 /snap/lxd/current/sbin/lxd forkfile -- 3 4 5 181353 (first seen at 1792869253)",
+    "cycle 4, c6n3, default/containers/e-c1: c6n3: 159512 /snap/lxd/current/sbin/lxd forkfile -- 3 4 5 121125 (first seen at 1792870227)",
+    "cycle 7, c6n3, default/containers/e-c1: c6n3: 181452 /snap/lxd/current/sbin/lxd forkfile -- 3 4 5 179812 (first seen at 1792871177)",
+    "cycle 10, c6n3, default/containers/e-c1: c6n3: 178278 /snap/lxd/current/sbin/lxd forkfile -- 3 4 5 147125 (first seen at 1792872095)",
+    "cycle 13, c6n3, default/containers/e-c1: c6n3: 182489 /snap/lxd/current/sbin/lxd forkfile -- 3 4 5 138065 (first seen at 1792873024)",
+    "cycle 16, c6n3, default/containers/e-c1: c6n3: 181096 /snap/lxd/current/sbin/lxd forkfile -- 3 4 5 149231 (first seen at 1792873952)",
+    "cycle 19, c6n3, default/containers/e-c1: c6n3: 181077 /snap/lxd/current/sbin/lxd forkfile -- 3 4 5 136625 (first seen at 1792874868)",
+    "cycle 22, c6n3, default/containers/e-c1: c6n3: 182199 /snap/lxd/current/sbin/lxd forkfile -- 3 4 5 137726 (first seen at 1792875764)",
+    "cycle 25, c6n3, default/containers/e-c1: c6n3: 181445 /snap/lxd/current/sbin/lxd forkfile -- 3 4 5 136266 (first seen at 1792876684)",
+    "cycle 28, c6n3, default/containers/e-c1: c6n3: 182859 /snap/lxd/current/sbin/lxd forkfile -- 3 4 5 139348 (first seen at 1792877602)"
+  ],
+  "harness_errors": []
+}
