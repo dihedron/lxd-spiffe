@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "75"
+    ],
+    "Content-Type": [
+      "application/octet-stream"
+    ],
+    "Date": [
+      "Sun, 25 Oct 2026 13:54:55 GMT"
+    ]
+  },
+  "body_text": "instance-id: 740511a5-baf4-4ffc-9f6b-0ae49179f176\nlocal-hostname: v-alpine\n"
+}

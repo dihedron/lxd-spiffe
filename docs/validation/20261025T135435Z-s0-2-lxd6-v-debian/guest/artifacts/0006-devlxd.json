@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "75"
+    ],
+    "Content-Type": [
+      "application/octet-stream"
+    ],
+    "Date": [
+      "Sun, 25 Oct 2026 13:54:52 GMT"
+    ]
+  },
+  "body_text": "instance-id: 4c126830-36de-4181-99d1-9cf71c9fc9eb\nlocal-hostname: v-debian\n"
+}

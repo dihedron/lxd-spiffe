@@ -1,0 +1,98 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sun, 25 Oct 2026 13:54:34 GMT"
+    ],
+    "Etag": [
+      "\"42b99ec57ade57943fb02dbb7144c1c1bbcdb17393bfe3981f34c3dabfa44973\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "AlmaLinux 9 (cloud)",
+        "image.os": "AlmaLinux",
+        "image.release": "9",
+        "image.serial": "20261016_0014",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "df20367d246b65930ddd895690288f0ff829632bf338c1fc9171b345867eb111",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "3a233d80-bf76-4af2-ba62-0c317eb2eb51",
+        "volatile.cpu.maxcpus": "4",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tapfadac8fe",
+        "volatile.eth0.hwaddr": "mac-9",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "2861c968-b319-4baf-8fed-3cebda4a5d24",
+        "volatile.uuid.generation": "2861c968-b319-4baf-8fed-3cebda4a5d24",
+        "volatile.vsock_id": "1578133247"
+      },
+      "created_at": "2026-10-17T20:08:00.386477078Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "AlmaLinux 9 (cloud)",
+        "image.os": "AlmaLinux",
+        "image.release": "9",
+        "image.serial": "20261016_0014",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "df20367d246b65930ddd895690288f0ff829632bf338c1fc9171b345867eb111",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "3a233d80-bf76-4af2-ba62-0c317eb2eb51",
+        "volatile.cpu.maxcpus": "4",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tapfadac8fe",
+        "volatile.eth0.hwaddr": "mac-9",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "2861c968-b319-4baf-8fed-3cebda4a5d24",
+        "volatile.uuid.generation": "2861c968-b319-4baf-8fed-3cebda4a5d24",
+        "volatile.vsock_id": "1578133247"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-25T13:41:55.713604314Z",
+      "location": "none",
+      "name": "v-alma",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "virtual-machine"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

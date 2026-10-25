@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "74"
+    ],
+    "Content-Type": [
+      "application/octet-stream"
+    ],
+    "Date": [
+      "Sun, 25 Oct 2026 13:54:58 GMT"
+    ]
+  },
+  "body_text": "instance-id: 71ede502-e8be-4881-bf94-d1e6356d0c73\nlocal-hostname: v-rocky\n"
+}

@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "server/0007",
+  "time": "2026-10-25T13:55:59.730544845Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "c-unpriv",
+    "/run/lxd-probe/layout/other-owner"
+  ],
+  "gate": "L1",
+  "cell": "lxd6-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 22,
+  "server": {
+    "version": "6.10.0",
+    "api_extensions_hash": "sha256:8e367fd210e2811eab78a94e33ca6eb2a748c4793c4729252f5e961d52fef417"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "1000"
+        ],
+        "X-Lxd-Mode": [
+          "0600"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-25 13:55:59 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "1000"
+        ]
+      }
+    },
+    {
+      "key": "file.size",
+      "value": 12
+    },
+    {
+      "key": "file.sha256",
+      "value": "01eaaccf580cdf67eef39e88cfd3069e90c3c550822da3e214bf9b3e223239ae"
+    }
+  ],
+  "raw": [
+    "artifacts/0007-server.json",
+    "artifacts/0007-file.json"
+  ]
+}

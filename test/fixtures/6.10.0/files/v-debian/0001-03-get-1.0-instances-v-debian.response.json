@@ -5,10 +5,10 @@
       "application/json"
     ],
     "Date": [
-      "Sat, 24 Oct 2026 07:34:13 GMT"
+      "Sun, 25 Oct 2026 13:56:15 GMT"
     ],
     "Etag": [
-      "\"8973a43edd91b657f4f220dc25b878c7ff550b6a9fc1b68e7207408486339d48\""
+      "\"88da9efe1eaa1a8daade93c319653d27cc936629149a3239f10987549e8b7df4\""
     ]
   },
   "body": {
@@ -33,10 +33,9 @@
         "volatile.cloud-init.instance-id": "4c126830-36de-4181-99d1-9cf71c9fc9eb",
         "volatile.cpu.maxcpus": "4",
         "volatile.eth0.bus": "4",
-        "volatile.eth0.host_name": "tap5cc8ba3a",
+        "volatile.eth0.host_name": "tap2ca9a521",
         "volatile.eth0.hwaddr": "mac-1",
         "volatile.last_state.power": "RUNNING",
-        "volatile.last_state.ready": "false",
         "volatile.uuid": "de93d67e-c7cd-4679-8002-128ce383af02",
         "volatile.uuid.generation": "de93d67e-c7cd-4679-8002-128ce383af02",
         "volatile.vsock_id": "3798757126"
@@ -61,10 +60,9 @@
         "volatile.cloud-init.instance-id": "4c126830-36de-4181-99d1-9cf71c9fc9eb",
         "volatile.cpu.maxcpus": "4",
         "volatile.eth0.bus": "4",
-        "volatile.eth0.host_name": "tap5cc8ba3a",
+        "volatile.eth0.host_name": "tap2ca9a521",
         "volatile.eth0.hwaddr": "mac-1",
         "volatile.last_state.power": "RUNNING",
-        "volatile.last_state.ready": "false",
         "volatile.uuid": "de93d67e-c7cd-4679-8002-128ce383af02",
         "volatile.uuid.generation": "de93d67e-c7cd-4679-8002-128ce383af02",
         "volatile.vsock_id": "3798757126"
@@ -81,7 +79,7 @@
           "type": "disk"
         }
       },
-      "last_used_at": "2026-10-24T07:00:31.717815392Z",
+      "last_used_at": "2026-10-25T13:41:49.704518752Z",
       "location": "none",
       "name": "v-debian",
       "profiles": [
@@ -91,19 +89,19 @@
       "snapshots": null,
       "state": {
         "cpu": {
-          "usage": 10822192000
+          "usage": 12832788000
         },
         "disk": {
           "root": {
             "total": 0,
-            "usage": 82058752
+            "usage": 96850432
           }
         },
         "memory": {
           "swap_usage": 0,
           "swap_usage_peak": 0,
           "total": 935993344,
-          "usage": 276103168,
+          "usage": 261967872,
           "usage_peak": 0
         },
         "network": {
@@ -123,16 +121,16 @@
               }
             ],
             "counters": {
-              "bytes_received": 221590,
-              "bytes_sent": 2986,
+              "bytes_received": 25455,
+              "bytes_sent": 2500,
               "errors_received": 0,
               "errors_sent": 0,
               "packets_dropped_inbound": 0,
               "packets_dropped_outbound": 0,
-              "packets_received": 1911,
-              "packets_sent": 30
+              "packets_received": 255,
+              "packets_sent": 26
             },
-            "host_name": "tap5cc8ba3a",
+            "host_name": "tap2ca9a521",
             "hwaddr": "mac-1",
             "mtu": 1500,
             "state": "up",
@@ -170,7 +168,7 @@
             "type": "loopback"
           }
         },
-        "pid": 182687,
+        "pid": 5261,
         "processes": 11,
         "status": "Running",
         "status_code": 103

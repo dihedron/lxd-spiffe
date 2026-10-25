@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "id": "util/0002",
+  "time": "2026-10-25T13:56:56.164313218Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "util",
+  "verb": "note",
+  "args": [],
+  "gate": "L6",
+  "cell": "lxd6-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "note.kind",
+      "value": "observation"
+    },
+    {
+      "key": "note.text",
+      "value": "uuid filter: a random uuid as full: exit 0, 0 found []"
+    }
+  ],
+  "raw": null
+}

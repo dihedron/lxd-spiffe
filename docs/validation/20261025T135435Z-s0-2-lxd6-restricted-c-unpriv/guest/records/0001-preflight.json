@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "id": "guest/0001",
+  "time": "2026-10-25T13:55:06.506663831Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "guest",
+  "verb": "preflight",
+  "args": [],
+  "gate": "L4",
+  "cell": "lxd6-restricted-c-unpriv",
+  "outcome": "ok",
+  "duration_ms": 6,
+  "observations": [
+    {
+      "key": "ids.uid",
+      "value": 0
+    },
+    {
+      "key": "ids.euid",
+      "value": 0
+    },
+    {
+      "key": "ids.gid",
+      "value": 0
+    },
+    {
+      "key": "ids.egid",
+      "value": 0
+    },
+    {
+      "key": "ids.groups",
+      "value": null
+    },
+    {
+      "key": "idmap.uid_map",
+      "value": [
+        {
+          "count": 1000000000,
+          "inside": 0,
+          "outside": 1000000
+        }
+      ]
+    },
+    {
+      "key": "idmap.gid_map",
+      "value": [
+        {
+          "count": 1000000000,
+          "inside": 0,
+          "outside": 1000000
+        }
+      ]
+    },
+    {
+      "key": "kernel.release",
+      "value": "6.8.0-147-generic"
+    },
+    {
+      "key": "devlxd.socket",
+      "value": {
+        "exists": true,
+        "gid": 65534,
+        "is_socket": true,
+        "mode": "0666",
+        "path": "/dev/lxd/sock",
+        "uid": 65534
+      }
+    },
+    {
+      "key": "lxd_agent.found",
+      "value": false
+    },
+    {
+      "key": "lxd_agent.pids",
+      "value": []
+    },
+    {
+      "key": "run.mount",
+      "value": {
+        "fstype": "tmpfs",
+        "mount_point": "/run",
+        "options": "rw,nosuid,nodev",
+        "source": "tmpfs",
+        "super_options": "rw,size=2449652k,nr_inodes=819200,mode=755,uid=1000000,gid=1000000,inode64"
+      }
+    },
+    {
+      "key": "virt.detect",
+      "value": {
+        "available": true,
+        "exit_code": 0,
+        "output": "lxc"
+      }
+    },
+    {
+      "key": "virt.guess",
+      "value": "container"
+    },
+    {
+      "key": "virt.guess_from",
+      "value": "/run/systemd/container: lxc"
+    }
+  ],
+  "raw": null
+}

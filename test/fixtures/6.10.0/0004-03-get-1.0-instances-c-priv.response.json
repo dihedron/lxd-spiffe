@@ -5,10 +5,10 @@
       "application/json"
     ],
     "Date": [
-      "Sat, 24 Oct 2026 07:19:19 GMT"
+      "Sun, 25 Oct 2026 13:54:34 GMT"
     ],
     "Etag": [
-      "\"7c81397dbb3b1be34d4d3efc5d26e55b673e80ce42b25e70233104a2db64e2ac\""
+      "\"f14ed270ad8b92a244be35d2fc918a2b21a03d07960ca5499cdff1dc74b677af\""
     ]
   },
   "body": {
@@ -31,7 +31,7 @@
         "security.privileged": "true",
         "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
         "volatile.cloud-init.instance-id": "c8fc9a92-c05b-4343-bfeb-88da7db75d95",
-        "volatile.eth0.host_name": "veth1c53a8ec",
+        "volatile.eth0.host_name": "veth5e33cd3a",
         "volatile.eth0.hwaddr": "mac-2",
         "volatile.idmap.base": "0",
         "volatile.idmap.current": "[]",
@@ -59,7 +59,7 @@
         "security.privileged": "true",
         "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
         "volatile.cloud-init.instance-id": "c8fc9a92-c05b-4343-bfeb-88da7db75d95",
-        "volatile.eth0.host_name": "veth1c53a8ec",
+        "volatile.eth0.host_name": "veth5e33cd3a",
         "volatile.eth0.hwaddr": "mac-2",
         "volatile.idmap.base": "0",
         "volatile.idmap.current": "[]",
@@ -81,7 +81,7 @@
           "type": "disk"
         }
       },
-      "last_used_at": "2026-10-24T06:30:49.566376112Z",
+      "last_used_at": "2026-10-25T13:41:41.883730497Z",
       "location": "none",
       "name": "c-priv",
       "profiles": [
@@ -91,19 +91,19 @@
       "snapshots": null,
       "state": {
         "cpu": {
-          "usage": 109356027000
+          "usage": 13829436000
         },
         "disk": {
           "root": {
             "total": 0,
-            "usage": 231127040
+            "usage": 232987648
           }
         },
         "memory": {
           "swap_usage": 0,
           "swap_usage_peak": 0,
           "total": 12542214144,
-          "usage": 253243392,
+          "usage": 174800896,
           "usage_peak": 0
         },
         "network": {
@@ -123,16 +123,16 @@
               }
             ],
             "counters": {
-              "bytes_received": 258420,
-              "bytes_sent": 5948,
+              "bytes_received": 6703816,
+              "bytes_sent": 72522,
               "errors_received": 0,
               "errors_sent": 0,
               "packets_dropped_inbound": 0,
               "packets_dropped_outbound": 0,
-              "packets_received": 2280,
-              "packets_sent": 55
+              "packets_received": 1281,
+              "packets_sent": 980
             },
-            "host_name": "veth1c53a8ec",
+            "host_name": "veth5e33cd3a",
             "hwaddr": "mac-2",
             "mtu": 1500,
             "state": "up",
@@ -154,14 +154,14 @@
               }
             ],
             "counters": {
-              "bytes_received": 1500,
-              "bytes_sent": 1500,
+              "bytes_received": 4616,
+              "bytes_sent": 4616,
               "errors_received": 0,
               "errors_sent": 0,
               "packets_dropped_inbound": 0,
               "packets_dropped_outbound": 0,
-              "packets_received": 20,
-              "packets_sent": 20
+              "packets_received": 36,
+              "packets_sent": 36
             },
             "host_name": "",
             "hwaddr": "",
@@ -170,8 +170,8 @@
             "type": "loopback"
           }
         },
-        "pid": 2877,
-        "processes": 24,
+        "pid": 2907,
+        "processes": 28,
         "status": "Running",
         "status_code": 103
       },

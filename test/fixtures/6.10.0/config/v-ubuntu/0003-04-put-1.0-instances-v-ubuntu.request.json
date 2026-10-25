@@ -7,10 +7,10 @@
       "application/json"
     ],
     "If-Match": [
-      "\"90a9cd6da8054c8e1f5945a9a69493d147c47d72c59d3f31a4722cb0ab174f71\""
+      "\"8c48bd1a7d123b19a18f5d6e8b32cd64d407a2f1c1e9e195414bc680948e5798\""
     ],
     "User-Agent": [
-      "lxd-spiffe/34ec48a-dirty"
+      "lxd-spiffe/v0.1.0-4-gb054f04"
     ]
   },
   "body": {
@@ -33,10 +33,9 @@
       "volatile.cloud-init.instance-id": "17bf3610-af64-4d01-951c-ac3d06879428",
       "volatile.cpu.maxcpus": "4",
       "volatile.eth0.bus": "4",
-      "volatile.eth0.host_name": "tap4b7e5fa9",
+      "volatile.eth0.host_name": "tap70052910",
       "volatile.eth0.hwaddr": "mac-1",
       "volatile.last_state.power": "RUNNING",
-      "volatile.last_state.ready": "false",
       "volatile.uuid": "416e3437-49d3-4f05-83af-41e92bd5d39e",
       "volatile.uuid.generation": "416e3437-49d3-4f05-83af-41e92bd5d39e",
       "volatile.vsock_id": "1363019023"

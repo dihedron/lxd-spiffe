@@ -1,0 +1,21 @@
+{
+  "method": "PATCH",
+  "path": "/1.0/instances/v-ubuntu",
+  "query": "project=default",
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "If-Match": [
+      "\"58dcd19a2d9ae28a1ba66204d7919a073b8557b827c2c6d5039cb49142099016\""
+    ],
+    "User-Agent": [
+      "lxd-spiffe/v0.1.0-4-gb054f04"
+    ]
+  },
+  "body": {
+    "config": {
+      "user.lxd-probe.l14-race": "w7"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "75"
+    ],
+    "Content-Type": [
+      "application/octet-stream"
+    ],
+    "Date": [
+      "Sun, 25 Oct 2026 13:54:36 GMT"
+    ]
+  },
+  "body_text": "instance-id: 7248d0be-0f1e-4b2d-9f9e-b82c0ab35730\nlocal-hostname: c-unpriv\n"
+}

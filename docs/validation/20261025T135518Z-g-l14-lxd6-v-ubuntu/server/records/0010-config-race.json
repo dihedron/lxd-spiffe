@@ -1,0 +1,209 @@
+{
+  "schema": 1,
+  "id": "server/0010",
+  "time": "2026-10-25T13:55:21.890189179Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "server",
+  "verb": "config race",
+  "args": [
+    "v-ubuntu",
+    "user.lxd-probe.l14-race",
+    "--writers",
+    "8",
+    "--retries",
+    "10"
+  ],
+  "gate": "L14",
+  "cell": "lxd6-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 607,
+  "server": {
+    "version": "6.10.0",
+    "api_extensions_hash": "sha256:8e367fd210e2811eab78a94e33ca6eb2a748c4793c4729252f5e961d52fef417"
+  },
+  "expectations": [
+    "instance",
+    "instance"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "before.http_status",
+      "value": 200
+    },
+    {
+      "key": "race.events",
+      "value": [
+        {
+          "at_ms": 121,
+          "attempt": 0,
+          "status": 200,
+          "writer": 1
+        },
+        {
+          "at_ms": 122,
+          "attempt": 0,
+          "status": 412,
+          "writer": 7
+        },
+        {
+          "at_ms": 123,
+          "attempt": 0,
+          "status": 412,
+          "writer": 6
+        },
+        {
+          "at_ms": 124,
+          "attempt": 0,
+          "status": 412,
+          "writer": 4
+        },
+        {
+          "at_ms": 125,
+          "attempt": 0,
+          "status": 412,
+          "writer": 5
+        },
+        {
+          "at_ms": 125,
+          "attempt": 0,
+          "status": 412,
+          "writer": 2
+        },
+        {
+          "at_ms": 126,
+          "attempt": 0,
+          "status": 412,
+          "writer": 0
+        },
+        {
+          "at_ms": 127,
+          "attempt": 0,
+          "status": 412,
+          "writer": 3
+        },
+        {
+          "at_ms": 207,
+          "attempt": 1,
+          "status": 200,
+          "writer": 0
+        },
+        {
+          "at_ms": 269,
+          "attempt": 1,
+          "status": 200,
+          "writer": 5
+        },
+        {
+          "at_ms": 270,
+          "attempt": 1,
+          "status": 412,
+          "writer": 7
+        },
+        {
+          "at_ms": 271,
+          "attempt": 1,
+          "status": 412,
+          "writer": 3
+        },
+        {
+          "at_ms": 271,
+          "attempt": 1,
+          "status": 412,
+          "writer": 4
+        },
+        {
+          "at_ms": 272,
+          "attempt": 1,
+          "status": 412,
+          "writer": 2
+        },
+        {
+          "at_ms": 273,
+          "attempt": 1,
+          "status": 412,
+          "writer": 6
+        },
+        {
+          "at_ms": 408,
+          "attempt": 2,
+          "status": 200,
+          "writer": 4
+        },
+        {
+          "at_ms": 410,
+          "attempt": 2,
+          "status": 412,
+          "writer": 7
+        },
+        {
+          "at_ms": 448,
+          "attempt": 2,
+          "status": 200,
+          "writer": 3
+        },
+        {
+          "at_ms": 449,
+          "attempt": 2,
+          "status": 412,
+          "writer": 6
+        },
+        {
+          "at_ms": 450,
+          "attempt": 2,
+          "status": 412,
+          "writer": 2
+        },
+        {
+          "at_ms": 507,
+          "attempt": 3,
+          "status": 200,
+          "writer": 7
+        },
+        {
+          "at_ms": 547,
+          "attempt": 3,
+          "status": 200,
+          "writer": 6
+        },
+        {
+          "at_ms": 571,
+          "attempt": 3,
+          "status": 200,
+          "writer": 2
+        }
+      ]
+    },
+    {
+      "key": "race.totals",
+      "value": {
+        "200": 8,
+        "412": 15,
+        "exhausted": 0,
+        "writes": 23
+      }
+    },
+    {
+      "key": "after.http_status",
+      "value": 200
+    },
+    {
+      "key": "race.final",
+      "value": {
+        "user.lxd-probe.l14-race": "w2"
+      }
+    },
+    {
+      "key": "race.consistent",
+      "value": true
+    }
+  ],
+  "raw": [
+    "artifacts/0010-server.json",
+    "artifacts/0010-before.json",
+    "artifacts/0010-after.json"
+  ]
+}

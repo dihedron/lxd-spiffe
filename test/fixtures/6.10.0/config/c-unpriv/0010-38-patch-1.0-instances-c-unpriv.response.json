@@ -1,26 +1,23 @@
 {
-  "status": 412,
+  "status": 200,
   "header": {
     "Content-Length": [
-      "381"
+      "108"
     ],
     "Content-Type": [
       "application/json"
     ],
     "Date": [
-      "Sat, 24 Oct 2026 07:23:30 GMT"
-    ],
-    "X-Content-Type-Options": [
-      "nosniff"
+      "Sun, 25 Oct 2026 13:55:19 GMT"
     ]
   },
   "body": {
-    "error": "ETag does not match: 38af5fa57bfcc090d65c6111d8e22d103a14bc1a540eb5ad1c212b69e4ff4806 vs 945ae84338841990b247001f738dcdb2f204428b7ce1bfa3443b82ee6cd2e819. The configuration has been modified since this change began. Please retrieve the updated configuration before proceeding.",
-    "error_code": 412,
-    "metadata": null,
+    "error": "",
+    "error_code": 0,
+    "metadata": {},
     "operation": "",
-    "status": "",
-    "status_code": 0,
-    "type": "error"
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
   }
 }

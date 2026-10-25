@@ -5,10 +5,10 @@
       "application/json"
     ],
     "Date": [
-      "Sat, 24 Oct 2026 07:19:19 GMT"
+      "Sun, 25 Oct 2026 13:54:34 GMT"
     ],
     "Etag": [
-      "\"7c81397dbb3b1be34d4d3efc5d26e55b673e80ce42b25e70233104a2db64e2ac\""
+      "\"f14ed270ad8b92a244be35d2fc918a2b21a03d07960ca5499cdff1dc74b677af\""
     ]
   },
   "body": {
@@ -30,7 +30,7 @@
         "security.privileged": "true",
         "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
         "volatile.cloud-init.instance-id": "c8fc9a92-c05b-4343-bfeb-88da7db75d95",
-        "volatile.eth0.host_name": "veth1c53a8ec",
+        "volatile.eth0.host_name": "veth5e33cd3a",
         "volatile.eth0.hwaddr": "mac-2",
         "volatile.idmap.base": "0",
         "volatile.idmap.current": "[]",
@@ -58,7 +58,7 @@
         "security.privileged": "true",
         "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
         "volatile.cloud-init.instance-id": "c8fc9a92-c05b-4343-bfeb-88da7db75d95",
-        "volatile.eth0.host_name": "veth1c53a8ec",
+        "volatile.eth0.host_name": "veth5e33cd3a",
         "volatile.eth0.hwaddr": "mac-2",
         "volatile.idmap.base": "0",
         "volatile.idmap.current": "[]",
@@ -80,7 +80,7 @@
           "type": "disk"
         }
       },
-      "last_used_at": "2026-10-24T06:30:49.566376112Z",
+      "last_used_at": "2026-10-25T13:41:41.883730497Z",
       "location": "none",
       "name": "c-priv",
       "profiles": [

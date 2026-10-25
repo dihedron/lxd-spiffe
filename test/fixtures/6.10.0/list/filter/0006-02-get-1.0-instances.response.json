@@ -5,7 +5,7 @@
       "application/json"
     ],
     "Date": [
-      "Sat, 24 Oct 2026 07:36:16 GMT"
+      "Sun, 25 Oct 2026 13:56:55 GMT"
     ]
   },
   "body": {
@@ -26,15 +26,15 @@
           "image.version": "24.04",
           "volatile.apply_template": "copy",
           "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
-          "volatile.cloud-init.instance-id": "966b8562-5e91-4d88-a048-c5ead2556301",
+          "volatile.cloud-init.instance-id": "ecd7ec47-d46c-4748-aa83-d46035a83236",
           "volatile.eth0.hwaddr": "mac-2",
           "volatile.idmap.base": "0",
           "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
           "volatile.last_state.idmap": "[]",
-          "volatile.uuid": "65b758bd-5259-4349-a14b-79da4d4565cb",
-          "volatile.uuid.generation": "65b758bd-5259-4349-a14b-79da4d4565cb"
+          "volatile.uuid": "5d036b07-072e-4c27-a61a-a66f7cd467a6",
+          "volatile.uuid.generation": "5d036b07-072e-4c27-a61a-a66f7cd467a6"
         },
-        "created_at": "2026-10-24T07:35:49.179157984Z",
+        "created_at": "2026-10-25T13:56:21.068176398Z",
         "description": "",
         "devices": {},
         "ephemeral": false,
@@ -50,13 +50,13 @@
           "image.version": "24.04",
           "volatile.apply_template": "copy",
           "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
-          "volatile.cloud-init.instance-id": "966b8562-5e91-4d88-a048-c5ead2556301",
+          "volatile.cloud-init.instance-id": "ecd7ec47-d46c-4748-aa83-d46035a83236",
           "volatile.eth0.hwaddr": "mac-2",
           "volatile.idmap.base": "0",
           "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
           "volatile.last_state.idmap": "[]",
-          "volatile.uuid": "65b758bd-5259-4349-a14b-79da4d4565cb",
-          "volatile.uuid.generation": "65b758bd-5259-4349-a14b-79da4d4565cb"
+          "volatile.uuid": "5d036b07-072e-4c27-a61a-a66f7cd467a6",
+          "volatile.uuid.generation": "5d036b07-072e-4c27-a61a-a66f7cd467a6"
         },
         "expanded_devices": {
           "eth0": {
@@ -96,15 +96,15 @@
           "image.version": "24.04",
           "volatile.apply_template": "copy",
           "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
-          "volatile.cloud-init.instance-id": "966b8562-5e91-4d88-a048-c5ead2556301",
+          "volatile.cloud-init.instance-id": "ecd7ec47-d46c-4748-aa83-d46035a83236",
           "volatile.eth0.hwaddr": "mac-2",
           "volatile.idmap.base": "0",
           "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
           "volatile.last_state.idmap": "[]",
-          "volatile.uuid": "65b758bd-5259-4349-a14b-79da4d4565cb",
-          "volatile.uuid.generation": "65b758bd-5259-4349-a14b-79da4d4565cb"
+          "volatile.uuid": "5d036b07-072e-4c27-a61a-a66f7cd467a6",
+          "volatile.uuid.generation": "5d036b07-072e-4c27-a61a-a66f7cd467a6"
         },
-        "created_at": "2026-10-24T07:35:49.179157984Z",
+        "created_at": "2026-10-25T13:56:21.068176398Z",
         "description": "",
         "devices": {},
         "ephemeral": false,
@@ -120,13 +120,13 @@
           "image.version": "24.04",
           "volatile.apply_template": "copy",
           "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
-          "volatile.cloud-init.instance-id": "966b8562-5e91-4d88-a048-c5ead2556301",
+          "volatile.cloud-init.instance-id": "ecd7ec47-d46c-4748-aa83-d46035a83236",
           "volatile.eth0.hwaddr": "mac-2",
           "volatile.idmap.base": "0",
           "volatile.idmap.next": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
           "volatile.last_state.idmap": "[]",
-          "volatile.uuid": "65b758bd-5259-4349-a14b-79da4d4565cb",
-          "volatile.uuid.generation": "65b758bd-5259-4349-a14b-79da4d4565cb"
+          "volatile.uuid": "5d036b07-072e-4c27-a61a-a66f7cd467a6",
+          "volatile.uuid.generation": "5d036b07-072e-4c27-a61a-a66f7cd467a6"
         },
         "expanded_devices": {
           "eth0": {

@@ -5,10 +5,10 @@
       "application/json"
     ],
     "Date": [
-      "Sat, 24 Oct 2026 07:19:19 GMT"
+      "Sun, 25 Oct 2026 13:54:34 GMT"
     ],
     "Etag": [
-      "\"9f1f40f243a33ede324cdbc3266be96fc0d73c6f14993fd4ee015ae57eb832ed\""
+      "\"f766463e3b9abc56da82458c5de62e15056d1740b05fc17dc18cd94326710282\""
     ]
   },
   "body": {
@@ -30,7 +30,7 @@
         "raw.idmap": "both 1000 1000",
         "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
         "volatile.cloud-init.instance-id": "14b2c183-57a3-45a5-aec5-2ffe288495a6",
-        "volatile.eth0.host_name": "veth122b02cc",
+        "volatile.eth0.host_name": "veth0aaca0b7",
         "volatile.eth0.hwaddr": "mac-4",
         "volatile.idmap.base": "0",
         "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999}]",
@@ -57,7 +57,7 @@
         "raw.idmap": "both 1000 1000",
         "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
         "volatile.cloud-init.instance-id": "14b2c183-57a3-45a5-aec5-2ffe288495a6",
-        "volatile.eth0.host_name": "veth122b02cc",
+        "volatile.eth0.host_name": "veth0aaca0b7",
         "volatile.eth0.hwaddr": "mac-4",
         "volatile.idmap.base": "0",
         "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999}]",
@@ -79,7 +79,7 @@
           "type": "disk"
         }
       },
-      "last_used_at": "2026-10-24T06:30:52.769940092Z",
+      "last_used_at": "2026-10-25T13:41:44.704093683Z",
       "location": "none",
       "name": "c-raw",
       "profiles": [
@@ -89,19 +89,19 @@
       "snapshots": null,
       "state": {
         "cpu": {
-          "usage": 109526301000
+          "usage": 4619788000
         },
         "disk": {
           "root": {
             "total": 0,
-            "usage": 232957440
+            "usage": 236404736
           }
         },
         "memory": {
           "swap_usage": 0,
           "swap_usage_peak": 0,
           "total": 12542214144,
-          "usage": 262156288,
+          "usage": 107634688,
           "usage_peak": 0
         },
         "network": {
@@ -121,16 +121,16 @@
               }
             ],
             "counters": {
-              "bytes_received": 256751,
-              "bytes_sent": 6122,
+              "bytes_received": 27713,
+              "bytes_sent": 1654,
               "errors_received": 0,
               "errors_sent": 0,
               "packets_dropped_inbound": 0,
               "packets_dropped_outbound": 0,
-              "packets_received": 2265,
-              "packets_sent": 57
+              "packets_received": 285,
+              "packets_sent": 19
             },
-            "host_name": "veth122b02cc",
+            "host_name": "veth0aaca0b7",
             "hwaddr": "mac-4",
             "mtu": 1500,
             "state": "up",
@@ -152,14 +152,14 @@
               }
             ],
             "counters": {
-              "bytes_received": 1120,
-              "bytes_sent": 1120,
+              "bytes_received": 280,
+              "bytes_sent": 280,
               "errors_received": 0,
               "errors_sent": 0,
               "packets_dropped_inbound": 0,
               "packets_dropped_outbound": 0,
-              "packets_received": 16,
-              "packets_sent": 16
+              "packets_received": 4,
+              "packets_sent": 4
             },
             "host_name": "",
             "hwaddr": "",
@@ -168,7 +168,7 @@
             "type": "loopback"
           }
         },
-        "pid": 4023,
+        "pid": 4128,
         "processes": 24,
         "status": "Running",
         "status_code": 103
