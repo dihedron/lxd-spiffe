@@ -1,6 +1,6 @@
 module github.com/dihedron/lxd-spiffe
 
-go 1.27.1
+go 1.27.3
 
 require (
 	github.com/canonical/lxd v0.0.0-20261009201946-d2f5e0ca1f9e
