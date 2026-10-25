@@ -1,0 +1,112 @@
+{
+  "environment": "SPIRE 1.15.5, plugins 0.0.0-SNAPSHOT-1f5ce01, c5 LXD 5.21.8, c6 LXD 6.10.0, lxd5 LXD 5.21.8, lxd6 LXD 6.10.0",
+  "name": "20261025T074308Z-e2e-1-summary",
+  "results": [
+    {
+      "test": "E2E-1",
+      "server": "lxd5",
+      "guest": "e2e-priv",
+      "kind": "privileged container",
+      "proof_mode": "file_pull",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd5/afc78c50-c824-47ec-b007-34a4c31de3de",
+      "selectors": [
+        "network:default/lxdbr0",
+        "privileged:true",
+        "profile:default",
+        "project:default",
+        "server:lxd5",
+        "type:container",
+        "uuid:afc78c50-c824-47ec-b007-34a4c31de3de"
+      ],
+      "seconds": 20.676989087
+    },
+    {
+      "test": "E2E-1",
+      "server": "lxd5",
+      "guest": "e2e-unpriv",
+      "kind": "container",
+      "proof_mode": "file_pull",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd5/4af99e4a-6b2f-40d2-a41b-0f79d001907e",
+      "selectors": [
+        "network:default/lxdbr0",
+        "privileged:false",
+        "profile:default",
+        "project:default",
+        "server:lxd5",
+        "type:container",
+        "uuid:4af99e4a-6b2f-40d2-a41b-0f79d001907e"
+      ],
+      "seconds": 22.524833936
+    },
+    {
+      "test": "E2E-1",
+      "server": "lxd5",
+      "guest": "e2e-vm",
+      "kind": "vm",
+      "proof_mode": "file_pull",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd5/df21e391-0faa-4910-a4cc-1bb5f66aad44",
+      "selectors": [
+        "network:default/lxdbr0",
+        "profile:default",
+        "project:default",
+        "server:lxd5",
+        "type:virtual-machine",
+        "uuid:df21e391-0faa-4910-a4cc-1bb5f66aad44"
+      ],
+      "seconds": 71.756638489
+    },
+    {
+      "test": "E2E-1",
+      "server": "lxd6",
+      "guest": "e2e-priv",
+      "kind": "privileged container",
+      "proof_mode": "file_pull",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd6/720b5960-1af9-48d9-82f7-0bad6f215516",
+      "selectors": [
+        "network:default/lxdbr0",
+        "privileged:true",
+        "profile:default",
+        "project:default",
+        "server:lxd6",
+        "type:container",
+        "uuid:720b5960-1af9-48d9-82f7-0bad6f215516"
+      ],
+      "seconds": 27.988565769
+    },
+    {
+      "test": "E2E-1",
+      "server": "lxd6",
+      "guest": "e2e-unpriv",
+      "kind": "container",
+      "proof_mode": "file_pull",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd6/f6827a1f-2aa5-400a-80f2-faad70380e72",
+      "selectors": [
+        "network:default/lxdbr0",
+        "privileged:false",
+        "profile:default",
+        "project:default",
+        "server:lxd6",
+        "type:container",
+        "uuid:f6827a1f-2aa5-400a-80f2-faad70380e72"
+      ],
+      "seconds": 29.824158953
+    },
+    {
+      "test": "E2E-1",
+      "server": "lxd6",
+      "guest": "e2e-vm",
+      "kind": "vm",
+      "proof_mode": "file_pull",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd6/414782a9-4952-4d1b-babd-d17077eedbe3",
+      "selectors": [
+        "network:default/lxdbr0",
+        "profile:default",
+        "project:default",
+        "server:lxd6",
+        "type:virtual-machine",
+        "uuid:414782a9-4952-4d1b-babd-d17077eedbe3"
+      ],
+      "seconds": 73.532247681
+    }
+  ]
+}
