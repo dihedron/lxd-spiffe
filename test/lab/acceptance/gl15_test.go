@@ -78,7 +78,7 @@ func TestGL15ClusterErrors(t *testing.T) {
 	l := newLab(t)
 	clusters := l.clusters()
 	if len(clusters) == 0 {
-		t.Skip("cluster fixtures need a cluster: LAB_CLUSTER=5.21, 6.9 or both")
+		t.Skip("cluster fixtures need a cluster: LAB_CLUSTER=5.21, 6 or both")
 	}
 	stamp := time.Now().UTC().Format("20060102T150405Z")
 	collect := os.Getenv("LAB_COLLECT") == "yes"

@@ -464,7 +464,7 @@ func TestST6Evacuation(t *testing.T) {
 	l := newLab(t)
 	clusters := l.clusters()
 	if len(clusters) == 0 {
-		t.Skip("ST-6 needs a running cluster: LAB_CLUSTER=5.21, 6.9 or both")
+		t.Skip("ST-6 needs a running cluster: LAB_CLUSTER=5.21, 6 or both")
 	}
 	count := func(name, def string) int {
 		n, err := strconv.Atoi(setting(name, def))

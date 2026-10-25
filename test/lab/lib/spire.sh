@@ -67,8 +67,9 @@ ensure_spire_pki() {
 	) || die "cannot create the certificate of identity $LAB_SPIRE_ID"
 }
 
-# auth_spire SERVER: group lab-spire with can_view on project default, and
-# the spire identity in it; instance grants come per guest (spire_grant).
+# auth_spire SERVER: group lab-spire with can_view, then can_view_instances
+# (the uniqueness check's list, FR-S18), on project default, and the spire
+# identity in it; instance grants come per guest (spire_grant).
 auth_spire() {
 	local server="$1"
 	if ! vm_lxc "$server" query /1.0/auth/groups | jq -e --arg g "/1.0/auth/groups/$LAB_SPIRE_GROUP" 'index($g)' >/dev/null; then
@@ -82,9 +83,12 @@ auth_spire() {
 			'{name: $name, certificate: $cert, groups: [$group]}')" >/dev/null ||
 			die "$server: cannot trust identity $LAB_SPIRE_ID"
 	fi
-	if ! vm_lxc "$server" query "/1.0/auth/groups/$LAB_SPIRE_GROUP" | jq -e '(.permissions // [])[] | select(.entity_type == "project" and .url == "/1.0/projects/default" and .entitlement == "can_view")' >/dev/null; then
-		vm_lxc "$server" auth group permission add "$LAB_SPIRE_GROUP" project default can_view >/dev/null
-	fi
+	local entitlement
+	for entitlement in can_view can_view_instances; do
+		if ! vm_lxc "$server" query "/1.0/auth/groups/$LAB_SPIRE_GROUP" | jq -e --arg e "$entitlement" '(.permissions // [])[] | select(.entity_type == "project" and .url == "/1.0/projects/default" and .entitlement == $e)' >/dev/null; then
+			vm_lxc "$server" auth group permission add "$LAB_SPIRE_GROUP" project default "$entitlement" >/dev/null
+		fi
+	done
 	env_set ".servers[\"$server\"].auth.spire" "$(identity_fingerprint "$LAB_SPIRE_ID")"
 }
 

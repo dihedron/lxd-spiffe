@@ -42,7 +42,7 @@ func TestGL11Cluster(t *testing.T) {
 	l := newLab(t)
 	clusters := l.clusters()
 	if len(clusters) == 0 {
-		t.Skip("G-L11 needs a cluster: LAB_CLUSTER=5.21 or 6.9")
+		t.Skip("G-L11 needs a cluster: LAB_CLUSTER=5.21 or 6")
 	}
 	stamp := time.Now().UTC().Format("20060102T150405Z")
 	collect := os.Getenv("LAB_COLLECT") == "yes"

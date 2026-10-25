@@ -103,7 +103,7 @@ func TestLAB4Spire(t *testing.T) {
 			if err := json.Unmarshal([]byte(l.ssh(t, server, "sudo lxc query /1.0/auth/groups/lab-spire")), &group); err != nil {
 				t.Fatal(err)
 			}
-			if !slices.Equal(sortedPermissions(got), sortedPermissions(group.Permissions)) || !slices.Contains(sortedPermissions(got), "project /1.0/projects/default can_view") {
+			if !slices.Equal(sortedPermissions(got), sortedPermissions(group.Permissions)) || !slices.Contains(sortedPermissions(got), "project /1.0/projects/default can_view") || !slices.Contains(sortedPermissions(got), "project /1.0/projects/default can_view_instances") {
 				t.Errorf("spire's permissions %v, lab-spire's %v", sortedPermissions(got), sortedPermissions(group.Permissions))
 			}
 			for _, e := range got {

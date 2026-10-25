@@ -105,7 +105,7 @@ commands:
 
 preflight, up, deploy, reset and test take --scenario probe|plugins|all
 (default: LAB_SCENARIOS, now "$LAB_SCENARIOS"). LAB_CLUSTER (now
-"$LAB_CLUSTER": no, 5.21, 6.9 or both) chooses the running clusters for every
+"$LAB_CLUSTER": no, 5.21, 6 or both) chooses the running clusters for every
 command.
 
 Settings are in lab.env, overridden by lab.local.env and by the environment.
