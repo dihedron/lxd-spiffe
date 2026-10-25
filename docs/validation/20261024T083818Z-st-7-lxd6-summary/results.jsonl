@@ -1,0 +1,26 @@
+{"fault":"partition","start":"2026-10-24T08:41:20.029934837Z","end":"2026-10-24T08:41:41.642822468Z","proof_mode":"file_pull","note":"18 s"}
+{"fault":"stop","target":"s-015","start":"2026-10-24T08:43:37.794682644Z","end":"2026-10-24T08:44:15.942693631Z","proof_mode":"file_pull","disturbed":["s-015"]}
+{"fault":"partition","start":"2026-10-24T08:45:24.629726481Z","end":"2026-10-24T08:45:41.001069496Z","proof_mode":"file_pull","note":"13 s"}
+{"fault":"plugin-kill","start":"2026-10-24T08:46:38.475839297Z","end":"2026-10-24T08:49:12.837286586Z","proof_mode":"file_pull","note":"NOT recovered by SPIRE: the plugin process did not come back in 150 s; SPIRE Server restarted"}
+{"fault":"plugin-kill","start":"2026-10-24T08:51:18.745996622Z","end":"2026-10-24T08:53:53.019794699Z","proof_mode":"file_pull","note":"NOT recovered by SPIRE: the plugin process did not come back in 150 s; SPIRE Server restarted"}
+{"fault":"stop","target":"s-069","start":"2026-10-24T08:55:32.788931201Z","end":"2026-10-24T08:56:07.90822704Z","proof_mode":"file_pull","disturbed":["s-069"]}
+{"fault":"wipe","target":"s-081","start":"2026-10-24T08:57:36.286274688Z","end":"2026-10-24T08:57:36.978236186Z","proof_mode":"file_pull","disturbed":["s-081"]}
+{"fault":"wipe","target":"s-022","start":"2026-10-24T08:59:30.737691592Z","end":"2026-10-24T08:59:31.388249852Z","proof_mode":"file_pull","disturbed":["s-022"]}
+{"fault":"stop","target":"s-093","start":"2026-10-24T09:01:09.577391342Z","end":"2026-10-24T09:01:45.698666129Z","proof_mode":"file_pull","disturbed":["s-093"]}
+{"fault":"partition","start":"2026-10-24T09:03:19.498698501Z","end":"2026-10-24T09:03:35.643930169Z","proof_mode":"file_pull","note":"14 s"}
+{"fault":"spire-restart","start":"2026-10-24T09:05:34.446872554Z","end":"2026-10-24T09:05:35.188563248Z","proof_mode":"file_pull"}
+{"fault":"mode-switch","start":"2026-10-24T09:05:50.200641999Z","end":"2026-10-24T09:05:51.171941008Z","proof_mode":"config_push","note":"proof_mode config_push"}
+{"fault":"writer","target":"s-009","start":"2026-10-24T09:06:27.913726486Z","end":"2026-10-24T09:06:48.193126279Z","proof_mode":"config_push","disturbed":["s-009"]}
+{"fault":"partition","start":"2026-10-24T09:08:42.443355973Z","end":"2026-10-24T09:09:04.076482366Z","proof_mode":"config_push","note":"21 s"}
+{"fault":"stop","target":"s-050","start":"2026-10-24T09:11:15.417636727Z","end":"2026-10-24T09:11:37.277333089Z","proof_mode":"config_push","disturbed":["s-050"]}
+{"fault":"daemon","start":"2026-10-24T09:13:09.774602067Z","end":"2026-10-24T09:14:06.16359848Z","proof_mode":"config_push","note":"the fleet's containers run again","disturbed":["s-001","s-002","s-003","s-004","s-005","s-006","s-007","s-008","s-009","s-010","s-011","s-012","s-013","s-014","s-015","s-016","s-017","s-018","s-019","s-020","s-021","s-022","s-023","s-024","s-025","s-026","s-027","s-028","s-029","s-030","s-031","s-032","s-033","s-034","s-035","s-036","s-037","s-038","s-039","s-040","s-041","s-042","s-043","s-044","s-045","s-046","s-047","s-048","s-049","s-050","s-051","s-052","s-053","s-054","s-055","s-056","s-057","s-058","s-059","s-060","s-061","s-062","s-063","s-064","s-065","s-066","s-067","s-068","s-069","s-070","s-071","s-072","s-073","s-074","s-075","s-076","s-077","s-078","s-079","s-080","s-081","s-082","s-083","s-084","s-085","s-086","s-087","s-088","s-089","s-090","s-091","s-092","s-093","s-094","s-095","s-096","s-097","s-098","s-099","s-100"]}
+{"fault":"partition","start":"2026-10-24T09:16:00.246741921Z","end":"2026-10-24T09:16:11.491656089Z","proof_mode":"config_push","note":"10 s"}
+{"fault":"wipe","target":"s-022","start":"2026-10-24T09:17:50.060031066Z","end":"2026-10-24T09:17:50.926903988Z","proof_mode":"config_push","disturbed":["s-022"]}
+{"fault":"stop","target":"s-080","start":"2026-10-24T09:19:21.587665416Z","end":"2026-10-24T09:20:02.606632439Z","proof_mode":"config_push","disturbed":["s-080"]}
+{"fault":"wipe","target":"s-074","start":"2026-10-24T09:21:09.643156304Z","end":"2026-10-24T09:21:10.345247327Z","proof_mode":"config_push","disturbed":["s-074"]}
+{"fault":"writer","target":"s-019","start":"2026-10-24T09:22:49.116698697Z","end":"2026-10-24T09:23:09.246522157Z","proof_mode":"config_push","disturbed":["s-019"]}
+{"fault":"wipe","target":"s-036","start":"2026-10-24T09:25:23.189632527Z","end":"2026-10-24T09:25:23.849213167Z","proof_mode":"config_push","disturbed":["s-036"]}
+{"fault":"partition","start":"2026-10-24T09:26:43.060775561Z","end":"2026-10-24T09:27:04.472428925Z","proof_mode":"config_push","note":"21 s"}
+{"fault":"wipe","target":"s-018","start":"2026-10-24T09:29:08.558282918Z","end":"2026-10-24T09:29:09.238954379Z","proof_mode":"config_push","disturbed":["s-018"]}
+{"fault":"spire-restart","start":"2026-10-24T09:30:41.267839914Z","end":"2026-10-24T09:30:42.198669822Z","proof_mode":"config_push"}
+{"fault":"partition","start":"2026-10-24T09:32:58.229960507Z","end":"2026-10-24T09:33:14.340135461Z","proof_mode":"config_push","note":"12 s"}

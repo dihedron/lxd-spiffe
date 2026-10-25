@@ -182,7 +182,7 @@ There are three kinds:
 | E2E-2 | `config_push` | The same with `config_push`; the challenge key is gone from the instance after attestation | plugins (e) |
 | E2E-3 | Refusals | Attestation fails, the agent seeing only the uniform error, for an instance outside the allowed projects (`scope_denied`), a claim naming another instance (`instance_not_found`: the claim carries the guest's own cloud-init id, which the other instance lacks, FR-S3, whether or not the `spire` identity can read it) and an identity lacking `can_access_files` (`lxd_unavailable`, LXD's 403); `proof_mismatch` needs an agent that forges the id and stays in the unit tests | plugins (e) |
 | E2E-4 | Re-attestation and identity change | An agent restarted with its data wiped attests again with the same SPIFFE ID and a new serial; a copy of an attested container made without the agent's data gets a different SPIFFE ID (gate L6); a copy that inherits the agent's data is **recorded, not asserted**: it loads the original's SVID, never attests, and a workload in it fetches the workload SVID of an entry under the original's agent ID (attestor spec T14, *Operational guidance* item 7) | plugins (e) |
-| E2E-5 | Cluster | On each cluster, an instance on the second member attests through the first | plugins (e) |
+| E2E-5 | Cluster | On each cluster, an instance on the second member attests through the first. **Passed** on c6 (LXD 6.10.0, `20261025T073703Z`, both modes); c5 not run: both clusters and SPIRE do not fit in this host's RAM at once | plugins (e) |
 
 Every failing check prints what it observed (exit code, record path, observations), so that a failure can be diagnosed without re-running it.
 
