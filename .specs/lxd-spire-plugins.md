@@ -60,6 +60,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Oct 23, 2026 (plugins, chunk 8.2) | Lab end-to-end tests E2E-1..4 on LXD 5.21.8 and 6.9: *T14* and *Operational guidance* item 7 state that a copy inheriting the agent's data never attests and is issued the original's workload SVIDs, with the mitigations (evict, remove the data, tmpfs under evaluation). |
 | Oct 23, 2026 (plugins, soak ST-7 on 6.9) | *Operational guidance* item 7: agents attest again at about half their SVID's life (measured), so a short TTL bounds a copy's window; new items 17 (SPIRE does not restart a crashed plugin) and 18 (SPIRE's per-IP attestation rate limit and `attestation_timeout` for many agents behind one address). |
 | Oct 23, 2026 (rename) | The plugin name is `lxd_iid` (was `lxd_instance`), in line with SPIRE's `*_iid` node attestors: the name SPIRE configurations use, the SPIFFE ID path (`spire/agent/lxd_iid/...`), the selector type, the wire protocol's package (`spire.plugin.lxd_iid.v1`, `internal/proto/lxd_iid.proto`) and the Go packages (`internal/plugin/{agent,server}/lxdiid`). Changed before the first release; the recorded evidence was rewritten to the new name (`docs/validation/README.md`). |
+| Oct 25, 2026 (LXD 6.10.0) | Lab end-to-end tests E2E-1..4 on LXD 5.21.8 and 6.10.0, and E2E-5 on c6 (6.10.0), pass with `lxd_iid` from a clean build; the 6.10.0 soak, cluster chaos and evacuation results are in the stress spec. Nothing in the plugins' behaviour changed between 6.9 and 6.10.0. |
 
 ## Overview
 
