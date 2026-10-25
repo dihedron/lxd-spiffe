@@ -1,0 +1,5 @@
+# Setup Guide: title page and PDF metadata (see docs/build.sh)
+title: "Setup Guide"
+subtitle: "Preparing LXD, installing and configuring the SPIRE plugins"
+author: "lxd-spiffe"
+lang: en-GB

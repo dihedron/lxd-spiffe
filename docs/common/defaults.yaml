@@ -1,5 +1,5 @@
 # pandoc defaults shared by the documents (see docs/build.sh and
-# .specs/lxd-spire-plugins.md). Paths are relative to the repository
+# .specs/lxd-spire-docs.md). Paths are relative to the repository
 # root, where the build runs.
 from: markdown
 to: pdf
@@ -13,6 +13,8 @@ fail-if-warnings: true
 resource-path: [".", "build/docs/work/diagrams", "docs/common/artwork"]
 filters:
   - docs/common/filters/include.lua
+  - docs/common/filters/landscape.lua
+  - docs/common/filters/breakcode.lua
 variables:
   # a book (scrbook) for chapters, printed one-sided
   book: true
@@ -34,8 +36,13 @@ variables:
   code-block-font-size: \small
   table-use-row-colors: true
   # a description list's text starts below its term: the configuration
-  # reference's keys are easier to scan
+  # reference's keys are easier to scan. A landscape div's pages
+  # (landscape.lua) are turned by lscape and shown upright by viewers through
+  # their /Rotate, as pdflscape would (not in the image) under XeLaTeX
   header-includes: |
     \usepackage{enumitem}
     \usepackage{needspace}
+    \usepackage{lscape}
+    \newif\iflandscapepage
+    \AddToHook{shipout/background}{\iflandscapepage\put(0,0){\special{pdf: put @thispage <</Rotate 90>>}}\fi}
     \setlist[description]{style=nextline, leftmargin=1.5em}

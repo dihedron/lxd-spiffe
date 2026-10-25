@@ -84,6 +84,10 @@ var configKeys = []string{
 	"limits.breaker_threshold", "limits.breaker_open", "limits.breaker_max_open",
 }
 
+// ConfigKeys returns the keys Config accepts, for the documents'
+// completeness test (docs/docs_test.go).
+func ConfigKeys() []string { return slices.Clone(configKeys) }
+
 // serverError prefixes an error with the servers entry it is about.
 const serverError = "server %s: %v"
 

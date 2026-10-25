@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Builds the release documents (see .specs/lxd-spire-plugins.md) into
+# Builds the release documents (see .specs/lxd-spire-docs.md) into
 # build/docs/ (not dist/, which goreleaser cleans), with pinned container images: Mermaid diagrams to PDF with
 # mermaid-cli, then each document to PDF with pandoc, LaTeX and Eisvogel.
 #
 #   docs/build.sh                  # every document
-#   docs/build.sh architecture     # one document
+#   docs/build.sh setup-guide      # one document
 #
 # DOCS_VERSION sets the version printed in the documents (default: git
 # describe); DOCS_ENGINE the container engine (default: docker, else podman).
@@ -12,10 +12,12 @@ set -euo pipefail
 
 readonly PANDOC_IMAGE="docker.io/pandoc/extra:3.11.0.0-debian@sha256:fa8ccae75418449568f10f1842706aee1885ab24fba54f5aec08516260fc0166"
 readonly MERMAID_IMAGE="ghcr.io/mermaid-js/mermaid-cli/mermaid-cli:12.0.0@sha256:fa995339034aae7e5cd4f61482248b7f5c51be355b1a6f6eda11a2bbf8401f5f"
-readonly DOCUMENTS=(architecture)
+readonly DOCUMENTS=(setup-guide architecture operators-guide)
 
 declare -A FILE_NAMES=(
+	[setup-guide]=setup-guide
 	[architecture]=architecture-and-design
+	[operators-guide]=operators-guide
 )
 
 die() {

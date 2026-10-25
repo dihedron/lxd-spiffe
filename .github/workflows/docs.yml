@@ -3,7 +3,7 @@ name: Documents
 # Builds the release documents on every change that can affect them, so
 # that a document that does not build is caught before a release, and
 # attaches the PDFs to the run for review. Releases build them again, with the release version
-# (make release). See .specs/lxd-spire-plugins.md.
+# (make release). See .specs/lxd-spire-docs.md.
 
 on:
   push:

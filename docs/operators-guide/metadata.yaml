@@ -1,0 +1,5 @@
+# Operator's Guide: title page and PDF metadata (see docs/build.sh)
+title: "Operator's Guide"
+subtitle: "Running, monitoring and troubleshooting LXD node attestation"
+author: "lxd-spiffe"
+lang: en-GB
