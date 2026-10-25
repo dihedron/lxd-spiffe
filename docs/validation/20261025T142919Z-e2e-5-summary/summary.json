@@ -1,0 +1,42 @@
+{
+  "environment": "SPIRE 1.15.5, plugins 0.1.0-SNAPSHOT-17a3e2e, c5 LXD 5.21.8, c6 LXD 6.10.0, lxd5 LXD 5.21.8, lxd6 LXD 6.10.0",
+  "name": "20261025T142919Z-e2e-5-summary",
+  "results": [
+    {
+      "test": "E2E-5",
+      "server": "c5",
+      "guest": "e2e-config-push",
+      "kind": "container",
+      "proof_mode": "config_push",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/c5/7477d6ec-9afe-4840-8b97-f617a74b3685",
+      "selectors": [
+        "network:default/lxdbr0",
+        "privileged:false",
+        "profile:default",
+        "project:default",
+        "server:c5",
+        "type:container",
+        "uuid:7477d6ec-9afe-4840-8b97-f617a74b3685"
+      ],
+      "seconds": 15.439434532
+    },
+    {
+      "test": "E2E-5",
+      "server": "c5",
+      "guest": "e2e-file-pull",
+      "kind": "container",
+      "proof_mode": "file_pull",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/c5/25fede58-59cc-43c3-84ef-0f8592feb1f3",
+      "selectors": [
+        "network:default/lxdbr0",
+        "privileged:false",
+        "profile:default",
+        "project:default",
+        "server:c5",
+        "type:container",
+        "uuid:25fede58-59cc-43c3-84ef-0f8592feb1f3"
+      ],
+      "seconds": 28.301725313
+    }
+  ]
+}
