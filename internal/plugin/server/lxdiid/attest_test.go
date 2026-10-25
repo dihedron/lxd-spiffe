@@ -351,6 +351,15 @@ func TestSEC10Refusals(t *testing.T) {
 			h.fake.SetType("default", "c1", "virtual-machine")
 			h.fake.FailFiles("default", "c1", 1000, 500, "LXD VM agent is not currently running")
 		}, reason: "vm_agent_unavailable"},
+		"E2E-3 no files grant": {setup: func(h *harness, _ *agent) {
+			h.fake.FailFiles("default", "c1", 1000, 403, "not authorized")
+		}, reason: "lxd_forbidden"},
+		"files API failing": {setup: func(h *harness, _ *agent) {
+			h.fake.FailFiles("default", "c1", 1000, 500, "database is not available")
+		}, reason: "lxd_unavailable"},
+		"no instance grant": {setup: func(h *harness, _ *agent) {
+			h.fake.Deny("/1.0/instances")
+		}, reason: "lxd_forbidden"},
 		"FR-S10 moved during the proof": {setup: func(_ *harness, a *agent) {
 			a.answer = func(h *harness, a *agent, c *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
 				h.writeProof("default", a, c, 0, 0o600, a.rightProof(c))

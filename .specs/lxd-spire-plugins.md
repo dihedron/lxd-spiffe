@@ -61,6 +61,7 @@ Oct 8, 2026 (merges lxd-instance-attestor-spec v0.3) · @Andrea Funtò
 | Oct 23, 2026 (plugins, soak ST-7 on 6.9) | *Operational guidance* item 7: agents attest again at about half their SVID's life (measured), so a short TTL bounds a copy's window; new items 17 (SPIRE does not restart a crashed plugin) and 18 (SPIRE's per-IP attestation rate limit and `attestation_timeout` for many agents behind one address). |
 | Oct 23, 2026 (rename) | The plugin name is `lxd_iid` (was `lxd_instance`), in line with SPIRE's `*_iid` node attestors: the name SPIRE configurations use, the SPIFFE ID path (`spire/agent/lxd_iid/...`), the selector type, the wire protocol's package (`spire.plugin.lxd_iid.v1`, `internal/proto/lxd_iid.proto`) and the Go packages (`internal/plugin/{agent,server}/lxdiid`). Changed before the first release; the recorded evidence was rewritten to the new name (`docs/validation/README.md`). |
 | Oct 25, 2026 (LXD 6.10.0) | Lab end-to-end tests E2E-1..4 on LXD 5.21.8 and 6.10.0, and E2E-5 on c6 (6.10.0), pass with `lxd_iid` from a clean build; the 6.10.0 soak, cluster chaos and evacuation results are in the stress spec. Nothing in the plugins' behaviour changed between 6.9 and 6.10.0. |
+| Oct 25, 2026 (`lxd_forbidden`) | New reason code `lxd_forbidden`: a call LXD refuses with 401 or 403 (SPIRE's identity removed, expired, or lacking the instance grant) no longer reports `lxd_unavailable`, which now means only a server that is unreachable, failing or behind an open breaker. E2E-3's missing `can_access_files` expects it. |
 
 ## Overview
 
@@ -613,7 +614,7 @@ The fields below are the **only** ones the plugin consumes. They were first draw
 
 ### Observability
 
-- Structured logs: `correlation_id`, `server_id`, `project`, `instance_uuid` (on success), `proof_mode`, `outcome`, `reason_code`. Reason codes: `ok, payload_invalid, instance_not_found, instance_ambiguous, not_running, scope_denied, policy_denied, proof_timeout, proof_mismatch, vm_agent_unavailable, lxd_unavailable, extension_missing, rate_limited, precondition_failed, instance_moved, project_unreadable`.
+- Structured logs: `correlation_id`, `server_id`, `project`, `instance_uuid` (on success), `proof_mode`, `outcome`, `reason_code`. Reason codes: `ok, payload_invalid, instance_not_found, instance_ambiguous, not_running, scope_denied, policy_denied, proof_timeout, proof_mismatch, vm_agent_unavailable, lxd_unavailable, lxd_forbidden, extension_missing, rate_limited, precondition_failed, instance_moved, project_unreadable`.
 - Metrics: v1 emits no SPIRE telemetry, since the plugin SDK offers plugins no metrics API; the metrics are derived from the structured log lines, one per attestation: `attestations_total{outcome}` from `outcome` and `reason_code`, `duration_ms` (the whole attestation), `proof_ms` (challenge to proof read back), `inflight`, and the WARN of every claim-only attestation for `claim_only_mode_active`; with `config_push`, `config_push_stale_keys_removed_total` is a field of the attestation's log line, the number of stale keys its challenge write removed, and `config_push_cleanup_failures_total` a field of the WARN line that every failed cleanup logs. No names or UUIDs as labels.
 - One audit log line per issued ID including the selectors emitted.
 

@@ -48,7 +48,7 @@ Never use the instance UUID, name or project as a metric label: they are unbound
 | **Server plugin down** | SPIRE Server logs `plugin process exited` for `lxd_iid`, or attestations fail with `connection refused` or `Nodeattestor(lxd_iid): connection error` | SPIRE does not restart a crashed plugin; every attestation fails until SPIRE Server restarts. Restart it (*Incident procedures*). Supervising SPIRE Server's process does not catch this: it stays up |
 | **No successful attestation** | zero `attestation succeeded` for longer than a quarter of `agent_ttl`, while agents exist | Agents will start losing their SVIDs: check the plugin, LXD and the network |
 | **Refusal ratio high** | `attestation refused` over, say, 20 % of attestations for 15 minutes | Look at the dominant `reason_code` (*Troubleshooting*) |
-| **`lxd_unavailable` or `extension_missing`** | sustained | An LXD server is down, unreachable, refuses SPIRE's identity, or was changed |
+| **`lxd_unavailable`, `lxd_forbidden` or `extension_missing`** | sustained | An LXD server is down, unreachable, refuses SPIRE's identity, or was changed |
 | **`proof_mismatch` or `instance_ambiguous`** | any, outside known maintenance | Possible forgery attempt or a duplicated instance: investigate (*Incident procedures*) |
 | **`rate_limited`** | sustained | A flood, or `limits` too low for a mass restart |
 | **Identity has too many rights** | the warning `the LXD identity has more rights than the attestor needs (SEC-16)` | SPIRE's LXD identity is an administrator: fix its grants |

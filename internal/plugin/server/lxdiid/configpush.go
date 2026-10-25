@@ -161,7 +161,7 @@ func (a *attestation) patch(ctx context.Context, m *match, config func(*api.Inst
 		case retry > 0 && ctx.Err() != nil:
 			return fail(reasonPreconditionFailed, "retries cut by proof_timeout: %v", err)
 		case lxd.KindOf(err) != lxd.KindPrecondition:
-			return fail(reasonLXDUnavailable, "writing the challenge key: %v", err)
+			return fail(lxdReason(err), "writing the challenge key: %v", err)
 		case retry == maxRetries:
 			return fail(reasonPreconditionFailed, "the instance changed during %d retries", maxRetries)
 		}
@@ -174,7 +174,7 @@ func (a *attestation) patch(ctx context.Context, m *match, config func(*api.Inst
 		wait = min(2*wait, retryCap)
 		if inst, etag, err = m.client.Instance(ctx, m.inst.Project, m.instance); err != nil {
 			m.srv.observe(ctx, err)
-			return fail(reasonLXDUnavailable, "reading the instance after a 412: %v", err)
+			return fail(lxdReason(err), "reading the instance after a 412: %v", err)
 		}
 		if err := a.same(m, inst); err != nil {
 			return err

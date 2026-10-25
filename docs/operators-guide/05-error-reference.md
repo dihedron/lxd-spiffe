@@ -18,7 +18,8 @@ Every refused attestation logs `attestation refused` on SPIRE Server with one of
 | `proof_timeout` | The proof did not arrive within `proof_timeout` | An agent stuck or killed; a VM's files API answering 404 too long; a slow LXD | Check the agent; raise `proof_timeout` for VMs |
 | `proof_mismatch` | The proof was wrong | Different `proof_dir` on the two sides; a proof directory with the wrong owner or mode; an agent not running as root; a forgery attempt | Fix the setup; if the setup is right, investigate (*Incident procedures*) |
 | `vm_agent_unavailable` | A VM's `lxd-agent` did not answer within `proof_timeout` | A cold boot with SPIRE Agent started before `lxd-agent`; SELinux on RHEL 9 derivatives; `lxd-agent` disabled | Order SPIRE Agent after `lxd-agent`; the SELinux drop-in; raise `proof_timeout` |
-| `lxd_unavailable` | LXD failed or refused a call | The server unreachable; the circuit breaker open; the certificate pin not matching; SPIRE's identity removed, expired or lacking the instance grant (a 403) | Check the server, the pin, the identity and the grant for the instance (*Incident procedures*) |
+| `lxd_unavailable` | LXD failed a call | The server unreachable or failing; the circuit breaker open; the certificate pin not matching | Check the server and the pin (*Incident procedures*) |
+| `lxd_forbidden` | LXD refused a call (401, 403) | SPIRE's identity removed, expired, or lacking the instance grant | Check the identity, its credential and the grant for the instance |
 | `extension_missing` | The LXD server lacks a required API extension | LXD older than 5.21; a bearer token entry on 5.21; another service behind the URL | Upgrade LXD, or fix the entry |
 | `rate_limited` | Refused by the plugin's limits, before any LXD call | A claim cooling down after failures; more attestations than `limits.max_inflight` or `limits.rate_per_sec` | Fix the failing claim; raise the limits for mass restarts |
 | `precondition_failed` | The `config_push` challenge write kept meeting other writers | Another tool updating the instance's configuration continuously | Find the other writer; the agent retries |
@@ -44,8 +45,8 @@ The `error` of `attestation refused`, by the step that refused. The reason code 
 | Message | Reason | Cause | Remedy |
 | ---------------------------------- | --------------------- | -------------------------------- | -------------------------------- |
 | `the claimed project is in no server's allow-list` | `scope_denied` | `claim.project` names a project no server entry allows | Fix the claim or add the project |
-| `server <id>, project <project>: <error>` | `lxd_unavailable` | Reading the instance failed for another reason than "not found" | The wrapped error (*The LXD client*) |
-| `server <id>: <error>` | `lxd_unavailable` or `extension_missing` | The server's check failed: untrusted identity, missing extensions, unreachable | The wrapped error; `refusing to attest through an LXD server` gives it once |
+| `server <id>, project <project>: <error>` | `lxd_unavailable` or `lxd_forbidden` | Reading the instance failed for another reason than "not found" | The wrapped error (*The LXD client*) |
+| `server <id>: <error>` | `lxd_unavailable`, `lxd_forbidden` or `extension_missing` | The server's check failed: untrusted identity, missing extensions, unreachable | The wrapped error; `refusing to attest through an LXD server` gives it once |
 | `the circuit breaker is open after LXD failures` | `lxd_unavailable` | The server failed `limits.breaker_threshold` times in a row; no call is made until the next trial | Fix the server; the breaker closes after a successful trial |
 | `no instance matches the claim` | `instance_not_found` | No instance of that name in the allowed projects, or its cloud-init ID differs from the claim | Check the name and project; a renamed instance needs SPIRE Agent restarted to send its new cloud-init ID |
 | `<n> instances match the claim` | `instance_ambiguous` | The name exists in several allowed projects or servers | Set `claim.project`; give servers distinct projects |
@@ -73,7 +74,7 @@ These come as `attestation denied (<code>): <detail>`; `after a 412: ` precedes 
 
 | Message | Reason | Cause | Remedy |
 | ---------------------------------- | --------------------- | -------------------------------- | -------------------------------- |
-| `server <id>, project <project>: listing by uuid: <error>` | `lxd_unavailable` | The filtered instance list failed on a server; every server must answer | The wrapped error |
+| `server <id>, project <project>: listing by uuid: <error>` | `lxd_unavailable` or `lxd_forbidden` | The filtered instance list failed on a server; every server must answer | The wrapped error |
 | `instances with the resolved uuid: [<server>/<project>/<name> ...]` | `instance_ambiguous` | Several instances share the UUID (an import keeps it), or SPIRE's group lacks project `can_view_instances` so the list misses the instance itself | Remove the twin; grant `can_view_instances` |
 
 ### The proof
@@ -88,24 +89,24 @@ These come as `attestation denied (<code>): <detail>`; `after a 412: ` precedes 
 | `the agent did not complete the file_pull step` | `proof_mismatch` | The agent answered with another mode or without completing | Align versions |
 | `no proof file: <error>` | `proof_mismatch` | The files API found no file at the proof path in a container | Same `proof_dir` on both sides; the agent wrote it (its log) |
 | `the proof file was not readable within proof_timeout: <error>` | `vm_agent_unavailable` or `proof_timeout` | A VM's `lxd-agent` not answering (500), or the file missing (404), until the deadline | Order SPIRE Agent after `lxd-agent`; raise `proof_timeout` |
-| `reading the proof file: <error>` | `lxd_unavailable` | The files API failed otherwise, typically 403: no `can_access_files` on the instance | Grant `can_access_files` |
+| `reading the proof file: <error>` | `lxd_forbidden` or `lxd_unavailable` | `lxd_forbidden`: a 403, no `can_access_files` on the instance; `lxd_unavailable`: the files API failed otherwise | Grant `can_access_files`; the wrapped error |
 | `the proof is a <type>, not a regular file` | `proof_mismatch` | A directory or symlink at the proof path | Investigate: the agent never creates one |
 | `the proof has owner <uid> and mode <mode>, not 0 and 0600` | `proof_mismatch` | The file is not root's, or not 0600 | SPIRE Agent must run as root; investigate otherwise |
 | `the proof's content is not the expected proof` | `proof_mismatch` | Wrong content: another attestation's file, a forgery, a claim that differs from the instance | Investigate (*Incident procedures*) |
 | `reading the proof directory: <error>` | `proof_mismatch` | The proof directory could not be read | Check it in the instance |
 | `the proof directory is a <type> with owner <uid> and mode <mode>` | `proof_mismatch` | The proof directory is not a root-owned 0700 directory | Remove it; the agent recreates it correctly |
 | `the agent's echo is not the challenge value` | `proof_mismatch` | `config_push`: the value read back differs | Investigate |
-| `writing the challenge key: <error>` | `lxd_unavailable` | `config_push`: the `PATCH` failed, typically 403: no `can_edit` | Grant `can_edit` |
+| `writing the challenge key: <error>` | `lxd_forbidden` or `lxd_unavailable` | `config_push`: the `PATCH` failed; `lxd_forbidden`: a 403, no `can_edit` | Grant `can_edit`; the wrapped error |
 | `retries cut by proof_timeout: <error>` | `precondition_failed` | Write conflicts until the deadline | Find the other writer |
 | `the instance changed during 10 retries` | `precondition_failed` | Ten write conflicts in a row | Find the other writer |
-| `reading the instance after a 412: <error>` | `lxd_unavailable` | The re-read after a conflict failed | The wrapped error |
+| `reading the instance after a 412: <error>` | `lxd_unavailable` or `lxd_forbidden` | The re-read after a conflict failed | The wrapped error |
 
 ### After the proof
 
 | Message | Reason | Cause | Remedy |
 | ---------------------------------- | --------------------- | -------------------------------- | -------------------------------- |
 | `the instance is gone after the proof` | `instance_not_found` | Deleted during the attestation | None |
-| `reading the instance again: <error>` | `lxd_unavailable` | The second read failed | The wrapped error |
+| `reading the instance again: <error>` | `lxd_unavailable` or `lxd_forbidden` | The second read failed | The wrapped error |
 | `the instance is <status> after the proof` | `not_running` | Stopped during the attestation | The agent retries |
 | `the instance's identity changed during the proof` (or `after a 412`) | `instance_not_found` | Name, project, UUID or generation changed: renamed, restored, replaced | Investigate if unexpected |
 | `the instance moved from <member> to <member> during the proof` | `instance_moved` | Migrated or evacuated | The agent retries |
@@ -175,7 +176,7 @@ SPIRE Server refuses to start, or to reload the plugin, with `invalid plugin con
 
 ## The LXD client
 
-The errors of the client the server plugin uses for LXD. They appear wrapped in the refusals above (usually as `lxd_unavailable`), and in `refusing to attest through an LXD server`.
+The errors of the client the server plugin uses for LXD. They appear wrapped in the refusals above (usually as `lxd_unavailable`, or `lxd_forbidden` for an `auth` error), and in `refusing to attest through an LXD server`.
 
 | Message | Cause | Remedy |
 | ---------------------------------------------- | ---------------------------------------- | ---------------------------------- |

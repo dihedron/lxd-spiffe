@@ -56,7 +56,7 @@ These confirm that the plugin refuses what it must refuse. Each must fail on the
 | -------------------------------------------------------- | ------------------ |
 | An instance in a project that is not in the server's `projects` | `scope_denied` |
 | An agent that claims another instance's name (`claim.instance_name`) | `instance_not_found` or `proof_mismatch` |
-| An instance whose instance grant was removed | `lxd_unavailable` |
+| An instance whose instance grant was removed | `lxd_forbidden` |
 | A privileged container (`security.privileged=true`), with `allow_privileged = false` | `policy_denied` |
 
 Clean up afterwards: `lxc delete --force e2e-check --project spire-nodes`, remove its grant, and evict its agent (`spire-server agent evict -spiffeID ...`).

@@ -39,6 +39,7 @@ const (
 	reasonProofMismatch     = "proof_mismatch"
 	reasonVMAgent           = "vm_agent_unavailable"
 	reasonLXDUnavailable    = "lxd_unavailable"
+	reasonLXDForbidden      = "lxd_forbidden"
 	reasonExtensionMissing  = "extension_missing"
 	reasonInstanceMoved     = "instance_moved"
 	reasonProjectUnreadable = "project_unreadable"
@@ -200,6 +201,15 @@ func typeHint(t lxdiidv1.InstanceType) string {
 	return ""
 }
 
+// lxdReason is the reason of a failed LXD call: lxd_forbidden when LXD
+// refused SPIRE's identity (401, 403), lxd_unavailable otherwise.
+func lxdReason(err error) string {
+	if lxd.KindOf(err) == lxd.KindAuth {
+		return reasonLXDForbidden
+	}
+	return reasonLXDUnavailable
+}
+
 // client returns a server's checked client, or the failure of its check.
 func client(ctx context.Context, srv *lxdServer) (*lxd.Client, error) {
 	c, err := srv.checked(ctx)
@@ -207,7 +217,7 @@ func client(ctx context.Context, srv *lxdServer) (*lxd.Client, error) {
 	case errors.Is(err, lxd.ErrMissingExtensions):
 		return nil, fail(reasonExtensionMissing, "%v", err)
 	case err != nil:
-		return nil, fail(reasonLXDUnavailable, "%v", err)
+		return nil, fail(lxdReason(err), "%v", err)
 	}
 	return c, nil
 }
@@ -239,7 +249,7 @@ func (a *attestation) resolve(ctx context.Context, c *lxdiidv1.Claim) (*match, e
 			case lxd.KindOf(err) == lxd.KindNotFound:
 				continue
 			case err != nil:
-				return nil, fail(reasonLXDUnavailable, "server %s, project %s: %v", srv.id, p, err)
+				return nil, fail(lxdReason(err), "server %s, project %s: %v", srv.id, p, err)
 			case c.GetCloudInitInstanceId() != "" && inst.ExpandedConfig["volatile.cloud-init.instance-id"] != c.GetCloudInitInstanceId():
 				continue
 			}
@@ -270,7 +280,7 @@ func (a *attestation) unique(ctx context.Context, m *match, uuid string) error {
 			names, err := cl.InstancesByUUID(ctx, p, uuid)
 			srv.observe(ctx, err)
 			if err != nil {
-				return fail(reasonLXDUnavailable, "server %s, project %s: listing by uuid: %v", srv.id, p, err)
+				return fail(lxdReason(err), "server %s, project %s: listing by uuid: %v", srv.id, p, err)
 			}
 			for _, n := range names {
 				found = append(found, srv.id+"/"+p+"/"+n)
@@ -401,7 +411,7 @@ func readProof(ctx context.Context, m *match, path string, isVM bool) (*lxd.File
 		case kind == lxd.KindTimeout || ctx.Err() != nil:
 			return nil, fail(reason, "the proof file was not readable within proof_timeout: %v", err)
 		default:
-			return nil, fail(reasonLXDUnavailable, "reading the proof file: %v", err)
+			return nil, fail(lxdReason(err), "reading the proof file: %v", err)
 		}
 		select {
 		case <-ctx.Done():
@@ -422,7 +432,7 @@ func (a *attestation) reverify(ctx context.Context, m *match) error {
 	case lxd.KindOf(err) == lxd.KindNotFound:
 		return fail(reasonNotFound, "the instance is gone after the proof")
 	case err != nil:
-		return fail(reasonLXDUnavailable, "reading the instance again: %v", err)
+		return fail(lxdReason(err), "reading the instance again: %v", err)
 	case again.Status != "Running":
 		return fail("not_running", "the instance is %s after the proof", again.Status)
 	}

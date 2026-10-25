@@ -387,7 +387,7 @@ func TestE2E3Refusals(t *testing.T) {
 	}{
 		{"outside the allowed projects", "scope_denied", []string{"--project", "restricted"}, false},
 		{"a claim naming another instance", "instance_not_found", []string{"--claim-name", "c-unpriv"}, true},
-		{"an identity lacking can_access_files", "lxd_unavailable", []string{"--no-files"}, false},
+		{"an identity lacking can_access_files", "lxd_forbidden", []string{"--no-files"}, false},
 	}
 	for _, server := range l.servers() {
 		for i, c := range cases {
