@@ -186,6 +186,19 @@ func (l *lab) proofMode(t *testing.T, uuid string) string {
 	return ""
 }
 
+// attestations counts the successes SPIRE Server logged after mark for the
+// instance with this uuid.
+func (l *lab) attestations(t *testing.T, mark int, uuid string) int {
+	t.Helper()
+	n := 0
+	for _, line := range strings.Split(l.logSince(t, mark), "\n") {
+		if strings.Contains(line, "attestation succeeded") && strings.Contains(line, uuid) {
+			n++
+		}
+	}
+	return n
+}
+
 // waitFor fails the test unless check holds within d (poll).
 func waitFor(t *testing.T, d time.Duration, what string, check func() bool) {
 	t.Helper()
@@ -514,7 +527,19 @@ func (l *lab) recordKeptCopy(t *testing.T, run *e2eRun, g *guest, original, befo
 
 	// a workload entry under the original's agent: does the copy get it?
 	spiffe := "spiffe://" + labTrustDomain + "/e2e-clone"
-	out := l.ssh(t, "spire", fmt.Sprintf("%s entry create -parentID %s -spiffeID %s -selector unix:uid:0 -output json", spireServerBin, original.spiffeID(), spiffe))
+	l.workloadEntry(t, original.spiffeID(), spiffe)
+	fetched := l.fetches(g, spiffe, 2*time.Minute)
+	notes := fmt.Sprintf("copy attests as itself: %v; the copy's workload gets the original's workload SVID %s: %v; original's agent serial before %s, after %s; the copy's agent log: %s",
+		attestsAsItself, spiffe, fetched, before.Serial, after.Serial, strings.ReplaceAll(strings.TrimSpace(log), "\n", " / "))
+	run.add(e2eResult{Test: "E2E-4 copy with the agent's data (recorded, not asserted)", Server: g.server, Guest: g.name, SpiffeID: original.spiffeID(), Notes: notes})
+	t.Logf("copy with the agent's data: %s", notes)
+}
+
+// workloadEntry registers a workload (unix:uid:0) under the agent parent
+// for the rest of the test.
+func (l *lab) workloadEntry(t *testing.T, parent, spiffe string) {
+	t.Helper()
+	out := l.ssh(t, "spire", fmt.Sprintf("%s entry create -parentID %s -spiffeID %s -selector unix:uid:0 -output json", spireServerBin, parent, spiffe))
 	var created struct {
 		Results []struct {
 			Entry struct {
@@ -526,14 +551,95 @@ func (l *lab) recordKeptCopy(t *testing.T, run *e2eRun, g *guest, original, befo
 		t.Fatalf("entry create: %v %s", err, out)
 	}
 	t.Cleanup(func() { l.trySSH("spire", spireServerBin+" entry delete -entryID "+created.Results[0].Entry.ID) }) //nolint:errcheck // best effort
-	fetched := poll(2*time.Minute, func() bool {
+}
+
+// fetches reports whether a root workload in the guest gets the SVID of
+// spiffe within d.
+func (l *lab) fetches(g *guest, spiffe string, d time.Duration) bool {
+	return poll(d, func() bool {
 		out, _ := l.trySSH(g.server, "sudo lxc exec "+g.name+" -- "+spirePrefix+"/bin/spire-agent api fetch x509 -socketPath /run/spire/agent/public/api.sock")
 		return strings.Contains(out, spiffe)
 	})
-	notes := fmt.Sprintf("copy attests as itself: %v; the copy's workload gets the original's workload SVID %s: %v; original's agent serial before %s, after %s; the copy's agent log: %s",
-		attestsAsItself, spiffe, fetched, before.Serial, after.Serial, strings.ReplaceAll(strings.TrimSpace(log), "\n", " / "))
-	run.add(e2eResult{Test: "E2E-4 copy with the agent's data (recorded, not asserted)", Server: g.server, Guest: g.name, SpiffeID: original.spiffeID(), Notes: notes})
-	t.Logf("copy with the agent's data: %s", notes)
+}
+
+// TestE2E4TmpfsMode: E2E-4, tmpfs mode (attestor spec, *tmpfs mode*), on a
+// container and a VM. The agent's data lives in a runtime directory: an
+// agent restart keeps the SVID, a copy carries none and attests as itself,
+// without the original's workload SVIDs, and a reboot attests again as the
+// same instance.
+func TestE2E4TmpfsMode(t *testing.T) {
+	l := requirePlugins(t)
+	l.spireMode(t, "file_pull")
+	run := &e2eRun{}
+	t.Cleanup(func() { run.finish(t, l, time.Now().UTC().Format("20060102T150405Z")+"-e2e-4-tmpfs-summary") })
+	for _, server := range l.servers() {
+		t.Run(server, func(t *testing.T) {
+			t.Parallel()
+			t.Run("container", func(t *testing.T) {
+				t.Parallel()
+				l.tmpfsMode(t, run, server, "e2e-tmpfs", "--keep-agent")
+			})
+			t.Run("vm", func(t *testing.T) {
+				t.Parallel()
+				l.tmpfsMode(t, run, server, "e2e-tmpfs-vm", "--keep-agent", "--via-snapshot")
+			})
+		})
+	}
+}
+
+// tmpfsMode runs E2E-4 in tmpfs mode on one guest, a VM when copyFlags
+// copy through a snapshot.
+func (l *lab) tmpfsMode(t *testing.T, run *e2eRun, server, name string, copyFlags ...string) {
+	t.Helper()
+	flags := []string{"--agent-data-tmpfs"}
+	vm := slices.Contains(copyFlags, "--via-snapshot")
+	if vm {
+		flags = append(flags, "--vm")
+	}
+	g := l.guestUp(t, server, name, flags...)
+	first := l.attested(t, g, "file_pull", run, "E2E-4 tmpfs first attestation")
+	files := l.ssh(t, server, "sudo lxc exec "+name+" -- sh -c 'echo $(ls /run/spire/agent-data | wc -l) $(find /var/lib/spire/agent -type f | wc -l)'")
+	if f := strings.Fields(files); len(f) != 2 || f[0] == "0" || f[1] != "0" {
+		t.Fatalf("files in /run/spire/agent-data and /var/lib/spire/agent: %q, want some and none", files)
+	}
+
+	uuid := l.uuid(t, g)
+	mark := l.logMark(t)
+	l.ssh(t, server, "sudo lxc exec "+name+" -- systemctl restart spire-agent")
+	time.Sleep(30 * time.Second) // time to attest, or to show that it does not
+	if n := l.attestations(t, mark, uuid); n != 0 {
+		t.Errorf("an agent restart attested again (%d attestations)", n)
+	}
+	run.add(e2eResult{Test: "E2E-4 tmpfs agent restart", Server: server, Guest: name, Kind: g.kind, SpiffeID: first.spiffeID(), Notes: "kept its SVID, no attestation"})
+
+	spiffe := "spiffe://" + labTrustDomain + "/" + name + "-" + server
+	l.workloadEntry(t, first.spiffeID(), spiffe)
+	if !l.fetches(g, spiffe, 2*time.Minute) {
+		t.Fatalf("the original's workload never got %s", spiffe)
+	}
+	copyG := &guest{server: server, name: name + "-copy", project: "default", kind: g.kind, start: time.Now()}
+	l.labsh(t, append([]string{"guest-copy", server, name, copyG.name}, copyFlags...)...)
+	t.Cleanup(func() { l.guestDown(t, copyG) })
+	copied := l.attested(t, copyG, "file_pull", run, "E2E-4 tmpfs copy, agent data kept")
+	if copied.spiffeID() == first.spiffeID() {
+		t.Errorf("the copy has the original's SPIFFE ID %s", copied.spiffeID())
+	}
+	if l.fetches(copyG, spiffe, time.Minute) {
+		t.Errorf("a workload in the copy got the original's workload SVID %s", spiffe)
+	}
+	how := "lxc copy of the running instance"
+	if vm {
+		how = "lxc copy of a stateless snapshot"
+	}
+	run.add(e2eResult{Test: "E2E-4 tmpfs copy without its original's workload SVID", Server: server, Guest: copyG.name, Kind: g.kind, SpiffeID: copied.spiffeID(), Notes: how})
+
+	start, mark := time.Now(), l.logMark(t)
+	l.ssh(t, server, "sudo lxc restart "+name)
+	waitFor(t, g.timeout(), "the rebooted agent to attest again", func() bool { return l.attestations(t, mark, uuid) > 0 })
+	if _, ok := l.agentByID(t, first.spiffeID()); !ok {
+		t.Errorf("after the reboot, no agent %s", first.spiffeID())
+	}
+	run.add(e2eResult{Test: "E2E-4 tmpfs reboot", Server: server, Guest: name, Kind: g.kind, SpiffeID: first.spiffeID(), Seconds: time.Since(start).Seconds(), Notes: "attested again as the same instance"})
 }
 
 // TestE2E5Cluster: E2E-5. A guest placed on a cluster's second member

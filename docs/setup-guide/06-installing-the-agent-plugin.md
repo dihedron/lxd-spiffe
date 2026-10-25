@@ -30,7 +30,54 @@ Add a `NodeAttestor "lxd_iid"` block to the `plugins` section of SPIRE Agent's c
 
 SPIRE Agent **must run as root**: `file_pull` writes a root-owned proof file in a directory only root can enter, and `config_push` reads devLXD, which only root can use. The plugin refuses to start otherwise (`the agent plugin must run as uid 0`). Running as root is also what makes the proof meaningful: an unprivileged user in the instance cannot attest as the node.
 
-The SPIRE Agent's data directory (`data_dir`, usually `/var/lib/spire/agent`) holds the agent's SVID and key once it has attested. An instance copied or restored with that directory is the original's node as far as SPIRE is concerned: see *Operator's Guide*, *Routine procedures*, before you copy or restore an instance that runs an agent.
+The SPIRE Agent's data directory (`data_dir`, usually `/var/lib/spire/agent`) holds the agent's SVID and key once it has attested. An instance copied or restored with that directory is the original's node as far as SPIRE is concerned: see *Operator's Guide*, *Routine procedures*, before you copy or restore an instance that runs an agent, and *tmpfs mode* below if you copy instances routinely.
+
+## tmpfs mode (optional)
+
+By default SPIRE Agent keeps its data on the instance's disk, and that is the right choice unless instances that run an agent get copied. *tmpfs mode* keeps the agent's data in memory instead. It is a way of configuring SPIRE Agent, for containers and VMs alike: the plugins neither need nor notice it.
+
+**What it protects against.** Anything that copies an instance's storage (`lxc copy`, a snapshot copied into a new instance, the usual way to copy a running VM, `lxc export` and `import`, a copy or backup of the volume) also copies the agent's SVID and private key. The copy's agent then never attests: it uses the original's identity, and its workloads receive the original's workload SVIDs. The plugin never sees the copy, so it cannot refuse it. In tmpfs mode the storage holds no SVID and no key, so a copy starts without them and has to attest as itself (it has its own `volatile.uuid`, so its own SPIFFE ID). A stolen volume or backup also yields no node key.
+
+**What it does not protect against.** Stateful snapshots and stateful migration (`lxc snapshot --stateful`, `migration.stateful`), which save the instance's memory, tmpfs included; and anyone with root in the running instance.
+
+**When you do not need it.** If your instances are never copied, cloned, imported or restored into new instances, or if every copy follows the procedure in *Operator's Guide*, *Routine procedures*, *Copies and restores*, the threat does not exist in your deployment, and tmpfs mode only adds its costs. Leave it off.
+
+**What it costs.**
+
+- **Every boot attests again**, as the same instance. Mass reboots, and LXD daemon restarts, which restart every container on the server, cause a burst of attestations. A VM also waits for `lxd-agent` at every boot.
+- **No SVID until the attestation succeeds.** If SPIRE Server or the LXD server is down when an instance boots, its workloads get no SVID until both are back. An agent with persistent data keeps serving its SVID until it expires.
+- **`reattest = "allow"` on the server** (the default). With `deny`, the attestation after a reboot is refused until the agent is evicted.
+- **The trust bundle file must stay current.** After a reboot SPIRE Agent bootstraps from `trust_bundle_path` again, not from the bundle it kept up to date. Once SPIRE Server's CA has rotated past that file, rebooted agents cannot connect. Refresh the file from your configuration management when the CA rotates.
+
+**Configuring it** (systemd). Point the agent's data and key at a runtime directory:
+
+```hcl
+agent {
+  data_dir = "/run/spire/agent-data"
+  # ...
+}
+plugins {
+  KeyManager "disk" {
+    plugin_data {
+      directory = "/run/spire/agent-data"
+    }
+  }
+  # NodeAttestor "lxd_iid" and the others as before
+}
+```
+
+and let systemd create it, in SPIRE Agent's unit or a drop-in:
+
+```ini
+[Service]
+RuntimeDirectory=spire/agent-data
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
+```
+
+`RuntimeDirectoryPreserve=yes` keeps the directory when SPIRE Agent restarts, so a restart does not attest; a reboot empties it. `KeyManager "memory"` is the stricter variant: the key does not survive an agent restart either, so every restart attests. Do not put the data under `/run/spire/lxd`, the proof directory.
+
+Check it after the first attestation: `ls /run/spire/agent-data` lists the agent's files and `/var/lib/spire/agent` holds none.
 
 ## Virtual machines
 
