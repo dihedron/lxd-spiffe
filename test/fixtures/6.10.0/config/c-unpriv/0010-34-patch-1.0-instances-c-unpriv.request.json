@@ -1,0 +1,21 @@
+{
+  "method": "PATCH",
+  "path": "/1.0/instances/c-unpriv",
+  "query": "project=default",
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "If-Match": [
+      "\"ed25793a6aade618773d0f8b91ca014600715befaf501d8648391f21860b8b8f\""
+    ],
+    "User-Agent": [
+      "lxd-spiffe/v0.1.0-4-gb054f04"
+    ]
+  },
+  "body": {
+    "config": {
+      "user.lxd-probe.l14-race": "w2"
+    }
+  }
+}

@@ -5,10 +5,10 @@
       "application/json"
     ],
     "Date": [
-      "Sat, 24 Oct 2026 07:19:19 GMT"
+      "Sun, 25 Oct 2026 13:54:34 GMT"
     ],
     "Etag": [
-      "\"dc637c62198c97d07a1332116b0e8e3b6ec9ef8fbfa943dce5a0ac94e8f28d06\""
+      "\"a6921a1c94da864c154ca700720aa37f714259198953365919de68578eb061fe\""
     ]
   },
   "body": {
@@ -34,10 +34,9 @@
         "volatile.cloud-init.instance-id": "740511a5-baf4-4ffc-9f6b-0ae49179f176",
         "volatile.cpu.maxcpus": "4",
         "volatile.eth0.bus": "4",
-        "volatile.eth0.host_name": "tap14745c36",
+        "volatile.eth0.host_name": "tapa079be95",
         "volatile.eth0.hwaddr": "mac-7",
         "volatile.last_state.power": "RUNNING",
-        "volatile.last_state.ready": "false",
         "volatile.uuid": "db65055f-163c-4640-96af-a03d764536da",
         "volatile.uuid.generation": "db65055f-163c-4640-96af-a03d764536da",
         "volatile.vsock_id": "3930447928"
@@ -64,10 +63,9 @@
         "volatile.cloud-init.instance-id": "740511a5-baf4-4ffc-9f6b-0ae49179f176",
         "volatile.cpu.maxcpus": "4",
         "volatile.eth0.bus": "4",
-        "volatile.eth0.host_name": "tap14745c36",
+        "volatile.eth0.host_name": "tapa079be95",
         "volatile.eth0.hwaddr": "mac-7",
         "volatile.last_state.power": "RUNNING",
-        "volatile.last_state.ready": "false",
         "volatile.uuid": "db65055f-163c-4640-96af-a03d764536da",
         "volatile.uuid.generation": "db65055f-163c-4640-96af-a03d764536da",
         "volatile.vsock_id": "3930447928"
@@ -84,7 +82,7 @@
           "type": "disk"
         }
       },
-      "last_used_at": "2026-10-24T07:01:39.845039378Z",
+      "last_used_at": "2026-10-25T13:41:51.615083261Z",
       "location": "none",
       "name": "v-alpine",
       "profiles": [

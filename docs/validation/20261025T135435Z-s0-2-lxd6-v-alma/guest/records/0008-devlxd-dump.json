@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "guest/0008",
+  "time": "2026-10-25T13:55:02.625120829Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "guest",
+  "verb": "devlxd dump",
+  "args": [
+    "/1.0/events"
+  ],
+  "gate": "L3",
+  "cell": "lxd6-v-alma",
+  "outcome": "ok",
+  "duration_ms": 2000,
+  "observations": [
+    {
+      "key": "devlxd.events",
+      "value": "no response within 2s (a stream)"
+    }
+  ],
+  "raw": null
+}

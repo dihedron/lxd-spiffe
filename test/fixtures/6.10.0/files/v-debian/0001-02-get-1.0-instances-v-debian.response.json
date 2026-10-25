@@ -5,10 +5,10 @@
       "application/json"
     ],
     "Date": [
-      "Sat, 24 Oct 2026 07:34:13 GMT"
+      "Sun, 25 Oct 2026 13:56:15 GMT"
     ],
     "Etag": [
-      "\"8973a43edd91b657f4f220dc25b878c7ff550b6a9fc1b68e7207408486339d48\""
+      "\"88da9efe1eaa1a8daade93c319653d27cc936629149a3239f10987549e8b7df4\""
     ]
   },
   "body": {
@@ -32,10 +32,9 @@
         "volatile.cloud-init.instance-id": "4c126830-36de-4181-99d1-9cf71c9fc9eb",
         "volatile.cpu.maxcpus": "4",
         "volatile.eth0.bus": "4",
-        "volatile.eth0.host_name": "tap5cc8ba3a",
+        "volatile.eth0.host_name": "tap2ca9a521",
         "volatile.eth0.hwaddr": "mac-1",
         "volatile.last_state.power": "RUNNING",
-        "volatile.last_state.ready": "false",
         "volatile.uuid": "de93d67e-c7cd-4679-8002-128ce383af02",
         "volatile.uuid.generation": "de93d67e-c7cd-4679-8002-128ce383af02",
         "volatile.vsock_id": "3798757126"
@@ -60,10 +59,9 @@
         "volatile.cloud-init.instance-id": "4c126830-36de-4181-99d1-9cf71c9fc9eb",
         "volatile.cpu.maxcpus": "4",
         "volatile.eth0.bus": "4",
-        "volatile.eth0.host_name": "tap5cc8ba3a",
+        "volatile.eth0.host_name": "tap2ca9a521",
         "volatile.eth0.hwaddr": "mac-1",
         "volatile.last_state.power": "RUNNING",
-        "volatile.last_state.ready": "false",
         "volatile.uuid": "de93d67e-c7cd-4679-8002-128ce383af02",
         "volatile.uuid.generation": "de93d67e-c7cd-4679-8002-128ce383af02",
         "volatile.vsock_id": "3798757126"
@@ -80,7 +78,7 @@
           "type": "disk"
         }
       },
-      "last_used_at": "2026-10-24T07:00:31.717815392Z",
+      "last_used_at": "2026-10-25T13:41:49.704518752Z",
       "location": "none",
       "name": "v-debian",
       "profiles": [

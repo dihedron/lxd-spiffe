@@ -11,7 +11,7 @@ Every attestation ends with **one line**:
 
 Both carry a `correlation_id`, unique per attestation, and as soon as they are known the `proof_mode`, `server_id`, `project` and `inflight` (attestations running at that moment). The success line is the audit record of the identity issued: it names the instance by UUID and lists every selector.
 
-The reason codes: `ok`, `payload_invalid`, `instance_not_found`, `instance_ambiguous`, `not_running`, `scope_denied`, `policy_denied`, `proof_timeout`, `proof_mismatch`, `vm_agent_unavailable`, `lxd_unavailable`, `extension_missing`, `rate_limited`, `precondition_failed`, `instance_moved`, `project_unreadable`. The *Operator's Guide* explains each.
+The reason codes: `ok`, `payload_invalid`, `instance_not_found`, `instance_ambiguous`, `not_running`, `scope_denied`, `policy_denied`, `proof_timeout`, `proof_mismatch`, `vm_agent_unavailable`, `lxd_unavailable`, `lxd_forbidden`, `extension_missing`, `rate_limited`, `precondition_failed`, `instance_moved`, `project_unreadable`. The *Operator's Guide* explains each.
 
 Other lines:
 

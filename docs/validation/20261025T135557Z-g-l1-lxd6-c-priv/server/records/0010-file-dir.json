@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "id": "server/0010",
+  "time": "2026-10-25T13:56:03.041249983Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "server",
+  "verb": "file dir",
+  "args": [
+    "c-priv",
+    "/run/lxd-probe/layout"
+  ],
+  "gate": "L1",
+  "cell": "lxd6-c-priv",
+  "outcome": "ok",
+  "duration_ms": 21,
+  "server": {
+    "version": "6.10.0",
+    "api_extensions_hash": "sha256:8e367fd210e2811eab78a94e33ca6eb2a748c4793c4729252f5e961d52fef417"
+  },
+  "expectations": [
+    "file-dir"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0700"
+        ],
+        "X-Lxd-Modified": [
+          "2026-10-25 13:56:02 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "directory"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "file.entries",
+      "value": [
+        "other-owner",
+        "world-writable",
+        "directory",
+        "symlink",
+        "regular"
+      ]
+    }
+  ],
+  "raw": [
+    "artifacts/0010-server.json",
+    "artifacts/0010-file.json"
+  ]
+}

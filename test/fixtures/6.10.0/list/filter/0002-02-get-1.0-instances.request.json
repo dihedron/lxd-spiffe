@@ -4,7 +4,7 @@
   "query": "filter=config.volatile.uuid+eq+00000000-0000-4000-8000-000000000000\u0026project=default\u0026recursion=1",
   "header": {
     "User-Agent": [
-      "lxd-spiffe/34ec48a-dirty"
+      "lxd-spiffe/v0.1.0-4-gb054f04"
     ]
   }
 }

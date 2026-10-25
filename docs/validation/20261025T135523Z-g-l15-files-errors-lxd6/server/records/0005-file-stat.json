@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "id": "server/0005",
+  "time": "2026-10-25T13:55:27.963006552Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "v-alpine",
+    "/etc/hostname"
+  ],
+  "gate": "L15",
+  "cell": "lxd6-v-alpine",
+  "outcome": "unexpected",
+  "duration_ms": 22,
+  "server": {
+    "version": "6.10.0",
+    "api_extensions_hash": "sha256:8e367fd210e2811eab78a94e33ca6eb2a748c4793c4729252f5e961d52fef417"
+  },
+  "expectations": [
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 500
+    },
+    {
+      "key": "expectation.status",
+      "value": {
+        "expectation": "file",
+        "got": 500,
+        "want": [
+          200
+        ]
+      }
+    },
+    {
+      "key": "expectation.header.X-LXD-*",
+      "value": {
+        "expectation": "file",
+        "got": "absent",
+        "want": "present"
+      }
+    },
+    {
+      "key": "file.headers",
+      "value": {}
+    },
+    {
+      "key": "file.error",
+      "value": "LXD VM agent is not currently running"
+    }
+  ],
+  "raw": [
+    "artifacts/0005-server.json",
+    "artifacts/0005-file.json"
+  ]
+}

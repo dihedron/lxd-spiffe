@@ -13,7 +13,7 @@ spiffe://<trust-domain>/spire/agent/lxd_iid/<server_id>/<volatile.uuid>
 
 with selectors taken from the LXD API only.
 
-**Status**: implemented and validated in a lab of real LXD servers (5.21.8, 6.9 and 6.10.0, standalone and three-member clusters) with SPIRE 1.15.5: end-to-end tests, stress and chaos sessions, and a soak with 100 agents. Not released yet.
+**Status**: implemented and validated in a lab of real LXD servers (5.21.8, 6.9 and 6.10.0, standalone and three-member clusters) with SPIRE 1.15.5: end-to-end tests, stress and chaos sessions, and a soak with 100 agents. Released: binaries, packages and documents are on the [releases page](https://github.com/dihedron/lxd-spiffe/releases).
 
 ## Selectors
 

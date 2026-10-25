@@ -23,7 +23,8 @@ const (
 	soakTemplate = "soak-template"
 	soakImage    = "soak-agent"
 	// soakShardCapacity is the most instance grants a lab-spire shard holds
-	// (a group holds 99 permissions, gate L17; project can_view is one).
+	// (a group holds 99 permissions, gate L17; project can_view and
+	// can_view_instances are two).
 	soakShardCapacity = 90
 )
 
@@ -50,7 +51,7 @@ func (l *lab) labshEnv(t *testing.T, env []string, args ...string) string {
 
 // soakShardScript gives the spire identity its grants on the fleet through
 // shard groups lab-spire-s1, lab-spire-s2, …: each holds project can_view
-// and at most soakShardCapacity instance grants, and the identity is added
+// and can_view_instances, and at most soakShardCapacity instance grants, and the identity is added
 // to it (the attestor's Least privilege, gate L17).
 func soakShardScript(names []string) string {
 	var b strings.Builder
@@ -58,7 +59,7 @@ func soakShardScript(names []string) string {
 	per := soakShardCapacity / len(soakEntitlements)
 	for k := 0; k*per < len(names); k++ {
 		shard := fmt.Sprintf("lab-spire-s%d", k+1)
-		fmt.Fprintf(&b, "sudo lxc auth group create %s\nsudo lxc auth group permission add %s project default can_view\n", shard, shard)
+		fmt.Fprintf(&b, "sudo lxc auth group create %s\nsudo lxc auth group permission add %s project default can_view\nsudo lxc auth group permission add %s project default can_view_instances\n", shard, shard, shard)
 		for _, n := range names[k*per : min((k+1)*per, len(names))] {
 			for _, e := range soakEntitlements {
 				fmt.Fprintf(&b, "sudo lxc auth group permission add %s instance %s %s project=default\n", shard, n, e)

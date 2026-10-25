@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "id": "guest/0001",
+  "time": "2026-10-25T13:54:51.857549754Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "guest",
+  "verb": "preflight",
+  "args": [],
+  "gate": "L4",
+  "cell": "lxd6-v-debian",
+  "outcome": "ok",
+  "duration_ms": 8,
+  "observations": [
+    {
+      "key": "ids.uid",
+      "value": 0
+    },
+    {
+      "key": "ids.euid",
+      "value": 0
+    },
+    {
+      "key": "ids.gid",
+      "value": 0
+    },
+    {
+      "key": "ids.egid",
+      "value": 0
+    },
+    {
+      "key": "ids.groups",
+      "value": null
+    },
+    {
+      "key": "idmap.uid_map",
+      "value": [
+        {
+          "count": 4294967295,
+          "inside": 0,
+          "outside": 0
+        }
+      ]
+    },
+    {
+      "key": "idmap.gid_map",
+      "value": [
+        {
+          "count": 4294967295,
+          "inside": 0,
+          "outside": 0
+        }
+      ]
+    },
+    {
+      "key": "kernel.release",
+      "value": "6.1.0-53-amd64"
+    },
+    {
+      "key": "devlxd.socket",
+      "value": {
+        "exists": true,
+        "gid": 0,
+        "is_socket": true,
+        "mode": "0600",
+        "path": "/dev/lxd/sock",
+        "uid": 0
+      }
+    },
+    {
+      "key": "lxd_agent.found",
+      "value": true
+    },
+    {
+      "key": "lxd_agent.pids",
+      "value": [
+        377
+      ]
+    },
+    {
+      "key": "run.mount",
+      "value": {
+        "fstype": "tmpfs",
+        "mount_point": "/run",
+        "options": "rw,nosuid,nodev,noexec,relatime",
+        "source": "tmpfs",
+        "super_options": "rw,size=91408k,mode=755,inode64"
+      }
+    },
+    {
+      "key": "virt.detect",
+      "value": {
+        "available": true,
+        "exit_code": 0,
+        "output": "kvm"
+      }
+    },
+    {
+      "key": "virt.guess",
+      "value": "vm"
+    },
+    {
+      "key": "virt.guess_from",
+      "value": "/proc/cpuinfo: hypervisor flag"
+    }
+  ],
+  "raw": null
+}

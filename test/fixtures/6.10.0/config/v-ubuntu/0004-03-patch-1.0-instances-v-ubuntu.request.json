@@ -7,10 +7,10 @@
       "application/json"
     ],
     "If-Match": [
-      "\"fe91747b965d5ed37d0f48525b894d5bdd54e8176becc5f87ea1ba3cb2443730\""
+      "\"75ee187d108fc1e60bf877bb797e96b879c862621a4f25e702998cb692e21148\""
     ],
     "User-Agent": [
-      "lxd-spiffe/34ec48a-dirty"
+      "lxd-spiffe/v0.1.0-4-gb054f04"
     ]
   },
   "body": {

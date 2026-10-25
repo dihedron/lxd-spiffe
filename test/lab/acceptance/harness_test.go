@@ -91,7 +91,7 @@ var clusterSiblings = map[string]struct {
 	chosenBy []string
 }{
 	"c5": {"lxd5", []string{"5.21", "both"}},
-	"c6": {"lxd6", []string{"6.9", "both"}},
+	"c6": {"lxd6", []string{"6", "both"}},
 }
 
 // clusters returns the clusters LAB_CLUSTER runs, among those env.json

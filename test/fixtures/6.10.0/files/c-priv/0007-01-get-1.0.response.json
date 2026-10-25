@@ -5,7 +5,7 @@
       "application/json"
     ],
     "Date": [
-      "Sat, 24 Oct 2026 07:33:59 GMT"
+      "Sun, 25 Oct 2026 13:56:02 GMT"
     ],
     "Etag": [
       "\"d13f6d524a8f3e63437bd8bee1438ef92e3d6ecb081fd75888599891b7719351\""
@@ -581,7 +581,7 @@
         "server_event_mode": "full-mesh",
         "server_lts": true,
         "server_name": "lxd6",
-        "server_pid": 1286,
+        "server_pid": 1478,
         "server_version": "6.10.0",
         "storage": "zfs",
         "storage_supported_drivers": [
@@ -592,11 +592,6 @@
           },
           {
             "Name": "ceph",
-            "Remote": true,
-            "Version": "20.2.0"
-          },
-          {
-            "Name": "cephfs",
             "Remote": true,
             "Version": "20.2.0"
           },
@@ -616,9 +611,9 @@
             "Version": "2.03.31(2) (2025-02-27) / 1.02.205 (2025-02-27) / 4.48.0"
           },
           {
-            "Name": "powerstore",
+            "Name": "powerflex",
             "Remote": true,
-            "Version": "2.1.9 (iscsiadm) / 2.16 (nvme-cli) / 2.16 (nvme-cli)"
+            "Version": "2.16 (nvme-cli)"
           },
           {
             "Name": "pure",
@@ -626,19 +621,24 @@
             "Version": "2.1.9 (iscsiadm) / 2.16 (nvme-cli) / 2.16 (nvme-cli)"
           },
           {
-            "Name": "powerflex",
+            "Name": "zfs",
+            "Remote": false,
+            "Version": "2.2.2-0ubuntu9.5"
+          },
+          {
+            "Name": "cephfs",
             "Remote": true,
-            "Version": "2.16 (nvme-cli)"
+            "Version": "20.2.0"
+          },
+          {
+            "Name": "powerstore",
+            "Remote": true,
+            "Version": "2.1.9 (iscsiadm) / 2.16 (nvme-cli) / 2.16 (nvme-cli)"
           },
           {
             "Name": "alletra",
             "Remote": true,
             "Version": "2.16 (nvme-cli) / 2.1.9 (iscsiadm)"
-          },
-          {
-            "Name": "zfs",
-            "Remote": false,
-            "Version": "2.2.2-0ubuntu9.5"
           }
         ],
         "storage_version": "2.2.2-0ubuntu9.5"

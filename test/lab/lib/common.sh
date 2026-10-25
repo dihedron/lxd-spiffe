@@ -62,8 +62,9 @@ select_scenarios() {
 	done
 	((${#LAB_SELECTED[@]} > 0)) || die "no scenario selected: set LAB_SCENARIOS or --scenario"
 	case "$LAB_CLUSTER" in
-	no | "" | 5.21 | 6.9 | both) ;;
-	*) die "LAB_CLUSTER must be no, 5.21, 6.9 or both, not \"$LAB_CLUSTER\"" ;;
+	no | "" | 5.21 | 6 | both) ;;
+	6.9) die "LAB_CLUSTER=6.9 is now LAB_CLUSTER=6 (c6 follows lxd6's LXD 6.x revision)" ;;
+	*) die "LAB_CLUSTER must be no, 5.21, 6 or both, not \"$LAB_CLUSTER\"" ;;
 	esac
 }
 
@@ -77,7 +78,7 @@ readonly LAB_ALL_CLUSTERS=(c5 c6)
 lab_clusters() {
 	case "$LAB_CLUSTER" in
 	5.21) echo c5 ;;
-	6.9) echo c6 ;;
+	6) echo c6 ;;
 	both) printf '%s\n' c5 c6 ;;
 	esac
 }

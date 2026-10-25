@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "id": "server/0015",
+  "time": "2026-10-25T13:55:55.926639433Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "server",
+  "verb": "project show",
+  "args": [
+    "default",
+    "--expect-denied"
+  ],
+  "gate": "L16",
+  "cell": "lxd6-untrusted",
+  "outcome": "ok",
+  "duration_ms": 16,
+  "server": {
+    "version": "",
+    "api_extensions_hash": "sha256:8e367fd210e2811eab78a94e33ca6eb2a748c4793c4729252f5e961d52fef417"
+  },
+  "expectations": [
+    "project+denied"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "project.http_status",
+      "value": 403
+    },
+    {
+      "key": "project.etag",
+      "value": ""
+    },
+    {
+      "key": "project.error",
+      "value": "Forbidden"
+    }
+  ],
+  "raw": [
+    "artifacts/0015-server.json",
+    "artifacts/0015-project.json"
+  ]
+}

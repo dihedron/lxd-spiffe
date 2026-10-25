@@ -11,6 +11,8 @@ readonly SPIRE_ARTIFACTS_PORT=8080
 # where the guests and the spire VM keep SPIRE's files
 readonly SPIRE_PREFIX=/opt/spire
 readonly SPIRE_ETC=/etc/spire
+# the agent's data_dir in tmpfs mode (guest-up --agent-data-tmpfs)
+readonly SPIRE_TMPFS_DATA=/run/spire/agent-data
 
 spire_dir() { echo "$LAB_STATE_DIR/spire"; }
 guest_config() { echo "$LAB_STATE_DIR/guest/$1.yaml"; }
@@ -67,8 +69,9 @@ ensure_spire_pki() {
 	) || die "cannot create the certificate of identity $LAB_SPIRE_ID"
 }
 
-# auth_spire SERVER: group lab-spire with can_view on project default, and
-# the spire identity in it; instance grants come per guest (spire_grant).
+# auth_spire SERVER: group lab-spire with can_view, then can_view_instances
+# (the uniqueness check's list, FR-S18), on project default, and the spire
+# identity in it; instance grants come per guest (spire_grant).
 auth_spire() {
 	local server="$1"
 	if ! vm_lxc "$server" query /1.0/auth/groups | jq -e --arg g "/1.0/auth/groups/$LAB_SPIRE_GROUP" 'index($g)' >/dev/null; then
@@ -82,9 +85,12 @@ auth_spire() {
 			'{name: $name, certificate: $cert, groups: [$group]}')" >/dev/null ||
 			die "$server: cannot trust identity $LAB_SPIRE_ID"
 	fi
-	if ! vm_lxc "$server" query "/1.0/auth/groups/$LAB_SPIRE_GROUP" | jq -e '(.permissions // [])[] | select(.entity_type == "project" and .url == "/1.0/projects/default" and .entitlement == "can_view")' >/dev/null; then
-		vm_lxc "$server" auth group permission add "$LAB_SPIRE_GROUP" project default can_view >/dev/null
-	fi
+	local entitlement
+	for entitlement in can_view can_view_instances; do
+		if ! vm_lxc "$server" query "/1.0/auth/groups/$LAB_SPIRE_GROUP" | jq -e --arg e "$entitlement" '(.permissions // [])[] | select(.entity_type == "project" and .url == "/1.0/projects/default" and .entitlement == $e)' >/dev/null; then
+			vm_lxc "$server" auth group permission add "$LAB_SPIRE_GROUP" project default "$entitlement" >/dev/null
+		fi
+	done
 	env_set ".servers[\"$server\"].auth.spire" "$(identity_fingerprint "$LAB_SPIRE_ID")"
 }
 
@@ -409,15 +415,18 @@ cmd_spire_mode() {
 # --- Guests -----------------------------------------------------------------------
 
 # cmd_guest_up SERVER NAME [--vm] [--privileged] [--no-files] [--target M]
-# [--project P] [--claim-name N]: launches an Ubuntu guest with the SPIRE
-# Agent cloud-init, and grants lab-spire its entitlements on it (--no-files:
-# without can_access_files). --project puts the guest in another project
-# (and claims it; lab-spire gets no grants there) and --claim-name makes the
-# agent claim another instance's name.
+# [--project P] [--claim-name N] [--agent-data-tmpfs]: launches an Ubuntu
+# guest with the SPIRE Agent cloud-init, and grants lab-spire its
+# entitlements on it (--no-files: without can_access_files). --project puts
+# the guest in another project (and claims it; lab-spire gets no grants
+# there) and --claim-name makes the agent claim another instance's name.
+# --agent-data-tmpfs keeps the agent's data (SVID, key, bundle) in
+# $SPIRE_TMPFS_DATA, a runtime directory that survives agent restarts but
+# not reboots or copies (attestor spec, tmpfs mode).
 cmd_guest_up() {
 	require_state
-	local usage="usage: lab.sh guest-up <server> <name> [--vm] [--privileged] [--no-files] [--target <member>] [--project <project>] [--claim-name <name>]"
-	local server="${1:-}" name="${2:-}" args=() files="" project=default claim_name="" config user_data
+	local usage="usage: lab.sh guest-up <server> <name> [--vm] [--privileged] [--no-files] [--target <member>] [--project <project>] [--claim-name <name>] [--agent-data-tmpfs]"
+	local server="${1:-}" name="${2:-}" args=() files="" project=default claim_name="" tmpfs=() config user_data
 	[[ -n "$server" && -n "$name" ]] || die "$usage"
 	shift 2
 	require_server "$server"
@@ -428,6 +437,10 @@ cmd_guest_up() {
 		--vm) args+=(--vm -c "limits.cpu=$LAB_GUEST_VM_VCPUS" -c "limits.memory=${LAB_GUEST_VM_RAM_GIB}GiB") ;;
 		--privileged) args+=(-c security.privileged=true -c security.nesting=true) ;;
 		--no-files) files=--no-files ;;
+		--agent-data-tmpfs)
+			tmpfs=(-e "s|\"/var/lib/spire/agent\"\$|\"$SPIRE_TMPFS_DATA\"|"
+				-e "s|^\\( *\\)ExecStart=.*\$|&\\n\\1RuntimeDirectory=${SPIRE_TMPFS_DATA#/run/}\\n\\1RuntimeDirectoryMode=0700\\n\\1RuntimeDirectoryPreserve=yes|")
+			;;
 		--target | --project | --claim-name)
 			[[ $# -ge 2 ]] || die "$usage"
 			case "$1" in
@@ -445,7 +458,7 @@ cmd_guest_up() {
 	user_data="$LAB_STATE_DIR/guest/$server-$name.yaml"
 	sed -e "s/^\( *\)project = \"default\"$/\1project = \"$project\"/" \
 		${claim_name:+-e "s/^\( *\)project = \"$project\"$/&\n\1instance_name = \"$claim_name\"/"} \
-		"$config" >"$user_data"
+		"${tmpfs[@]}" "$config" >"$user_data"
 	scp -q "${SSH_OPTS[@]}" "$user_data" "$LAB_USER@$(vm_ip "$server"):guest-$name.yaml" || die "$server: cannot copy the guest cloud-init"
 	info "$server: launching guest $project/$name"
 	# the grants come before the agent's first attestation
@@ -476,18 +489,27 @@ cmd_guest_down() {
 	info "$server: guest $project/$name deleted"
 }
 
-# cmd_guest_copy SERVER SRC DST [--keep-agent]: copies the running container
-# SRC (project default) to DST, grants lab-spire its entitlements on DST and
-# starts it. Without --keep-agent the SPIRE Agent's data (its SVID and key)
-# is moved aside in SRC while the copy is made, so that the copy has to
-# attest; with it the copy inherits them (E2E-4).
+# cmd_guest_copy SERVER SRC DST [--keep-agent] [--via-snapshot]: copies the
+# running guest SRC (project default) to DST, grants lab-spire its
+# entitlements on DST and starts it. Without --keep-agent the SPIRE Agent's
+# data (its SVID and key) is moved aside in SRC while the copy is made, so
+# that the copy has to attest; with it the copy inherits them (E2E-4).
+# --via-snapshot copies from a stateless snapshot of SRC, deleted afterwards:
+# the way to copy a running VM, and it works for a container too.
 cmd_guest_copy() {
 	require_state
-	local usage="usage: lab.sh guest-copy <server> <src> <dst> [--keep-agent]"
-	local server="${1:-}" src="${2:-}" dst="${3:-}" keep=no
+	local usage="usage: lab.sh guest-copy <server> <src> <dst> [--keep-agent] [--via-snapshot]"
+	local server="${1:-}" src="${2:-}" dst="${3:-}" keep=no snap=""
 	[[ -n "$server" && -n "$src" && -n "$dst" ]] || die "$usage"
 	shift 3
-	[[ "${1:-}" != --keep-agent ]] || keep=yes
+	while (($#)); do
+		case "$1" in
+		--keep-agent) keep=yes ;;
+		--via-snapshot) snap="copy-$dst" ;;
+		*) die "$usage" ;;
+		esac
+		shift
+	done
 	require_server "$server"
 	local agent=/var/lib/spire/agent
 	if [[ "$keep" == no ]]; then
@@ -496,12 +518,18 @@ cmd_guest_copy() {
 	fi
 	info "$server: copying $src to $dst"
 	local status=0
-	vm_ssh "$server" "sudo lxc copy $src $dst --project default" || status=$?
+	if [[ -n "$snap" ]]; then
+		vm_ssh "$server" "set -e; sudo lxc snapshot $src $snap --project default
+			trap 'sudo lxc delete $src/$snap --project default' EXIT
+			sudo lxc copy $src/$snap $dst --project default" || status=$?
+	else
+		vm_ssh "$server" "sudo lxc copy $src $dst --project default" || status=$?
+	fi
 	if [[ "$keep" == no ]]; then
 		vm_ssh "$server" "sudo lxc exec $src --project default -- sh -c 'mv $agent.moved $agent && systemctl start spire-agent'" ||
 			die "$server: cannot restore the agent's data in $src"
 	fi
-	((status == 0)) || die "$server: cannot copy $src (a running container is needed)"
+	((status == 0)) || die "$server: cannot copy $src (without --via-snapshot a running container is needed)"
 	# the grants come once the copy exists and before it starts
 	# shellcheck disable=SC2046 # one entitlement per word
 	spire_permissions "$server" add "$dst" $(spire_entitlements) || die "$server: cannot grant lab-spire access to $dst"

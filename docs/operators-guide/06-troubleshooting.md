@@ -19,7 +19,8 @@ Start from the symptom, find the server's `attestation refused` line for the att
 | `proof_timeout` | The agent's `proof_dir` and the server's match; the agent is not stuck; for VMs, `lxd-agent` is up; raise `proof_timeout` |
 | `vm_agent_unavailable` | `lxd-agent` in the VM: started, ordered before SPIRE Agent, SELinux drop-in on RHEL 9 derivatives |
 | `proof_mismatch` | The proof directory: root-owned, mode 0700, not a symlink, not on shared storage; the same `proof_dir` on both sides; SPIRE Agent as root |
-| `lxd_unavailable` | The instance grant (`can_access_files` or `can_edit`) for this instance; the server's reachability, pin and SPIRE's identity (*Incident procedures*) |
+| `lxd_forbidden` | The instance grant (`can_access_files` or `can_edit`) for this instance; SPIRE's identity, its credential and its groups |
+| `lxd_unavailable` | The server's reachability and pin (*Incident procedures*) |
 | `extension_missing` | The LXD version behind the URL (5.21 or later); `auth_bearer` for a token entry |
 | `rate_limited` | A claim failing repeatedly (it cools down), or `limits` exceeded by a burst |
 | `precondition_failed` | Another tool writing the instance's configuration continuously |

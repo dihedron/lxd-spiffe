@@ -1,0 +1,10 @@
+{
+  "method": "GET",
+  "path": "/1.0/instances/v-ubuntu",
+  "query": "project=default",
+  "header": {
+    "User-Agent": [
+      "lxd-spiffe/v0.1.0-4-gb054f04"
+    ]
+  }
+}

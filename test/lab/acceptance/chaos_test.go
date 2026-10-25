@@ -707,7 +707,7 @@ func TestST4ClusterChaos(t *testing.T) {
 	l := newLab(t)
 	clusters := l.clusters()
 	if len(clusters) == 0 {
-		t.Skip("ST-4 needs a running cluster: LAB_CLUSTER=5.21, 6.9 or both")
+		t.Skip("ST-4 needs a running cluster: LAB_CLUSTER=5.21, 6 or both")
 	}
 	t.Setenv("LAB_STRESS_ITERATIONS", setting("LAB_STRESS_ITERATIONS", "200"))
 	t.Setenv("LAB_STRESS_FAULT_RATE", setting("LAB_STRESS_FAULT_RATE", "0.25"))

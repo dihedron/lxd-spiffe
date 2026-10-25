@@ -1,0 +1,45 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sun, 25 Oct 2026 13:55:21 GMT"
+    ],
+    "X-Content-Type-Options": [
+      "nosniff"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "child_count": 0,
+      "class": "task",
+      "created_at": "2026-10-25T13:55:21.817105716Z",
+      "description": "Updating instance",
+      "err": "",
+      "err_code": 0,
+      "id": "01a17358-3059-719a-bdca-7bc92a19f299",
+      "location": "none",
+      "may_cancel": true,
+      "metadata": {
+        "entity_url": "/1.0/instances/v-ubuntu"
+      },
+      "requestor": {
+        "address": "10.251.0.1:37612",
+        "protocol": "tls",
+        "username": "117802962b412158d05031b49ad1c82e11d6b94e33388915611ecc09f785ea16"
+      },
+      "resources": {},
+      "status": "Success",
+      "status_code": 200,
+      "updated_at": "2026-10-25T13:55:21.854781739Z"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

@@ -5,10 +5,10 @@
       "application/json"
     ],
     "Date": [
-      "Sat, 24 Oct 2026 07:19:19 GMT"
+      "Sun, 25 Oct 2026 13:54:34 GMT"
     ],
     "Etag": [
-      "\"9f1f40f243a33ede324cdbc3266be96fc0d73c6f14993fd4ee015ae57eb832ed\""
+      "\"f766463e3b9abc56da82458c5de62e15056d1740b05fc17dc18cd94326710282\""
     ]
   },
   "body": {
@@ -29,7 +29,7 @@
         "raw.idmap": "both 1000 1000",
         "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
         "volatile.cloud-init.instance-id": "14b2c183-57a3-45a5-aec5-2ffe288495a6",
-        "volatile.eth0.host_name": "veth122b02cc",
+        "volatile.eth0.host_name": "veth0aaca0b7",
         "volatile.eth0.hwaddr": "mac-4",
         "volatile.idmap.base": "0",
         "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999}]",
@@ -56,7 +56,7 @@
         "raw.idmap": "both 1000 1000",
         "volatile.base_image": "ee3016f85cc452b34d0ad0ff5e2638948e6c905fa5068b68b36f45ef53fd628e",
         "volatile.cloud-init.instance-id": "14b2c183-57a3-45a5-aec5-2ffe288495a6",
-        "volatile.eth0.host_name": "veth122b02cc",
+        "volatile.eth0.host_name": "veth0aaca0b7",
         "volatile.eth0.hwaddr": "mac-4",
         "volatile.idmap.base": "0",
         "volatile.idmap.current": "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000,\"Nsid\":1000,\"Maprange\":1},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1001001,\"Nsid\":1001,\"Maprange\":999998999}]",
@@ -78,7 +78,7 @@
           "type": "disk"
         }
       },
-      "last_used_at": "2026-10-24T06:30:52.769940092Z",
+      "last_used_at": "2026-10-25T13:41:44.704093683Z",
       "location": "none",
       "name": "c-raw",
       "profiles": [

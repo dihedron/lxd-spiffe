@@ -52,7 +52,18 @@ A copy of an instance (`lxc copy`), or a restore of a backup, that includes SPIR
 - **Or evict the original's agent** right after copying: both agents then lose the shared SVID at its next renewal, and each attests as itself.
 - **Restoring a snapshot of the same instance** keeps its `volatile.uuid` and changes its `volatile.uuid.generation`: it is the same instance, and attests as such. Entries using the `generation` selector stop matching until re-created.
 
-A short `agent_ttl` bounds the window: agents of this attestor attest again at about half their SVID's life, so a copy that kept the agent's data passes for the original for at most about that long after the original is evicted. Keeping the agent's data on a tmpfs, so that no copy has it, is a mitigation under evaluation; its cost is an attestation at every boot.
+A short `agent_ttl` bounds the window: agents of this attestor attest again at about half their SVID's life, so a copy that kept the agent's data passes for the original for at most about that long after the original is evicted. If copies are routine in your deployment and the procedure above cannot be relied on, run the agents in *tmpfs mode* (below).
+
+## Running in tmpfs mode
+
+*tmpfs mode* (*Setup Guide*, *Installing the agent plugin*) keeps SPIRE Agent's SVID and key in memory, in `/run/spire/agent-data`, instead of on the instance's disk. It is optional and off by default.
+
+- **The threat it removes**: a copy of an instance's storage (a copy, a snapshot copied into a new instance, an import, a volume copy or backup) passing for the original. Such a copy starts with no agent data and attests as itself. If your instances are never copied, or every copy follows *Copies and restores*, that threat does not exist in your deployment, and tmpfs mode is not needed.
+- **What stays**: stateful snapshots and stateful migration save memory, the tmpfs included, so the procedure of *Copies and restores* still applies to them. Restoring a snapshot of the same instance is unchanged.
+- **Reboots attest.** Every boot of an instance attests again, with the same SPIFFE ID. Expect a burst of attestations after mass reboots and LXD daemon restarts (*Operational guidance*), and size `limits` and the agents' `attestation_timeout` for it. Until it succeeds the instance has no SVID: a SPIRE Server or LXD outage at boot time delays its workloads' SVIDs until both are back.
+- **Keep `reattest = "allow"`** on the server. With `deny`, an instance that rebooted cannot attest until you evict its agent.
+- **Refresh the trust bundle file when SPIRE Server's CA rotates.** A rebooted agent bootstraps from `trust_bundle_path` again; once the CA has rotated past that file, the agent cannot connect, and its log shows certificate verification errors. Distribute the new bundle to the instances before the old CA's certificates expire.
+- **Check it** in an instance: `ls /run/spire/agent-data` lists the agent's files; `/var/lib/spire/agent` holds none.
 
 ## Cluster maintenance
 

@@ -1,0 +1,15 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "73"
+    ],
+    "Content-Type": [
+      "application/octet-stream"
+    ],
+    "Date": [
+      "Sun, 25 Oct 2026 13:55:02 GMT"
+    ]
+  },
+  "body_text": "instance-id: 3a233d80-bf76-4af2-ba62-0c317eb2eb51\nlocal-hostname: v-alma\n"
+}

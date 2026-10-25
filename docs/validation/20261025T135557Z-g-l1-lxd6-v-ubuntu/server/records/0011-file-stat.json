@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "id": "server/0011",
+  "time": "2026-10-25T13:56:12.50846343Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "server",
+  "verb": "file stat",
+  "args": [
+    "v-ubuntu",
+    "/run/lxd-probe/proof",
+    "--expect-denied"
+  ],
+  "gate": "L1",
+  "cell": "lxd6-v-ubuntu",
+  "outcome": "ok",
+  "duration_ms": 22,
+  "server": {
+    "version": "6.10.0",
+    "api_extensions_hash": "sha256:8e367fd210e2811eab78a94e33ca6eb2a748c4793c4729252f5e961d52fef417"
+  },
+  "expectations": [
+    "file+denied"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "file.http_status",
+      "value": 403
+    },
+    {
+      "key": "file.headers",
+      "value": {}
+    },
+    {
+      "key": "file.error",
+      "value": "Forbidden"
+    }
+  ],
+  "raw": [
+    "artifacts/0011-server.json",
+    "artifacts/0011-file.json"
+  ]
+}

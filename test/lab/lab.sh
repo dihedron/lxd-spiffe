@@ -79,18 +79,20 @@ commands:
                             lxd5|lxd6|c5|c6: that server alone; a cluster
                             to its sibling's recorded revision)
   guest-up <server> <name> [--vm] [--privileged] [--no-files] [--target <member>]
-           [--project <project>] [--claim-name <name>]
+           [--project <project>] [--claim-name <name>] [--agent-data-tmpfs]
                             (plugins) launch an Ubuntu guest with SPIRE Agent
                             and lxd-agent-plugin, lab-spire granted on it in
                             project default (--no-files: without
                             can_access_files; --claim-name: the agent claims
-                            another instance's name)
+                            another instance's name; --agent-data-tmpfs: the
+                            agent's data in /run, tmpfs mode)
   guest-down <server> <name> [--project <project>]
                             (plugins) delete a guest and lab-spire's grants
-  guest-copy <server> <src> <dst> [--keep-agent]
+  guest-copy <server> <src> <dst> [--keep-agent] [--via-snapshot]
                             (plugins) copy a running guest container; without
                             --keep-agent its SPIRE Agent data stays out of the
-                            copy
+                            copy; --via-snapshot copies from a stateless
+                            snapshot (needed for a VM)
   spire-mode file_pull|config_push|auto|default
                             (plugins) set the server plugin's proof_mode and
                             restart SPIRE Server (default: from
@@ -105,7 +107,7 @@ commands:
 
 preflight, up, deploy, reset and test take --scenario probe|plugins|all
 (default: LAB_SCENARIOS, now "$LAB_SCENARIOS"). LAB_CLUSTER (now
-"$LAB_CLUSTER": no, 5.21, 6.9 or both) chooses the running clusters for every
+"$LAB_CLUSTER": no, 5.21, 6 or both) chooses the running clusters for every
 command.
 
 Settings are in lab.env, overridden by lab.local.env and by the environment.

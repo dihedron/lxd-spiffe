@@ -4,7 +4,7 @@
   "query": "path=%2Frun%2Flxd-probe%2Flayout%2Fregular\u0026project=default",
   "header": {
     "User-Agent": [
-      "lxd-spiffe/34ec48a-dirty"
+      "lxd-spiffe/v0.1.0-4-gb054f04"
     ]
   }
 }

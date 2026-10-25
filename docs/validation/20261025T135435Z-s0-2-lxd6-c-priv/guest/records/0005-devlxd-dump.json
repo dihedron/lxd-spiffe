@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "id": "guest/0005",
+  "time": "2026-10-25T13:54:39.749165141Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "guest",
+  "verb": "devlxd dump",
+  "args": [
+    "/1.0/config/cloud-init.user-data"
+  ],
+  "gate": "L3",
+  "cell": "lxd6-c-priv",
+  "outcome": "ok",
+  "duration_ms": 3,
+  "expectations": [
+    "devlxd-config-key"
+  ],
+  "observations": [
+    {
+      "key": "devlxd.http_status",
+      "value": 200
+    },
+    {
+      "key": "devlxd.format",
+      "value": "plain"
+    },
+    {
+      "key": "devlxd.latency_ms",
+      "value": 2
+    },
+    {
+      "key": "devlxd.content",
+      "value": "[redacted]"
+    }
+  ],
+  "raw": [
+    "artifacts/0005-devlxd.json"
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "id": "server/0015",
+  "time": "2026-10-25T13:54:34.930496263Z",
+  "tool_version": "v0.1.0-4-gb054f04",
+  "env": "server",
+  "verb": "instance show",
+  "args": [
+    "c-unpriv",
+    "--expect-denied"
+  ],
+  "gate": "L15",
+  "cell": "lxd6",
+  "outcome": "ok",
+  "duration_ms": 16,
+  "server": {
+    "version": "",
+    "api_extensions_hash": "sha256:8e367fd210e2811eab78a94e33ca6eb2a748c4793c4729252f5e961d52fef417"
+  },
+  "expectations": [
+    "instance+denied",
+    "instance-full+denied"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 403
+    },
+    {
+      "key": "instance-full.http_status",
+      "value": 403
+    },
+    {
+      "key": "instance.etag",
+      "value": ""
+    },
+    {
+      "key": "instance-full.etag",
+      "value": ""
+    },
+    {
+      "key": "etag.equal",
+      "value": true
+    },
+    {
+      "key": "instance.error",
+      "value": "Forbidden"
+    },
+    {
+      "key": "instance-full.error",
+      "value": "Forbidden"
+    }
+  ],
+  "raw": [
+    "artifacts/0015-server.json",
+    "artifacts/0015-instance.json",
+    "artifacts/0015-instance-full.json"
+  ]
+}

@@ -1,0 +1,186 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sun, 25 Oct 2026 13:56:15 GMT"
+    ],
+    "Etag": [
+      "\"88da9efe1eaa1a8daade93c319653d27cc936629149a3239f10987549e8b7df4\""
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": {
+      "architecture": "x86_64",
+      "backups": null,
+      "config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "Debian bookworm (cloud)",
+        "image.os": "Debian",
+        "image.release": "bookworm",
+        "image.serial": "20261016_0345",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "373e71bcea22cd0fda84fa31a2e076334c08e36d369e5b735d99dcba85228629",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "4c126830-36de-4181-99d1-9cf71c9fc9eb",
+        "volatile.cpu.maxcpus": "4",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tap2ca9a521",
+        "volatile.eth0.hwaddr": "mac-1",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "de93d67e-c7cd-4679-8002-128ce383af02",
+        "volatile.uuid.generation": "de93d67e-c7cd-4679-8002-128ce383af02",
+        "volatile.vsock_id": "3798757126"
+      },
+      "created_at": "2026-10-17T20:05:28.867130998Z",
+      "description": "",
+      "devices": {},
+      "ephemeral": false,
+      "expanded_config": {
+        "cloud-init.user-data": "[redacted]",
+        "image.architecture": "amd64",
+        "image.description": "Debian bookworm (cloud)",
+        "image.os": "Debian",
+        "image.release": "bookworm",
+        "image.serial": "20261016_0345",
+        "image.type": "disk-kvm.img",
+        "image.variant": "cloud",
+        "limits.cpu": "1",
+        "limits.memory": "1GiB",
+        "volatile.base_image": "373e71bcea22cd0fda84fa31a2e076334c08e36d369e5b735d99dcba85228629",
+        "volatile.bus.mode": "persistent",
+        "volatile.cloud-init.instance-id": "4c126830-36de-4181-99d1-9cf71c9fc9eb",
+        "volatile.cpu.maxcpus": "4",
+        "volatile.eth0.bus": "4",
+        "volatile.eth0.host_name": "tap2ca9a521",
+        "volatile.eth0.hwaddr": "mac-1",
+        "volatile.last_state.power": "RUNNING",
+        "volatile.uuid": "de93d67e-c7cd-4679-8002-128ce383af02",
+        "volatile.uuid.generation": "de93d67e-c7cd-4679-8002-128ce383af02",
+        "volatile.vsock_id": "3798757126"
+      },
+      "expanded_devices": {
+        "eth0": {
+          "name": "eth0",
+          "network": "lxdbr0",
+          "type": "nic"
+        },
+        "root": {
+          "path": "/",
+          "pool": "default",
+          "type": "disk"
+        }
+      },
+      "last_used_at": "2026-10-25T13:41:49.704518752Z",
+      "location": "none",
+      "name": "v-debian",
+      "profiles": [
+        "default"
+      ],
+      "project": "default",
+      "snapshots": null,
+      "state": {
+        "cpu": {
+          "usage": 12832788000
+        },
+        "disk": {
+          "root": {
+            "total": 0,
+            "usage": 96850432
+          }
+        },
+        "memory": {
+          "swap_usage": 0,
+          "swap_usage_peak": 0,
+          "total": 935993344,
+          "usage": 261967872,
+          "usage_peak": 0
+        },
+        "network": {
+          "enp5s0": {
+            "addresses": [
+              {
+                "address": "10.41.28.20",
+                "family": "inet",
+                "netmask": "24",
+                "scope": "global"
+              },
+              {
+                "address": "fe80::216:3eff:fedb:35b4",
+                "family": "inet6",
+                "netmask": "64",
+                "scope": "link"
+              }
+            ],
+            "counters": {
+              "bytes_received": 25455,
+              "bytes_sent": 2500,
+              "errors_received": 0,
+              "errors_sent": 0,
+              "packets_dropped_inbound": 0,
+              "packets_dropped_outbound": 0,
+              "packets_received": 255,
+              "packets_sent": 26
+            },
+            "host_name": "tap2ca9a521",
+            "hwaddr": "mac-1",
+            "mtu": 1500,
+            "state": "up",
+            "type": "broadcast"
+          },
+          "lo": {
+            "addresses": [
+              {
+                "address": "127.0.0.1",
+                "family": "inet",
+                "netmask": "8",
+                "scope": "local"
+              },
+              {
+                "address": "::1",
+                "family": "inet6",
+                "netmask": "128",
+                "scope": "local"
+              }
+            ],
+            "counters": {
+              "bytes_received": 0,
+              "bytes_sent": 0,
+              "errors_received": 0,
+              "errors_sent": 0,
+              "packets_dropped_inbound": 0,
+              "packets_dropped_outbound": 0,
+              "packets_received": 0,
+              "packets_sent": 0
+            },
+            "host_name": "",
+            "hwaddr": "",
+            "mtu": 65536,
+            "state": "up",
+            "type": "loopback"
+          }
+        },
+        "pid": 5261,
+        "processes": 11,
+        "status": "Running",
+        "status_code": 103
+      },
+      "stateful": false,
+      "status": "Running",
+      "status_code": 103,
+      "type": "virtual-machine"
+    },
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}
