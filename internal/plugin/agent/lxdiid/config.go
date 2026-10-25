@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/dihedron/lxd-spiffe/internal/claim"
@@ -34,6 +35,10 @@ var configKeys = []string{
 	"claim.project", "claim.instance_name",
 	"use_devlxd", "devlxd_socket", "proof_dir", "proof_timeout", "attestation_timeout",
 }
+
+// ConfigKeys returns the keys Config accepts, for the documents'
+// completeness test (docs/docs_test.go).
+func ConfigKeys() []string { return slices.Clone(configKeys) }
 
 const defaultProofDir = "/run/spire/lxd"
 
