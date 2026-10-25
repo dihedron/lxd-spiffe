@@ -16,7 +16,14 @@ With `config_push`, make the project **restricted**. `config_push` needs `can_ed
 lxc project set spire-nodes restricted=true
 ```
 
-`restricted=true` blocks those settings by default; review the `restricted.*` keys if the project needs exceptions, and keep `restricted.containers.privilege` and `restricted.containers.lowlevel` at their defaults.
+`restricted=true` blocks those settings by default; review the `restricted.*` keys if the project needs exceptions, and keep `restricted.containers.privilege` and `restricted.containers.lowlevel` at their defaults. In the lab (LXD 5.21.8 and 6.10.0) a restricted project refused `raw.lxc`, `raw.idmap` entries for uid 0, `security.privileged=true`, `security.syscalls.intercept.*`, disk devices not backed by a pool (a host path), proxy devices and unmanaged network devices, and accepted the `user.*` challenge key that `config_push` writes; a `config_push` attestation in such a project succeeded.
+
+A new project's default profile is **empty**, so `lxc launch` in it fails with `No root disk device found`. Give the project's default profile a root disk and a managed network (a restricted project allows only managed network devices), and keep `features.profiles` at its default `true`: LXD applies the restrictions only to a project that has profiles of its own.
+
+```bash
+lxc profile device add default root disk path=/ pool=default --project spire-nodes
+lxc profile device add default eth0 nic network=lxdbr0 --project spire-nodes
+```
 
 A project's `features.networks` decides where the networks its instances use live, and so the value of the `network` selector (`network:<project>/<network>`): the project itself when `features.networks=true`, `default` otherwise.
 
