@@ -82,6 +82,16 @@ type Server struct {
 	patchOperation string
 	// mounts serve a guest directory of an instance from a host directory.
 	mounts map[string]mount // key: project/name
+	// failures answer matching requests with an error.
+	failures []*failure
+}
+
+// failure answers the requests of method and path with status, after
+// letting skip of them through.
+type failure struct {
+	method, path string
+	skip, status int
+	msg          string
 }
 
 // mount is a guest directory served from a host directory.
@@ -278,6 +288,15 @@ func (s *Server) Deny(prefix string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.deny = append(s.deny, prefix)
+}
+
+// FailOn answers every request with this method and exact path with status
+// and msg, after letting the first skip of them through: a single call of
+// an LXD that fails it, as an LXD that is down or refuses the identity does.
+func (s *Server) FailOn(method, path string, skip, status int, msg string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.failures = append(s.failures, &failure{method: method, path: path, skip: skip, status: status, msg: msg})
 }
 
 // HideProject answers 404 Not Found to every request in project, as LXD
@@ -512,6 +531,17 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusForbidden, "not authorized")
 			return
 		}
+	}
+	for _, f := range s.failures {
+		if r.Method != f.method || r.URL.Path != f.path {
+			continue
+		}
+		if f.skip > 0 {
+			f.skip--
+			continue
+		}
+		writeError(w, f.status, f.msg)
+		return
 	}
 	project := r.URL.Query().Get("project")
 	if project == "" {

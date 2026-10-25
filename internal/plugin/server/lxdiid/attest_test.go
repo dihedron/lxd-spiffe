@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"testing"
@@ -360,6 +361,12 @@ func TestSEC10Refusals(t *testing.T) {
 		"no instance grant": {setup: func(h *harness, _ *agent) {
 			h.fake.Deny("/1.0/instances")
 		}, reason: "lxd_forbidden"},
+		"FR-S18 uniqueness list refused": {setup: func(h *harness, _ *agent) {
+			h.fake.FailOn(http.MethodGet, "/1.0/instances", 0, http.StatusForbidden, "not authorized")
+		}, reason: "lxd_forbidden"},
+		"FR-S18 uniqueness list failing": {setup: func(h *harness, _ *agent) {
+			h.fake.FailOn(http.MethodGet, "/1.0/instances", 0, http.StatusInternalServerError, "database is not available")
+		}, reason: "lxd_unavailable"},
 		"FR-S10 moved during the proof": {setup: func(_ *harness, a *agent) {
 			a.answer = func(h *harness, a *agent, c *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
 				h.writeProof("default", a, c, 0, 0o600, a.rightProof(c))

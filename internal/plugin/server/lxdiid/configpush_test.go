@@ -125,6 +125,16 @@ func TestModeConfigPushRefusals(t *testing.T) {
 		"FR-S14 status changed between retries": {setup: func(h *harness, _ *agent) {
 			h.fake.AfterNextRead("default", "c1", fakelxd.Change{Status: "Frozen"})
 		}, reason: "not_running", writes: 1},
+		"challenge write refused": {setup: func(h *harness, _ *agent) {
+			h.fake.FailOn(http.MethodPatch, "/1.0/instances/c1", 0, http.StatusForbidden, "not authorized")
+		}, reason: "lxd_forbidden", writes: 1},
+		"challenge write failing": {setup: func(h *harness, _ *agent) {
+			h.fake.FailOn(http.MethodPatch, "/1.0/instances/c1", 0, http.StatusInternalServerError, "database is not available")
+		}, reason: "lxd_unavailable", writes: 1},
+		"FR-S14 re-read after a 412 refused": {setup: func(h *harness, _ *agent) {
+			h.fake.StaleAfterNextRead("default", "c1")
+			h.fake.FailOn(http.MethodGet, "/1.0/instances/c1", 2, http.StatusForbidden, "not authorized")
+		}, reason: "lxd_forbidden", writes: 1},
 		"FR-S14 location changed between retries": {setup: func(h *harness, _ *agent) {
 			h.fake.AfterNextRead("default", "c1", fakelxd.Change{Location: "m2"})
 		}, reason: "instance_moved", writes: 1},
