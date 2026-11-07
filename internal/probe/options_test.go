@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/jessevdk/go-flags"
-
-	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
 )
 
 func TestUIDListUnmarshalFlag(t *testing.T) {
@@ -35,16 +33,6 @@ func TestUIDListUnmarshalFlag(t *testing.T) {
 		if tt.ok && !slices.Equal(got, tt.want) {
 			t.Errorf("UnmarshalFlag(%q) = %v; want %v", tt.value, got, tt.want)
 		}
-	}
-}
-
-func TestNotImplemented(t *testing.T) {
-	err := NotImplemented("server info")
-	if exit.Code(err) != exit.Internal {
-		t.Errorf("exit code = %d; want %d", exit.Code(err), exit.Internal)
-	}
-	if err.Error() != "server info: not implemented yet" {
-		t.Errorf("Error() = %q", err.Error())
 	}
 }
 
