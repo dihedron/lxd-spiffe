@@ -217,15 +217,19 @@ func (r *soakRun) restartSpire() soakEvent {
 	return e
 }
 
+// The server plugin's process, by its full command line (SPIRE's
+// plugin_cmd): its name, lxd-server-plugin, is longer than the 15 characters
+// that pgrep -x and pkill -x compare, so they never match it.
+
 // killPlugin kills the server plugin's process. Does SPIRE restart it? If
 // the plugin process is not back within 150 s, the finding is recorded and SPIRE
 // Server restarted.
 func (r *soakRun) killPlugin() soakEvent {
-	_, _ = r.spire(30*time.Second, "pkill -9 -x lxd-server-plugin")
+	_, _ = r.spire(30*time.Second, "pkill -9 -xf /usr/bin/lxd-server-plugin")
 	killed := time.Now().UTC()
 	e := soakEvent{Start: killed}
 	if poll(150*time.Second, func() bool {
-		_, err := r.spire(20*time.Second, "pgrep -x lxd-server-plugin")
+		_, err := r.spire(20*time.Second, "pgrep -xf /usr/bin/lxd-server-plugin")
 		return err == nil
 	}) {
 		e.Note = "SPIRE restarted the plugin"

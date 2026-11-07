@@ -80,7 +80,7 @@ func parseDebug(out string) (debugSample, bool) {
 	return d, d.PID > 0 && d.Goroutines > 0
 }
 
-const debugScript = `p=$(pgrep -x lxd-server-plugin | head -n1); echo pid=$p; echo rss=$(ps -o rss= -p "$p")
+const debugScript = `p=$(pgrep -xf /usr/bin/lxd-server-plugin | head -n1); echo pid=$p; echo rss=$(ps -o rss= -p "$p")
 curl -s --max-time 10 'http://127.0.0.1:6060/debug/pprof/goroutine?debug=1' | head -n1
 curl -s --max-time 10 'http://127.0.0.1:6060/debug/pprof/heap?debug=1' | grep -m1 '^# HeapInuse = '`
 
