@@ -52,8 +52,8 @@ const (
 	allowLXD = "iptables -D INPUT -p tcp --dport 8443 -j DROP"
 	// the LXD daemon, not its forkexec helpers or a guest's lxd-agent
 	// (the bracket keeps pkill from matching the shell that runs it)
-	stopLXD = "pkill -STOP -f \"/[l]xd --logfile\""
-	contLXD = "pkill -CONT -f \"/[l]xd --logfile\""
+	stopLXD = "pkill -STOP -f \"[l]xd --logfile\""
+	contLXD = "pkill -CONT -f \"[l]xd --logfile\""
 )
 
 func (l *lab) spireHealthy() bool {
@@ -102,6 +102,9 @@ func TestE2E6bServerHung(t *testing.T) {
 	run := &e2eRun{}
 	t.Cleanup(func() { run.finish(t, l, time.Now().UTC().Format("20060102T150405Z")+"-e2e-6b-summary") })
 	l.fault(t, down, "6b", stopLXD, contLXD)
+	if state := strings.TrimSpace(l.ssh(t, down, `ps -o stat= -p "$(pgrep -f "[l]xd --logfile")"`)); !strings.HasPrefix(state, "T") {
+		t.Fatalf("the LXD daemon of %s is not stopped: state %q", down, state)
+	}
 	mark := l.logMark(t)
 	g := l.guestUp(t, healthy, "e2e-6b-up")
 	l.attested(t, g, "file_pull", run, "E2E-6b instance on a healthy server")
