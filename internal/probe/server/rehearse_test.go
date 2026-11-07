@@ -169,7 +169,18 @@ func TestPRS52FilePullFailures(t *testing.T) {
 		}, nil, "file", evidence.OutcomeUnexpected},
 		"proof directory with a wrong mode":  {nil, withDir(fakelxd.File{UID: 0, Mode: 0o755, Type: "directory", Entries: []string{}}), nil, "dir", evidence.OutcomeUnexpected},
 		"proof directory with a wrong owner": {nil, withDir(fakelxd.File{UID: 1000, Mode: 0o700, Type: "directory", Entries: []string{}}), nil, "dir", evidence.OutcomeUnexpected},
-		"privileged refused by the policy":   {map[string]string{"security.privileged": "true"}, honest, nil, "policy", evidence.OutcomeUnexpected},
+		"proof directory is a file":          {nil, withDir(fakelxd.File{UID: 0, Mode: 0o700, Type: "file"}), nil, "dir", evidence.OutcomeUnexpected},
+		"proof directory missing": {nil, func(f *fakelxd.Server) func(rehearse.Challenge) rehearse.Answer {
+			return func(c rehearse.Challenge) rehearse.Answer {
+				sn, an, _ := c.Nonces()
+				sum, _ := proof.Compute(c.Project, c.Instance, sn, an)
+				file := goodFile
+				file.Content = string(proof.Hex(sum))
+				f.AddFile(c.Project, c.Instance, c.ProofPath, file)
+				return rehearse.Answer{Mode: rehearse.FilePull, Done: true}
+			}
+		}, nil, "dir", evidence.OutcomeUnexpected},
+		"privileged refused by the policy": {map[string]string{"security.privileged": "true"}, honest, nil, "policy", evidence.OutcomeUnexpected},
 		"denied config key": {map[string]string{"raw.lxc": "x"}, honest,
 			func(c *RehearseFilePull) { c.DenyConfigKeys = []string{"raw.lxc"} }, "policy", evidence.OutcomeUnexpected},
 		"the guest failed": {nil, func(*fakelxd.Server) func(rehearse.Challenge) rehearse.Answer {
