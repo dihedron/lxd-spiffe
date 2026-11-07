@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"slices"
 	"time"
 
@@ -65,6 +66,8 @@ type failure struct {
 }
 
 func (f *failure) Error() string { return f.reason + ": " + f.err.Error() }
+
+func (f *failure) Unwrap() error { return f.err }
 
 func fail(reason, format string, a ...any) *failure {
 	return &failure{reason: reason, err: fmt.Errorf(format, a...)}
@@ -209,20 +212,51 @@ func client(ctx context.Context, srv *lxdServer) (*lxd.Client, error) {
 	c, err := srv.checked(ctx)
 	switch {
 	case errors.Is(err, lxd.ErrMissingExtensions):
-		return nil, fail(reasonExtensionMissing, "%v", err)
+		return nil, fail(reasonExtensionMissing, "%w", err)
 	case err != nil:
-		return nil, fail(lxdReason(err), "%v", err)
+		return nil, fail(lxdReason(err), "%w", err)
 	}
 	return c, nil
 }
 
-// resolve finds the one instance the claim names, across every server and
-// project of the allow-lists, or only the claimed project (FR-S3, SEC-05).
-// A server that cannot be asked fails the attestation: without it, the
-// match could not be shown to be the only one.
+// unreachable tells a server that cannot be reached (FR-S3) from one that
+// answered, even with a refusal, and from the attestation's own deadline.
+func unreachable(ctx context.Context, err error) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+	if errors.Is(err, errBreakerOpen) {
+		return true
+	}
+	var e *lxd.Error
+	if errors.As(err, &e) && e.Kind == lxd.KindServer {
+		return e.Status >= http.StatusInternalServerError
+	}
+	switch lxd.KindOf(err) {
+	case lxd.KindConnection, lxd.KindTimeout, lxd.KindProtocol:
+		return true
+	}
+	return false
+}
+
+// skip reports whether the attestation goes on without srv, which err says
+// cannot be reached (FR-S3, FR-S18). The proof still shows that the caller
+// is inside the matched instance; proof_mode none has only the claim.
+func (a *attestation) skip(ctx context.Context, srv *lxdServer, err error) bool {
+	if a.s.mode == modeNone || !unreachable(ctx, err) {
+		return false
+	}
+	a.log.Warn("skipping an LXD server that cannot be reached", "server_id", srv.id, "error", err.Error())
+	return true
+}
+
+// resolve finds the one instance the claim names, across the servers and
+// projects of the allow-lists that answer, or only the claimed project
+// (FR-S3, SEC-05).
 func (a *attestation) resolve(ctx context.Context, c *lxdiidv1.Claim) (*match, error) {
 	var matches []*match
-	scoped := false
+	scoped, skipped := false, false
+servers:
 	for _, srv := range a.s.servers {
 		projects := srv.projects
 		if c.GetProject() != "" {
@@ -234,6 +268,10 @@ func (a *attestation) resolve(ctx context.Context, c *lxdiidv1.Claim) (*match, e
 		scoped = true
 		cl, err := client(ctx, srv)
 		if err != nil {
+			if a.skip(ctx, srv, err) {
+				skipped = true
+				continue
+			}
 			return nil, err
 		}
 		for _, p := range projects {
@@ -242,6 +280,9 @@ func (a *attestation) resolve(ctx context.Context, c *lxdiidv1.Claim) (*match, e
 			switch {
 			case lxd.KindOf(err) == lxd.KindNotFound:
 				continue
+			case a.skip(ctx, srv, err):
+				skipped = true
+				continue servers
 			case err != nil:
 				return nil, fail(lxdReason(err), "server %s, project %s: %v", srv.id, p, err)
 			case c.GetCloudInitInstanceId() != "" && inst.ExpandedConfig["volatile.cloud-init.instance-id"] != c.GetCloudInitInstanceId():
@@ -253,6 +294,8 @@ func (a *attestation) resolve(ctx context.Context, c *lxdiidv1.Claim) (*match, e
 	switch {
 	case !scoped:
 		return nil, fail("scope_denied", "the claimed project is in no server's allow-list")
+	case len(matches) == 0 && skipped:
+		return nil, fail(reasonLXDUnavailable, "no instance matches the claim on the servers that answered")
 	case len(matches) == 0:
 		return nil, fail(reasonNotFound, "no instance matches the claim")
 	case len(matches) > 1:
@@ -262,18 +305,26 @@ func (a *attestation) resolve(ctx context.Context, c *lxdiidv1.Claim) (*match, e
 }
 
 // unique requires the match to be the only instance with its volatile.uuid
-// on every server and project of the allow-lists (FR-S18).
+// on every server and project of the allow-lists that answers; the matched
+// server must (FR-S18).
 func (a *attestation) unique(ctx context.Context, m *match, uuid string) error {
 	var found []string
+servers:
 	for _, srv := range a.s.servers {
 		cl, err := client(ctx, srv)
 		if err != nil {
+			if srv != m.srv && a.skip(ctx, srv, err) {
+				continue
+			}
 			return err
 		}
 		for _, p := range srv.projects {
 			names, err := cl.InstancesByUUID(ctx, p, uuid)
 			srv.observe(ctx, err)
 			if err != nil {
+				if srv != m.srv && a.skip(ctx, srv, err) {
+					continue servers
+				}
 				return fail(lxdReason(err), "server %s, project %s: listing by uuid: %v", srv.id, p, err)
 			}
 			for _, n := range names {

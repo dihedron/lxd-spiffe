@@ -47,6 +47,7 @@ The `error` of `attestation refused`, by the step that refused. The reason code 
 | `server <id>, project <project>: <error>` | `lxd_unavailable` or `lxd_forbidden` | Reading the instance failed for another reason than "not found" | The wrapped error (*The LXD client*) |
 | `server <id>: <error>` | `lxd_unavailable`, `lxd_forbidden` or `extension_missing` | The server's check failed: untrusted identity, missing extensions, unreachable | The wrapped error; `refusing to attest through an LXD server` gives it once |
 | `the circuit breaker is open after LXD failures` | `lxd_unavailable` | The server failed `limits.breaker_threshold` times in a row; no call is made until the next trial | Fix the server; the breaker closes after a successful trial |
+| `no instance matches the claim on the servers that answered` | `lxd_unavailable` | A server was skipped, and the instance may be on it | Check the server named by `skipping an LXD server that cannot be reached` |
 | `no instance matches the claim` | `instance_not_found` | No instance of that name in the allowed projects, or its cloud-init ID differs from the claim | Check the name and project; a renamed instance needs SPIRE Agent restarted to send its new cloud-init ID |
 | `<n> instances match the claim` | `instance_ambiguous` | The name exists in several allowed projects or servers | Set `claim.project`; give servers distinct projects |
 
@@ -73,7 +74,7 @@ These come as `attestation denied (<code>): <detail>`; `after a 412: ` precedes 
 
 | Message | Reason | Cause | Remedy |
 | ---------------------------------- | --------------------- | -------------------------------- | -------------------------------- |
-| `server <id>, project <project>: listing by uuid: <error>` | `lxd_unavailable` or `lxd_forbidden` | The filtered instance list failed on a server; every server must answer | The wrapped error |
+| `server <id>, project <project>: listing by uuid: <error>` | `lxd_unavailable` or `lxd_forbidden` | The filtered instance list failed: on the matched server, or with a refusal on another, or with any failure under `proof_mode = "none"` | The wrapped error |
 | `instances with the resolved uuid: [<server>/<project>/<name> ...]` | `instance_ambiguous` | Several instances share the UUID (an import keeps it), or SPIRE's group lacks project `can_view_instances` so the list misses the instance itself | Remove the twin; grant `can_view_instances` |
 
 ### The proof

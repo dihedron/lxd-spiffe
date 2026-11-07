@@ -3,6 +3,7 @@ package lxdiid
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -407,24 +408,6 @@ func TestSEC10Refusals(t *testing.T) {
 	}
 }
 
-// TestFRS3UnreachableServerFailsClosed: with a server down, uniqueness
-// cannot be proven, so the attestation fails even where the instance is
-// found.
-func TestFRS3UnreachableServerFailsClosed(t *testing.T) {
-	f := newTestFiles(t)
-	down := fmt.Sprintf(`"down" = {
-    url = "https://127.0.0.1:1"
-    client_cert_file = %q
-    client_key_file = %q
-    server_cert_fingerprint = %q
-    projects = ["default"]
-  }`, f.cert, f.key, testPin)
-	h := newHarness(t, "", down)
-	h.addInstance("default", "c1", "container", uuidA)
-	_, err := h.attest("default", newAgent("c1"))
-	checkRefused(t, h, err, "lxd_unavailable")
-}
-
 func checkRefused(t *testing.T, h *harness, err error, reason string) {
 	t.Helper()
 	if status.Code(err) != codes.PermissionDenied || status.Convert(err).Message() != "attestation failed" {
@@ -504,6 +487,141 @@ func TestSEC09NoLockoutByClaim(t *testing.T) {
 	if _, err := h.attest("default", newAgent("victim")); err != nil {
 		t.Errorf("the instance itself: %v\n%s", err, h.log)
 	}
+}
+
+// extraServer adds a second fake LXD and its server entry for newHarness:
+// its id decides whether it is asked before or after "lab".
+func extraServer(t *testing.T, id string) (*fakelxd.Server, string) {
+	t.Helper()
+	fake := fakelxd.NewAssumed(t)
+	fake.SetExtensions(lxd.RequiredExtensions...)
+	return fake, serverEntry(t, id, fake.URL, fake.Fingerprint())
+}
+
+func serverEntry(t *testing.T, id, url, fingerprint string) string {
+	t.Helper()
+	f := newTestFiles(t)
+	return fmt.Sprintf(`%q = {
+    url = %q
+    client_cert_file = %q
+    client_key_file = %q
+    server_cert_fingerprint = %q
+    projects = ["default"]
+  }`, id, url, f.cert, f.key, fingerprint)
+}
+
+// TestFRS3SkipsUnreachableServer: a server that cannot be reached, asked
+// before or after the matched one, does not fail the attestation (FR-S3,
+// FR-S18); the skip is logged.
+func TestFRS3SkipsUnreachableServer(t *testing.T) {
+	for _, id := range []string{"a-down", "z-down"} {
+		for name, entry := range map[string]func(t *testing.T) string{
+			"5xx": func(t *testing.T) string {
+				fake, entry := extraServer(t, id)
+				fake.FailAll(500, "database is not available")
+				return entry
+			},
+			"connection refused": func(t *testing.T) string {
+				fake, _ := extraServer(t, id)
+				return serverEntry(t, id, "https://127.0.0.1:1", fake.Fingerprint())
+			},
+		} {
+			t.Run(id+" "+name, func(t *testing.T) {
+				h := newHarness(t, "", entry(t))
+				h.addInstance("default", "c1", "container", uuidA)
+				attrs, err := h.attest("default", newAgent("c1"))
+				if err != nil {
+					t.Fatalf("%v\n%s", err, h.log)
+				}
+				if !strings.Contains(attrs.GetSpiffeId(), "/lab/") {
+					t.Errorf("SPIFFE ID %s", attrs.GetSpiffeId())
+				}
+				if !strings.Contains(h.log.String(), "skipping an LXD server") || !strings.Contains(h.log.String(), "server_id="+id) {
+					t.Errorf("the skip is not logged:\n%s", h.log)
+				}
+			})
+		}
+	}
+}
+
+// TestFRS3FailsClosed: what still refuses the attestation with several
+// servers: a collision or twin on a server that answers (T6, T7), a server
+// that answers with a refusal, no match while a server was skipped, and
+// proof_mode none, whose only evidence is the claim.
+func TestFRS3FailsClosed(t *testing.T) {
+	const none = "proof_mode = \"none\"\ni_understand_claim_only_is_insecure = true"
+	for name, tc := range map[string]struct {
+		top    string
+		agent  string
+		other  func(fake *fakelxd.Server)
+		reason string
+	}{
+		"T6 same name on a server that answers": {other: func(fake *fakelxd.Server) {
+			fake.AddInstance("default", "c1", map[string]string{"volatile.uuid": uuidB, "volatile.uuid.generation": uuidB})
+		}, reason: "instance_ambiguous"},
+		"T7 twin on a server that answers": {other: func(fake *fakelxd.Server) {
+			fake.AddInstance("default", "twin", map[string]string{"volatile.uuid": uuidA, "volatile.uuid.generation": uuidA})
+		}, reason: "instance_ambiguous"},
+		"a 403 is no outage":                 {other: func(fake *fakelxd.Server) { fake.FailAll(403, "not authorized") }, reason: "lxd_forbidden"},
+		"a missing extension is no outage":   {other: func(fake *fakelxd.Server) { fake.SetExtensions() }, reason: "extension_missing"},
+		"no match while a server is skipped": {agent: "nobody", other: func(fake *fakelxd.Server) { fake.FailAll(500, "down") }, reason: "lxd_unavailable"},
+		"proof_mode none needs every server": {top: none, other: func(fake *fakelxd.Server) { fake.FailAll(500, "down") }, reason: "lxd_unavailable"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fake, entry := extraServer(t, "z-other")
+			h := newHarness(t, tc.top, entry)
+			h.addInstance("default", "c1", "container", uuidA)
+			tc.other(fake)
+			agentName := "c1"
+			if tc.agent != "" {
+				agentName = tc.agent
+			}
+			_, err := h.attest("default", newAgent(agentName))
+			checkRefusedWith(t, h, err, tc.reason)
+		})
+	}
+}
+
+// TestFRS3Unreachable: only a failure to reach the server counts, not an
+// answer, a local error or the attestation's own deadline.
+func TestFRS3Unreachable(t *testing.T) {
+	ended, cancel := context.WithCancel(context.Background())
+	cancel()
+	for name, tc := range map[string]struct {
+		ctx  context.Context
+		err  error
+		want bool
+	}{
+		"breaker open, wrapped": {err: fail(reasonLXDUnavailable, "%w", errBreakerOpen), want: true},
+		"connection":            {err: down, want: true},
+		"timeout":               {err: &lxd.Error{Kind: lxd.KindTimeout, Err: errors.New("t")}, want: true},
+		"invalid response":      {err: &lxd.Error{Kind: lxd.KindProtocol, Err: errors.New("p")}, want: true},
+		"5xx":                   {err: &lxd.Error{Kind: lxd.KindServer, Status: 503, Err: errors.New("s")}, want: true},
+		"other 4xx":             {err: &lxd.Error{Kind: lxd.KindServer, Status: 400, Err: errors.New("s")}},
+		"403":                   {err: &lxd.Error{Kind: lxd.KindAuth, Status: 403, Err: errors.New("a")}},
+		"not trusted":           {err: errors.New("lxd: the server does not trust this client")},
+		"missing extension":     {err: lxd.ErrMissingExtensions},
+		"attestation's own end": {ctx: ended, err: down},
+	} {
+		ctx := tc.ctx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		if got := unreachable(ctx, tc.err); got != tc.want {
+			t.Errorf("%s: %v, want %v", name, got, tc.want)
+		}
+	}
+}
+
+// TestFRS18MatchedServerMustAnswer: the uniqueness list of the matched
+// server cannot be skipped.
+func TestFRS18MatchedServerMustAnswer(t *testing.T) {
+	_, entry := extraServer(t, "z-other")
+	h := newHarness(t, "", entry)
+	h.addInstance("default", "c1", "container", uuidA)
+	h.fake.FailOn("GET", "/1.0/instances", 0, 500, "database is not available")
+	_, err := h.attest("default", newAgent("c1"))
+	checkRefusedWith(t, h, err, "lxd_unavailable")
 }
 
 // TestFRS15Breaker: transport failures in a row open the server's breaker;

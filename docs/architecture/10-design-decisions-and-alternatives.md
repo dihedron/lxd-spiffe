@@ -12,7 +12,9 @@
 
 **One uniform error.** Every refusal looks the same to the agent, so that SPIRE Server's attestation endpoint, reachable before authentication, reveals nothing about which instances exist; operators get the reason and detail in the log.
 
-**Fail closed on ambiguity.** Several matches, a server that cannot be asked, an unexpected owner, a change during the proof: all refuse. A refused attestation is retried by SPIRE Agent; a wrong identity cannot be taken back.
+**Fail closed on ambiguity.** Several matches, a refusal from LXD, an unexpected owner, a change during the proof: all refuse. A refused attestation is retried by SPIRE Agent; a wrong identity cannot be taken back.
+
+**A server down does not stop the others.** A server that cannot be reached is skipped, except with `proof_mode = "none"`: the proof read from the matched instance is what binds the caller to it, and a twin on the missing server could not prove anything meanwhile. The price is a uniqueness check that is incomplete during the outage. Limiting the check to the matched server all the time was rejected: `uuid` and `server` are separate selectors, so a twin on another server could match an entry that selects `uuid` alone.
 
 **No cluster logic.** LXD members forward every call the plugin makes; a cluster is one server entry. Failover belongs to a load balancer in front of the members.
 

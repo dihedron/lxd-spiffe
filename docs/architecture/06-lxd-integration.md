@@ -21,7 +21,7 @@ Only the Apache-2.0 licensed `client` and `shared` packages of the LXD repositor
 | Capability check | `GET /1.0` | First use of a server and after every reconnection: API extensions, trust, version |
 | Own identity | `GET /1.0/auth/identities/current` | After the capability check: warns if the identity looks like an administrator |
 | Resolve the instance | `GET /1.0/instances/<name>?project=<p>` | Every attestation, per allowed project; again after the proof |
-| Uniqueness | `GET /1.0/instances?project=<p>&filter=config.volatile.uuid eq <uuid>` | Every attestation, per allowed project of every server |
+| Uniqueness | `GET /1.0/instances?project=<p>&filter=config.volatile.uuid eq <uuid>` | Every attestation, per allowed project of every server that answers |
 | Read the proof | `GET /1.0/instances/<name>/files?path=...` | `file_pull`: the proof file and its directory |
 | Write and remove the challenge | `PATCH /1.0/instances/<name>` with `If-Match` | `config_push`: two writes per attestation, both synchronous |
 | Network project | `GET /1.0/projects/<name>` | When the `network` selector is enabled and the instance has a NIC on a managed network |
@@ -57,5 +57,5 @@ A cluster is one server entry. Every member forwards every call the plugin makes
 Attestations reach SPIRE Server before any authentication, so the plugin protects LXD from floods (`T11`):
 
 - **Before any LXD call**: a cap on concurrent attestations (default 16) and a token bucket (default 20 per second). An attestation over a limit is refused at once (`rate_limited`), not queued. No limit is keyed on the claim: its project and name are unauthenticated until the proof, so such a limit would let anyone lock out the instance they name.
-- **Per LXD server, a circuit breaker**: after 5 transport failures in a row (connection errors, timeouts, server errors other than a VM's agent starting, invalid responses; any answer resets the count), attestations through that server fail at once without calling it, for 5 seconds; then one trial attestation goes through on a new connection, checked again; its failure doubles the open time, up to 60 seconds.
+- **Per LXD server, a circuit breaker**: after 5 transport failures in a row (connection errors, timeouts, server errors other than a VM's agent starting, invalid responses; any answer resets the count), the plugin stops calling that server for 5 seconds and treats it as unreachable, so attestations on other servers go on; then one trial attestation goes through on a new connection, checked again; its failure doubles the open time, up to 60 seconds.
 - **No caching of outcomes**: every attestation asks LXD.
