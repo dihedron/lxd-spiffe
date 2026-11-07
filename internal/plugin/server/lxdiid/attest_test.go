@@ -613,6 +613,42 @@ func TestFRS3Unreachable(t *testing.T) {
 	}
 }
 
+// TestFRS15HungServer: a server that accepts requests and never answers is
+// a server that cannot be reached: each call gives up within lxdCallTimeout,
+// the attestation goes on without it, and its breaker opens, so that later
+// attestations do not wait for it (FR-S3, FR-S15).
+func TestFRS15HungServer(t *testing.T) {
+	saved := lxdCallTimeout
+	lxdCallTimeout = 200 * time.Millisecond
+	t.Cleanup(func() { lxdCallTimeout = saved })
+	fake, entry := extraServer(t, "a-hung")
+	h := newHarness(t, "limits {\n  breaker_threshold = 2\n}", entry)
+	h.addInstance("default", "c1", "container", uuidA)
+	if _, err := h.attest("default", newAgent("c1")); err != nil {
+		t.Fatalf("before the hang: %v\n%s", err, h.log)
+	}
+	fake.Hang()
+	for i := range 2 {
+		start := time.Now()
+		if _, err := h.attest("default", newAgent("c1")); err != nil {
+			t.Fatalf("attestation %d: %v\n%s", i, err, h.log)
+		}
+		if d := time.Since(start); d > 5*time.Second {
+			t.Errorf("attestation %d took %v", i, d)
+		}
+	}
+	before := len(fake.Requests())
+	if _, err := h.attest("default", newAgent("c1")); err != nil {
+		t.Fatalf("with the breaker open: %v\n%s", err, h.log)
+	}
+	if n := len(fake.Requests()) - before; n != 0 {
+		t.Errorf("%d requests with the breaker open", n)
+	}
+	if !strings.Contains(h.log.String(), "circuit breaker is open") {
+		t.Errorf("the breaker did not open:\n%s", h.log)
+	}
+}
+
 // TestFRS18MatchedServerMustAnswer: the uniqueness list of the matched
 // server cannot be skipped.
 func TestFRS18MatchedServerMustAnswer(t *testing.T) {

@@ -18,7 +18,7 @@ SPIRE Server (1.15.5, measured) keeps running when a plugin process dies and nev
 2. Read the `error` of the refusals: a fingerprint that does not match the pin (the server's certificate changed), `the server does not trust this client` (SPIRE's identity was removed or its certificate or token expired), missing API extensions (`extension_missing`, after a downgrade or a different server behind the address), or a transport failure.
 3. Fix the cause. The plugin retries the server by itself: the circuit breaker lets a trial attestation through every 5 to 60 seconds, and the agents retry.
 
-While one configured server is unreachable, attestations of instances on the other servers go on, with the warning `skipping an LXD server that cannot be reached` (with `proof_mode = "none"` they fail instead). A refusal is different: a server that answers with a 401 or 403, or lacks an extension, still fails every attestation that asks it, until you fix it or remove its entry.
+While one configured server is unreachable or does not answer, attestations of instances on the other servers go on, with the warning `skipping an LXD server that cannot be reached` (with `proof_mode = "none"` they fail instead). A refusal is different: a server that answers with a 401 or 403, or lacks an extension, still fails every attestation that asks it, until you fix it or remove its entry.
 
 ## The LXD daemon crashed
 

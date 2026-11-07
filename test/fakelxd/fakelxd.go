@@ -68,9 +68,12 @@ type Server struct {
 	// an LXD that is down would.
 	failAll    int
 	failAllMsg string
-	nextOp     int
-	opStatus   map[string]string // key: operation id
-	replay     map[string][]evidence.Fixture
+	// hang, when set, leaves every request unanswered until its client gives
+	// up, as an LXD daemon that is stopped but holds its socket would.
+	hang     bool
+	nextOp   int
+	opStatus map[string]string // key: operation id
+	replay   map[string][]evidence.Fixture
 	// bearerExpiry, when set, refuses bearer tokens from then on, as LXD
 	// refuses an expired token (lab, LXD 6.9).
 	bearerExpiry time.Time
@@ -345,6 +348,13 @@ func (s *Server) FailAll(status int, msg string) {
 	s.failAll, s.failAllMsg = status, msg
 }
 
+// Hang leaves every request unanswered until its client gives up.
+func (s *Server) Hang() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.hang = true
+}
+
 // SetExtensions replaces the api_extensions the fake reports; the
 // extensions do not change what the fake serves.
 func (s *Server) SetExtensions(extensions ...string) {
@@ -517,6 +527,11 @@ func (s *Server) replayed(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
+	if s.hang {
+		s.mu.Unlock()
+		<-r.Context().Done()
+		return
+	}
 	defer s.mu.Unlock()
 	if !s.bearerExpiry.IsZero() && strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") && !time.Now().Before(s.bearerExpiry) {
 		writeError(w, http.StatusForbidden, "Failed verifying bearer token: Failed authenticating bearer token: Token is not valid: token has invalid claims: token is expired")

@@ -58,6 +58,11 @@ const (
 	lxdSlack = 30 * time.Second
 )
 
+// lxdCallTimeout bounds each call of the resolution and of the uniqueness
+// check, and a server's check: a server that accepts a request and never
+// answers then counts as one that cannot be reached (FR-S15).
+var lxdCallTimeout = 10 * time.Second
+
 // failure is a refused attestation: its reason code and the detail that
 // only the server's log gets (SEC-10).
 type failure struct {
@@ -209,7 +214,9 @@ func lxdReason(err error) string {
 
 // client returns a server's checked client, or the failure of its check.
 func client(ctx context.Context, srv *lxdServer) (*lxd.Client, error) {
-	c, err := srv.checked(ctx)
+	cctx, cancel := context.WithTimeout(ctx, lxdCallTimeout)
+	defer cancel()
+	c, err := srv.checked(cctx)
 	switch {
 	case errors.Is(err, lxd.ErrMissingExtensions):
 		return nil, fail(reasonExtensionMissing, "%w", err)
@@ -275,7 +282,9 @@ servers:
 			return nil, err
 		}
 		for _, p := range projects {
-			inst, etag, err := cl.Instance(ctx, p, c.GetInstanceName())
+			cctx, cancel := context.WithTimeout(ctx, lxdCallTimeout)
+			inst, etag, err := cl.Instance(cctx, p, c.GetInstanceName())
+			cancel()
 			srv.observe(ctx, err)
 			switch {
 			case lxd.KindOf(err) == lxd.KindNotFound:
@@ -319,7 +328,9 @@ servers:
 			return err
 		}
 		for _, p := range srv.projects {
-			names, err := cl.InstancesByUUID(ctx, p, uuid)
+			cctx, cancel := context.WithTimeout(ctx, lxdCallTimeout)
+			names, err := cl.InstancesByUUID(cctx, p, uuid)
+			cancel()
 			srv.observe(ctx, err)
 			if err != nil {
 				if srv != m.srv && a.skip(ctx, srv, err) {
