@@ -1,6 +1,7 @@
 package evidence
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -137,17 +138,34 @@ func sanitizeResponse(s *Sanitizer, status int, header http.Header, body []byte)
 }
 
 // sanitizeBody returns a sanitized JSON body, or a sanitized text body when
-// data is not JSON.
+// data is not JSON. A body that looks like JSON but does not decode is
+// redacted whole: the rules by key cannot apply to it (PRE-03).
 func sanitizeBody(s *Sanitizer, data []byte) (json.RawMessage, string) {
 	if len(data) == 0 {
 		return nil, ""
 	}
-	if v, err := decodeJSON(data); err == nil {
-		if out, err := json.Marshal(s.Value(v)); err == nil {
-			return out, ""
+	v, err := decodeJSON(data)
+	if err != nil {
+		if objectLike(data) {
+			return nil, Redacted
 		}
+		return nil, s.String(string(data))
+	}
+	if out, err := json.Marshal(s.Value(v)); err == nil {
+		return out, ""
 	}
 	return nil, s.String(string(data))
+}
+
+// objectLike reports whether data starts like a JSON object or a list of
+// them, what LXD answers; a bare "[" also starts plain text, such as the
+// placeholder of FileBody or an INI section.
+func objectLike(data []byte) bool {
+	t := bytes.TrimSpace(data)
+	if rest, ok := bytes.CutPrefix(t, []byte("[")); ok {
+		t = bytes.TrimSpace(rest)
+	}
+	return bytes.HasPrefix(t, []byte("{"))
 }
 
 // LoadFixtures reads every fixture pair under dir, sorted by file name.

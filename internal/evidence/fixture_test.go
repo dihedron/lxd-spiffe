@@ -84,3 +84,23 @@ func TestFileBody(t *testing.T) {
 		t.Errorf("lab proof fixture body %q", body)
 	}
 }
+
+// TestSanitizeBodyMalformedJSON: a body that looks like JSON but does not
+// decode is redacted whole, since the rules by key cannot apply (PRE-03);
+// other text keeps the text rules.
+func TestSanitizeBodyMalformedJSON(t *testing.T) {
+	s := NewSanitizer(NewAliases())
+	for _, body := range []string{`{"user.password": "s3cret",`, ` [{"user.password": "s3cret"}`} {
+		if raw, text := sanitizeBody(s, []byte(body)); raw != nil || text != Redacted {
+			t.Errorf("%q: %q, %q", body, raw, text)
+		}
+	}
+	for _, body := range []string{"instance-id: c1\n", "[Unit]\nDescription=x\n", "[content omitted: 6 bytes]"} {
+		if raw, text := sanitizeBody(s, []byte(body)); raw != nil || text != body {
+			t.Errorf("plain text %q: %q, %q", body, raw, text)
+		}
+	}
+	if raw, text := sanitizeBody(s, []byte(`{"user.password":"s3cret","a":1}`)); text != "" || strings.Contains(string(raw), "s3cret") || !strings.Contains(string(raw), `"a":1`) {
+		t.Errorf("valid JSON: %q, %q", raw, text)
+	}
+}
