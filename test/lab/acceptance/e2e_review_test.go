@@ -154,14 +154,9 @@ func TestE2E7NoLockoutByClaim(t *testing.T) {
 		t.Run(server, func(t *testing.T) {
 			mark := l.logMark(t)
 			l.guestUp(t, server, "e2e-7-attacker", "--claim-name", "e2e-7-victim")
+			// refusals gives each reason once: this counts the attempts
 			count := func(reason string) int {
-				n := 0
-				for _, r := range l.refusals(t, mark) {
-					if r == reason {
-						n++
-					}
-				}
-				return n
+				return strings.Count(l.logSince(t, mark), "reason_code="+reason)
 			}
 			waitFor(t, 5*time.Minute, "two failed attestations naming the victim", func() bool {
 				return count("instance_not_found") >= 2
@@ -184,7 +179,7 @@ func TestUpgradeRefusesFailureCooldown(t *testing.T) {
 	conf := filepath.Join("/etc/spire", "server.conf")
 	l.ssh(t, "spire", fmt.Sprintf("sudo cp %[1]s %[1]s.review", conf))
 	t.Cleanup(func() {
-		l.ssh(t, "spire", fmt.Sprintf("sudo mv %[1]s.review %[1]s && sudo systemctl restart spire-server", conf))
+		l.ssh(t, "spire", fmt.Sprintf("sudo mv %[1]s.review %[1]s && sudo systemctl reset-failed spire-server && sudo systemctl restart spire-server", conf))
 		waitFor(t, 2*time.Minute, "SPIRE Server to be healthy again", func() bool {
 			return l.spireHealthy()
 		})
