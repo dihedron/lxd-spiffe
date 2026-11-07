@@ -29,8 +29,10 @@ type Plugin struct {
 
 	mu       sync.RWMutex
 	settings *settings
-	// inflight outlives Configure, like the attestations it tracks.
+	// inflight and limiter outlive Configure, like the attestations they
+	// track (SEC-09).
 	inflight *challenges
+	limiter  *limiter
 }
 
 // New returns an unconfigured Plugin.
@@ -55,9 +57,31 @@ func (p *Plugin) Configure(ctx context.Context, req *configv1.ConfigureRequest) 
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.settings != nil {
+		s.servers = keepServers(p.settings.servers, s.servers)
+	}
+	if p.limiter == nil {
+		p.limiter = newLimiter(s.limits, time.Now)
+	} else {
+		p.limiter.update(s.limits)
+	}
+	s.limiter = p.limiter
 	p.settings = s
-	p.mu.Unlock()
 	return &configv1.ConfigureResponse{}, nil
+}
+
+// keepServers returns fresh, where an entry unchanged since old is old's
+// server, with its client, its check and its breaker (FR-S15).
+func keepServers(old, fresh []*lxdServer) []*lxdServer {
+	for i, srv := range fresh {
+		for _, o := range old {
+			if o.id == srv.id && o.sameAs(srv) {
+				fresh[i] = o
+			}
+		}
+	}
+	return fresh
 }
 
 // current returns the settings in force, nil before Configure.

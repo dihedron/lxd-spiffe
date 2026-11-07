@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"reflect"
 	"slices"
 	"sync"
 	"time"
@@ -19,6 +20,9 @@ import (
 type lxdServer struct {
 	id       string
 	projects []string
+	// entry and devMode are the configuration the server was made from.
+	entry   ServerConfig
+	devMode bool
 	// conn makes the client; for a bearer entry it holds the token read last.
 	conn      lxd.Config
 	tokenFile string
@@ -44,6 +48,8 @@ func newLXDServer(ctx context.Context, id string, sc ServerConfig, devMode bool,
 		breaker:  breaker{breakerSettings: b, now: time.Now, wait: b.open},
 		id:       id,
 		projects: sc.Projects,
+		entry:    sc,
+		devMode:  devMode,
 		conn: lxd.Config{
 			Endpoint:       sc.URL,
 			Pin:            sc.ServerCertFingerprint,
@@ -64,6 +70,11 @@ func newLXDServer(ctx context.Context, id string, sc ServerConfig, devMode bool,
 	var err error
 	s.client, err = lxd.Connect(ctx, s.conn)
 	return s, err
+}
+
+// sameAs reports whether o was made from the same configuration.
+func (s *lxdServer) sameAs(o *lxdServer) bool {
+	return reflect.DeepEqual(s.entry, o.entry) && s.devMode == o.devMode && s.breaker.breakerSettings == o.breaker.breakerSettings
 }
 
 // checked returns the server's client once it passed the capability check

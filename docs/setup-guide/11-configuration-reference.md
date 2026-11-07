@@ -82,7 +82,7 @@ The `plugin_data` block of `NodeAttestor "lxd_iid"` in SPIRE Server's configurat
 
 ### Limits
 
-The limits protect LXD and SPIRE Server from floods of attestations, which anyone who reaches SPIRE Server can start before authenticating (`T11`). They apply before any LXD call; an attestation over a limit is refused at once (`rate_limited`), not queued.
+The limits protect LXD and SPIRE Server from floods of attestations, which anyone who reaches SPIRE Server can start before authenticating (`T11`). They apply before any LXD call; an attestation over a limit is refused at once (`rate_limited`), not queued. When the plugin is configured through `plugin_data_file`, SPIRE Server applies a changed file on `SIGUSR1`: new limits apply to the attestations that follow, those running keep their slots, and an LXD server whose entry did not change keeps its connection and its circuit breaker.
 
 `limits.max_inflight`
 :   *Integer, default `16`, from `1` to `1024`.* The most attestations the plugin runs at once.
