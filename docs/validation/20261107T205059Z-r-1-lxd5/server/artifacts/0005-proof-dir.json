@@ -1,0 +1,41 @@
+{
+  "status": 200,
+  "header": {
+    "Content-Length": [
+      "168"
+    ],
+    "Content-Type": [
+      "application/json"
+    ],
+    "Date": [
+      "Sat, 07 Nov 2026 20:51:04 GMT"
+    ],
+    "X-Lxd-Gid": [
+      "0"
+    ],
+    "X-Lxd-Mode": [
+      "0700"
+    ],
+    "X-Lxd-Modified": [
+      "2026-11-07 20:51:04 +0000 UTC"
+    ],
+    "X-Lxd-Type": [
+      "directory"
+    ],
+    "X-Lxd-Uid": [
+      "0"
+    ]
+  },
+  "body": {
+    "error": "",
+    "error_code": 0,
+    "metadata": [
+      ".proof-c51fb35bb9022cc6.lxd-probe",
+      "proof-c51fb35bb9022cc6"
+    ],
+    "operation": "",
+    "status": "Success",
+    "status_code": 200,
+    "type": "sync"
+  }
+}

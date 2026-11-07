@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "id": "guest/0004",
+  "time": "2026-11-07T20:51:17.956437933Z",
+  "tool_version": "v0.2.0-21-g7744adc",
+  "env": "guest",
+  "verb": "file rm",
+  "args": [
+    "/run/spire/lxd/proof-68851050bc35d2a5"
+  ],
+  "gate": "R",
+  "cell": "lxd6-c-unpriv-tamper",
+  "outcome": "ok",
+  "duration_ms": 0,
+  "observations": [
+    {
+      "key": "file.removed",
+      "value": {
+        "gid": 0,
+        "inode": 331,
+        "mode": "0600",
+        "mtime": "2026-11-07T20:51:17.538815382Z",
+        "nlink": 1,
+        "size": 64,
+        "type": "file",
+        "uid": 0
+      }
+    }
+  ],
+  "raw": null
+}

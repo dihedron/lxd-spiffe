@@ -1,0 +1,60 @@
+{
+  "environment": "SPIRE 1.15.5, plugins 0.2.0-SNAPSHOT-7744adc, c5 LXD 5.21.8, c6 LXD 6.10.0, lxd5 LXD 5.21.8, lxd6 LXD 6.10.0",
+  "name": "20261107T204452Z-e2e-7-summary",
+  "results": [
+    {
+      "test": "E2E-7 failed attempts before it",
+      "server": "lxd5",
+      "guest": "e2e-7-attacker",
+      "kind": "container",
+      "reasons": [
+        "instance_not_found"
+      ]
+    },
+    {
+      "test": "E2E-7 the instance others failed to attest as",
+      "server": "lxd5",
+      "guest": "e2e-7-victim",
+      "kind": "container",
+      "proof_mode": "file_pull",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd5/e3113c75-df1e-453b-910c-bab4357d2224",
+      "selectors": [
+        "network:default/lxdbr0",
+        "privileged:false",
+        "profile:default",
+        "project:default",
+        "server:lxd5",
+        "type:container",
+        "uuid:e3113c75-df1e-453b-910c-bab4357d2224"
+      ],
+      "seconds": 16.089063688
+    },
+    {
+      "test": "E2E-7 failed attempts before it",
+      "server": "lxd6",
+      "guest": "e2e-7-attacker",
+      "kind": "container",
+      "reasons": [
+        "instance_not_found"
+      ]
+    },
+    {
+      "test": "E2E-7 the instance others failed to attest as",
+      "server": "lxd6",
+      "guest": "e2e-7-victim",
+      "kind": "container",
+      "proof_mode": "file_pull",
+      "spiffe_id": "spiffe://lxd.lab/spire/agent/lxd_iid/lxd6/b1076c32-8d95-4803-b02e-c9f45a35913e",
+      "selectors": [
+        "network:default/lxdbr0",
+        "privileged:false",
+        "profile:default",
+        "project:default",
+        "server:lxd6",
+        "type:container",
+        "uuid:b1076c32-8d95-4803-b02e-c9f45a35913e"
+      ],
+      "seconds": 15.416618773
+    }
+  ]
+}
