@@ -16,6 +16,9 @@ import (
 	"github.com/dihedron/lxd-spiffe/pkg/metadata"
 )
 
+// levelNone logs nothing: the level when none is set.
+const levelNone = slog.Level(1000)
+
 var (
 	cpuprof *os.File
 	memprof *os.File
@@ -26,13 +29,6 @@ var (
 // MY_APP_LOG_LEVEL, MY_APP_LOG_STREAM, MY_APP_CPU_PROFILE and
 // MY_APP_MEM_PROFILE.
 func Init(name string) {
-	const LevelNone = slog.Level(1000)
-
-	options := &slog.HandlerOptions{
-		Level:     LevelNone,
-		AddSource: true,
-	}
-
 	// load .env file if specified and present; it may set the variables below,
 	// so it comes first, and is logged once the logger is configured
 	dotenv, dotenvSet := os.LookupEnv(metadata.DotEnvVarName)
@@ -41,69 +37,12 @@ func Init(name string) {
 		dotenvErr = metadata.LoadDotEnv(dotenv)
 	}
 
-	// get log elevel from environment variable where, given
-	// the binary name "my-app", the environment variable is "MY_APP_LOG_LEVEL"
-	level, levelSet := os.LookupEnv(
-		fmt.Sprintf(
-			"%s_LOG_LEVEL",
-			strings.ReplaceAll(
-				strings.ToUpper(
-					name,
-				),
-				"-",
-				"_",
-			),
-		),
-	)
+	level, levelSet := os.LookupEnv(variable(name, "LOG_LEVEL"))
+	options := &slog.HandlerOptions{Level: levelNone, AddSource: true}
 	if levelSet {
-		switch strings.ToLower(level) {
-		case "debug", "dbg", "d", "trace", "trc", "t":
-			options.Level = slog.LevelDebug
-		case "informational", "info", "inf", "i":
-			options.Level = slog.LevelInfo
-		case "warning", "warn", "wrn", "w":
-			options.Level = slog.LevelWarn
-		case "error", "err", "e", "fatal", "ftl", "f":
-			options.Level = slog.LevelError
-		case "off", "none", "null", "nil", "no", "n":
-			options.Level = LevelNone
-		}
+		options.Level = parseLevel(level)
 	}
-
-	// get the name of the file to log to from environment variable where, given
-	// the binary name "my-app", the environment variable is "MY_APP_LOG_STREAM"
-	var writer io.Writer = os.Stderr
-	stream, ok := os.LookupEnv(
-		fmt.Sprintf(
-			"%s_LOG_STREAM",
-			strings.ReplaceAll(
-				strings.ToUpper(
-					name,
-				),
-				"-",
-				"_",
-			),
-		),
-	)
-	if ok {
-		switch strings.ToLower(stream) {
-		case "stderr", "error", "err", "e":
-			writer = os.Stderr
-		case "stdout", "output", "out", "o":
-			writer = os.Stdout
-		case "file":
-			filename := fmt.Sprintf("%s-%d.log", name, os.Getpid())
-			var err error
-			writer, err = os.Create(path.Clean(filename))
-			if err != nil {
-				writer = os.Stderr
-			}
-		}
-	}
-
-	// initialise the logger
-	handler := slog.NewTextHandler(writer, options)
-	slog.SetDefault(slog.New(handler))
+	slog.SetDefault(slog.New(slog.NewTextHandler(logWriter(name), options)))
 
 	if dotenvSet {
 		switch {
@@ -116,21 +55,51 @@ func Init(name string) {
 		}
 	}
 
-	// check if CPU profiling should be enabled
-	filename, ok := os.LookupEnv(
-		fmt.Sprintf(
-			"%s_CPU_PROFILE",
-			strings.ReplaceAll(
-				strings.ToUpper(
-					name,
-				),
-				"-",
-				"_",
-			),
-		),
-	)
-	if ok && filename != "" {
-		f, err := os.Create(path.Clean(filename))
+	startProfiles(name)
+}
+
+// variable is the name of the binary's variable: for "my-app" and
+// "LOG_LEVEL", MY_APP_LOG_LEVEL.
+func variable(name, suffix string) string {
+	return strings.ReplaceAll(strings.ToUpper(name), "-", "_") + "_" + suffix
+}
+
+// parseLevel reads a log level; an unknown value logs nothing.
+func parseLevel(level string) slog.Level {
+	switch strings.ToLower(level) {
+	case "debug", "dbg", "d", "trace", "trc", "t":
+		return slog.LevelDebug
+	case "informational", "info", "inf", "i":
+		return slog.LevelInfo
+	case "warning", "warn", "wrn", "w":
+		return slog.LevelWarn
+	case "error", "err", "e", "fatal", "ftl", "f":
+		return slog.LevelError
+	}
+	return levelNone
+}
+
+// logWriter is where the log goes: standard error unless the stream variable
+// asks for standard output or a file named after the binary and its process.
+func logWriter(name string) io.Writer {
+	stream, _ := os.LookupEnv(variable(name, "LOG_STREAM"))
+	switch strings.ToLower(stream) {
+	case "stdout", "output", "out", "o":
+		return os.Stdout
+	case "file":
+		if f, err := os.Create(path.Clean(fmt.Sprintf("%s-%d.log", name, os.Getpid()))); err == nil {
+			return f
+		}
+	}
+	return os.Stderr
+}
+
+// startProfiles starts CPU profiling and opens the memory profile when the
+// variables name their files; a file that cannot be created is logged and
+// skipped (PRN-30).
+func startProfiles(name string) {
+	if filename := os.Getenv(variable(name, "CPU_PROFILE")); filename != "" {
+		f, err := os.Create(path.Clean(filename)) //nolint:gosec // G703: the operator names the profile file in the environment
 		switch {
 		case err != nil:
 			slog.Error("could not create CPU profile", "error", err)
@@ -141,22 +110,8 @@ func Init(name string) {
 			cpuprof = f
 		}
 	}
-
-	// check if CPU profiling should be enabled
-	filename, ok = os.LookupEnv(
-		fmt.Sprintf(
-			"%s_MEM_PROFILE",
-			strings.ReplaceAll(
-				strings.ToUpper(
-					name,
-				),
-				"-",
-				"_",
-			),
-		),
-	)
-	if ok && filename != "" {
-		f, err := os.Create(path.Clean(filename))
+	if filename := os.Getenv(variable(name, "MEM_PROFILE")); filename != "" {
+		f, err := os.Create(path.Clean(filename)) //nolint:gosec // G703: the operator names the profile file in the environment
 		if err != nil {
 			slog.Error("could not create memory profile", "error", err)
 		} else {
