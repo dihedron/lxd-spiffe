@@ -204,12 +204,12 @@ func TestAbortedEntries(t *testing.T) {
 // or a check would never pass after sanitizing in place.
 func TestSanitizeUndecodableJSON(t *testing.T) {
 	s := NewSanitizer(NewAliases())
-	const secret = `{"user.password": "s3cret",`
+	const secret = `{"user.password": "` + leakProbe + `",`
 	for name, tc := range map[string]struct {
 		file, in, want string
 	}{
 		"truncated .json":        {"a.json", secret, `"[redacted]"` + "\n"},
-		"trailing data in .json": {"a.json", `{"a":1}{"user.password":"s3cret"}`, `"[redacted]"` + "\n"},
+		"trailing data in .json": {"a.json", `{"a":1}{"user.password":"` + leakProbe + `"}`, `"[redacted]"` + "\n"},
 		"truncated .jsonl line":  {"a.jsonl", `{"a":1}` + "\n" + secret + "\n", `{"a":1}` + "\n" + `"[redacted]"` + "\n"},
 	} {
 		t.Run(name, func(t *testing.T) {
