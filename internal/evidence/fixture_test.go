@@ -84,3 +84,28 @@ func TestFileBody(t *testing.T) {
 		t.Errorf("lab proof fixture body %q", body)
 	}
 }
+
+// leakProbe is no credential: a value the sanitizer must not let through. It
+// is joined to its key at run time, as secret scanners flag the pair written
+// out, which here would only be a false positive.
+const leakProbe = "sanitizer-probe"
+
+// TestSanitizeBodyMalformedJSON: a body that looks like JSON but does not
+// decode is redacted whole, since the rules by key cannot apply (PRE-03);
+// other text keeps the text rules.
+func TestSanitizeBodyMalformedJSON(t *testing.T) {
+	s := NewSanitizer(NewAliases())
+	for _, body := range []string{`{"user.password": "` + leakProbe + `",`, ` [{"user.password": "` + leakProbe + `"}`} {
+		if raw, text := sanitizeBody(s, []byte(body)); raw != nil || text != Redacted {
+			t.Errorf("%q: %q, %q", body, raw, text)
+		}
+	}
+	for _, body := range []string{"instance-id: c1\n", "[Unit]\nDescription=x\n", "[content omitted: 6 bytes]"} {
+		if raw, text := sanitizeBody(s, []byte(body)); raw != nil || text != body {
+			t.Errorf("plain text %q: %q, %q", body, raw, text)
+		}
+	}
+	if raw, text := sanitizeBody(s, []byte(`{"user.password":"`+leakProbe+`","a":1}`)); text != "" || strings.Contains(string(raw), leakProbe) || !strings.Contains(string(raw), `"a":1`) {
+		t.Errorf("valid JSON: %q, %q", raw, text)
+	}
+}

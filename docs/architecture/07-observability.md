@@ -18,6 +18,7 @@ Other lines:
 - warnings at startup for a configuration that weakens security (`dev_mode`, `proof_mode = "none"`), and on every claim-only attestation;
 - a warning when the plugin's LXD identity looks like an administrator, at its first connection to each server;
 - an error, once until it changes, when a server is refused (missing extensions, untrusted identity, unreachable);
+- a warning for every LXD server skipped because it cannot be reached (`skipping an LXD server that cannot be reached`, field `server_id`);
 - a warning for every selector left out by the value rule;
 - with `config_push`, a warning for every failed cleanup of a challenge key (field `config_push_cleanup_failures_total`).
 

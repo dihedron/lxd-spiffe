@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/dihedron/lxd-spiffe/pkg/metadata"
-	"github.com/joho/godotenv"
 )
 
 var (
@@ -27,18 +26,17 @@ func init() {
 		AddSource: true,
 	}
 
-	// load .env file if specified and present
-	if dotenv, ok := os.LookupEnv(metadata.DotEnvVarName); ok {
-		slog.Info("loading .env file", "path", dotenv)
-		if err := godotenv.Load(dotenv); err != nil {
-			slog.Error("error loading .env file", "error", err)
-		}
-		slog.Info("successfully loaded .env file", "path", dotenv)
+	// load .env file if specified and present; it may set the variables below,
+	// so it comes first, and is logged once the logger is configured
+	dotenv, dotenvSet := os.LookupEnv(metadata.DotEnvVarName)
+	var dotenvErr error
+	if dotenvSet {
+		dotenvErr = metadata.LoadDotEnv(dotenv)
 	}
 
 	// get log elevel from environment variable where, given
 	// the binary name "my-app", the environment variable is "MY_APP_LOG_LEVEL"
-	level, ok := os.LookupEnv(
+	level, levelSet := os.LookupEnv(
 		fmt.Sprintf(
 			"%s_LOG_LEVEL",
 			strings.ReplaceAll(
@@ -50,7 +48,7 @@ func init() {
 			),
 		),
 	)
-	if ok {
+	if levelSet {
 		switch strings.ToLower(level) {
 		case "debug", "dbg", "d", "trace", "trc", "t":
 			options.Level = slog.LevelDebug
@@ -62,7 +60,6 @@ func init() {
 			options.Level = slog.LevelError
 		case "off", "none", "null", "nil", "no", "n":
 			options.Level = LevelNone
-			return
 		}
 	}
 
@@ -100,6 +97,17 @@ func init() {
 	// initialise the logger
 	handler := slog.NewTextHandler(writer, options)
 	slog.SetDefault(slog.New(handler))
+
+	if dotenvSet {
+		switch {
+		case dotenvErr == nil:
+			slog.Info("successfully loaded .env file", "path", dotenv)
+		case levelSet:
+			slog.Error("error loading .env file", "path", dotenv, "error", dotenvErr)
+		default: // no level set means no logger, but a failed load must not go unseen
+			fmt.Fprintf(os.Stderr, "error loading .env file %s: %v\n", dotenv, dotenvErr)
+		}
+	}
 
 	// check if CPU profiling should be enabled
 	filename, ok := os.LookupEnv(

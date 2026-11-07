@@ -9,7 +9,6 @@ import (
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
 	"github.com/jessevdk/go-flags"
-	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -24,13 +23,8 @@ func run() int {
 	// every log line goes through the evidence sanitizer (PRN-11)
 	slog.SetDefault(slog.New(evidence.NewLogHandler(slog.Default().Handler(), evidence.Logs)))
 
-	err := godotenv.Load()
-	if err != nil {
-		slog.Warn("error loading .env file", "error", err)
-	}
-
 	options := command.Commands{}
-	_, err = flags.NewParser(&options, flags.Default).Parse()
+	_, err := flags.NewParser(&options, flags.Default).Parse()
 	return exitCode(err)
 }
 

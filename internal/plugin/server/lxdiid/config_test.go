@@ -96,7 +96,7 @@ func TestConfigureDefaults(t *testing.T) {
 		t.Errorf("FR-S15 breaker defaults: %+v", b)
 	}
 	if s.mode != "file_pull" || s.proofTimeout != 10*time.Second || s.proofDir != "/run/spire/lxd" || !s.reattest ||
-		s.limits.maxInflight != 16 || s.limits.ratePerSec != 20 || s.limits.failureCooldown != 5*time.Second ||
+		s.limits.maxInflight != 16 || s.limits.ratePerSec != 20 ||
 		s.selectors.Enable != nil || s.trustDomain != "example.org" || s.devMode {
 		t.Errorf("defaults: %+v", s)
 	}
@@ -143,7 +143,6 @@ selectors {
 limits {
   max_inflight = 4
   rate_per_sec = 2
-  failure_cooldown = "1s"
 }`, ""),
 	} {
 		if _, err := configure(t, hcl); err != nil {
@@ -216,7 +215,7 @@ func TestConfigureRefuses(t *testing.T) {
 		"FR-S15 breaker open too short":                                  hclConfig(f, "limits {\n  breaker_open = \"100ms\"\n}", ""),
 		"FR-S15 breaker max open below open":                             hclConfig(f, "limits {\n  breaker_open = \"30s\"\n  breaker_max_open = \"10s\"\n}", ""),
 		"FR-S15 breaker max open too long":                               hclConfig(f, "limits {\n  breaker_max_open = \"2h\"\n}", ""),
-		"SEC-09 cooldown too long":                                       hclConfig(f, "limits {\n  failure_cooldown = \"1h\"\n}", ""),
+		"SEC-09 cooldown removed":                                        hclConfig(f, "limits {\n  failure_cooldown = \"1h\"\n}", ""),
 	}
 	for name, hcl := range cases {
 		if _, err := configure(t, hcl); status.Code(err) != codes.InvalidArgument {

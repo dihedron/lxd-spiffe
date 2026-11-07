@@ -21,7 +21,7 @@ Every refused attestation logs `attestation refused` on SPIRE Server with one of
 | `lxd_unavailable` | LXD failed a call | The server unreachable or failing; the circuit breaker open; the certificate pin not matching | Check the server and the pin (*Incident procedures*) |
 | `lxd_forbidden` | LXD refused a call (401, 403) | SPIRE's identity removed, expired, or lacking the instance grant | Check the identity, its credential and the grant for the instance |
 | `extension_missing` | The LXD server lacks a required API extension | LXD older than 5.21; a bearer token entry on 5.21; another service behind the URL | Upgrade LXD, or fix the entry |
-| `rate_limited` | Refused by the plugin's limits, before any LXD call | A claim cooling down after failures; more attestations than `limits.max_inflight` or `limits.rate_per_sec` | Fix the failing claim; raise the limits for mass restarts |
+| `rate_limited` | Refused by the plugin's limits, before any LXD call | More attestations than `limits.max_inflight` or `limits.rate_per_sec` | Raise the limits for mass restarts; if it is a flood, restrict access to the SPIRE port |
 | `precondition_failed` | The `config_push` challenge write kept meeting other writers | Another tool updating the instance's configuration continuously | Find the other writer; the agent retries |
 | `instance_moved` | The instance changed cluster member during the attestation | A migration or evacuation | None: the agent retries |
 | `project_unreadable` | The instance's project could not be read for the `network` selector | SPIRE's group lacks project `can_view` | Grant project `can_view`, or disable the `network` selector |
@@ -36,7 +36,6 @@ The `error` of `attestation refused`, by the step that refused. The reason code 
 | ---------------------------------- | --------------------- | -------------------------------- | -------------------------------- |
 | `receiving the payload: <error>` | `payload_invalid` | The stream ended before the agent's first message | Look at the agent's log |
 | `invalid message: <detail>` (see *The protocol messages*) | `payload_invalid` | The agent's request broke the protocol | Align versions |
-| `the claim is cooling down after a failure` | `rate_limited` | The same project and name failed recently; the cooldown doubles with each failure, up to 5 minutes | Fix the claim's first failure, then wait |
 | (no error; `inflight` logged) | `rate_limited` | `limits.max_inflight` or `limits.rate_per_sec` reached | Raise them if legitimate |
 | `the agent offers <modes>, the server requires <mode>` | `policy_denied` | The agent does not offer the configured `proof_mode`; an agent offers `config_push` only when devLXD answers | Enable devLXD in the instance, or use `file_pull` or `auto` |
 
@@ -48,6 +47,7 @@ The `error` of `attestation refused`, by the step that refused. The reason code 
 | `server <id>, project <project>: <error>` | `lxd_unavailable` or `lxd_forbidden` | Reading the instance failed for another reason than "not found" | The wrapped error (*The LXD client*) |
 | `server <id>: <error>` | `lxd_unavailable`, `lxd_forbidden` or `extension_missing` | The server's check failed: untrusted identity, missing extensions, unreachable | The wrapped error; `refusing to attest through an LXD server` gives it once |
 | `the circuit breaker is open after LXD failures` | `lxd_unavailable` | The server failed `limits.breaker_threshold` times in a row; no call is made until the next trial | Fix the server; the breaker closes after a successful trial |
+| `no instance matches the claim on the servers that answered` | `lxd_unavailable` | A server was skipped, and the instance may be on it | Check the server named by `skipping an LXD server that cannot be reached` |
 | `no instance matches the claim` | `instance_not_found` | No instance of that name in the allowed projects, or its cloud-init ID differs from the claim | Check the name and project; a renamed instance needs SPIRE Agent restarted to send its new cloud-init ID |
 | `<n> instances match the claim` | `instance_ambiguous` | The name exists in several allowed projects or servers | Set `claim.project`; give servers distinct projects |
 
@@ -74,7 +74,7 @@ These come as `attestation denied (<code>): <detail>`; `after a 412: ` precedes 
 
 | Message | Reason | Cause | Remedy |
 | ---------------------------------- | --------------------- | -------------------------------- | -------------------------------- |
-| `server <id>, project <project>: listing by uuid: <error>` | `lxd_unavailable` or `lxd_forbidden` | The filtered instance list failed on a server; every server must answer | The wrapped error |
+| `server <id>, project <project>: listing by uuid: <error>` | `lxd_unavailable` or `lxd_forbidden` | The filtered instance list failed: on the matched server, or with a refusal on another, or with any failure under `proof_mode = "none"` | The wrapped error |
 | `instances with the resolved uuid: [<server>/<project>/<name> ...]` | `instance_ambiguous` | Several instances share the UUID (an import keeps it), or SPIRE's group lacks project `can_view_instances` so the list misses the instance itself | Remove the twin; grant `can_view_instances` |
 
 ### The proof

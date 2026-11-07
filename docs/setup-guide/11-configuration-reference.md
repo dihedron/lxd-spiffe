@@ -90,11 +90,8 @@ The limits protect LXD and SPIRE Server from floods of attestations, which anyon
 `limits.rate_per_sec`
 :   *Integer, default `20`, from `1` to `10000`.* The sustained attestation rate, a token bucket. After an LXD daemon restart, every container of that server attests again at about the same time: size this for the containers of one LXD server, or expect their attestations to be refused and retried for a while.
 
-`limits.failure_cooldown`
-:   *Duration, default `5s`, from `100ms` to `5m`.* After a failed attestation, further attempts with the same claimed project and instance name are refused for this long; each further failure doubles it, up to 5 minutes, and a success resets it. A claim that keeps failing therefore costs LXD little.
-
 `limits.breaker_threshold`
-:   *Integer, default `5`, from `1` to `100`.* The circuit breaker of each LXD server opens after this many transport failures in a row (connection errors, timeouts, server errors other than a VM's `lxd-agent` starting, invalid responses). Any answer from LXD, a refusal included, resets the count. While open, attestations through that server fail at once (`lxd_unavailable`) without calling it.
+:   *Integer, default `5`, from `1` to `100`.* The circuit breaker of each LXD server opens after this many transport failures in a row (connection errors, timeouts, including no answer within 10 s, server errors other than a VM's `lxd-agent` starting, invalid responses). Any answer from LXD, a refusal included, resets the count. While open, the plugin does not call that server and treats it as unreachable: it is skipped, so attestations on other servers go on, and instances on it fail with `lxd_unavailable`.
 
 `limits.breaker_open`
 :   *Duration, default `5s`, from `1s` to `5m`.* How long the breaker stays open before one trial attestation goes through on a new connection; the trial's success closes it, its failure reopens it for twice as long.
