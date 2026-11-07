@@ -1,0 +1,198 @@
+{
+  "schema": 1,
+  "id": "server/0003",
+  "time": "2026-11-07T20:51:01.60092382Z",
+  "tool_version": "v0.2.0-21-g7744adc",
+  "env": "server",
+  "verb": "rehearse file-pull",
+  "args": [
+    "c-iso",
+    "--allow-privileged"
+  ],
+  "gate": "R",
+  "cell": "lxd5-c-iso",
+  "outcome": "ok",
+  "duration_ms": 526,
+  "server": {
+    "version": "5.21.8",
+    "api_extensions_hash": "sha256:85a14d64ea732d1d5b4037b7ed09a660ee863342d430c0a52cdcd8dab1dad684"
+  },
+  "expectations": [
+    "instance",
+    "file",
+    "file-dir",
+    "instance"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "step.resolve.ms",
+      "value": 8
+    },
+    {
+      "key": "step.resolve",
+      "value": "ok"
+    },
+    {
+      "key": "step.policy.ms",
+      "value": 0
+    },
+    {
+      "key": "step.policy",
+      "value": "ok"
+    },
+    {
+      "key": "policy.expected_owner",
+      "value": 0
+    },
+    {
+      "key": "rehearse.challenge",
+      "value": {
+        "agent_nonce": "e50191945a1c4125f00cc2fc07198523d162b649efd9fdae903abfb10e1f8c5f",
+        "instance": "c-iso",
+        "mode": "file_pull",
+        "project": "default",
+        "proof_path": "/run/spire/lxd/proof-6b3014c8debfda26",
+        "server_nonce": "3751464ca0cfdd73fe0b969d4307709ad43671429d8a7dfb3ba8367601b7862b",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "key": "step.challenge.ms",
+      "value": 0
+    },
+    {
+      "key": "step.challenge",
+      "value": "ok"
+    },
+    {
+      "key": "rehearse.answer",
+      "value": {
+        "done": true,
+        "mode": "file_pull"
+      }
+    },
+    {
+      "key": "step.answer.ms",
+      "value": 458
+    },
+    {
+      "key": "step.answer",
+      "value": "ok"
+    },
+    {
+      "key": "read.attempts",
+      "value": 1
+    },
+    {
+      "key": "proof-file.http_status",
+      "value": 200
+    },
+    {
+      "key": "proof-file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0600"
+        ],
+        "X-Lxd-Modified": [
+          "2026-11-07 20:51:02 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "step.read.ms",
+      "value": 33
+    },
+    {
+      "key": "step.read",
+      "value": "ok"
+    },
+    {
+      "key": "step.file.ms",
+      "value": 0
+    },
+    {
+      "key": "step.file",
+      "value": "ok"
+    },
+    {
+      "key": "step.compare.ms",
+      "value": 0
+    },
+    {
+      "key": "step.compare",
+      "value": "ok"
+    },
+    {
+      "key": "proof-dir.http_status",
+      "value": 200
+    },
+    {
+      "key": "proof-dir.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0700"
+        ],
+        "X-Lxd-Modified": [
+          "2026-11-07 20:51:02 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "directory"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "step.dir.ms",
+      "value": 5
+    },
+    {
+      "key": "step.dir",
+      "value": "ok"
+    },
+    {
+      "key": "instance-recheck.http_status",
+      "value": 200
+    },
+    {
+      "key": "step.recheck.ms",
+      "value": 7
+    },
+    {
+      "key": "step.recheck",
+      "value": "ok"
+    },
+    {
+      "key": "rehearsal.result",
+      "value": "passed"
+    }
+  ],
+  "raw": [
+    "artifacts/0003-server.json",
+    "artifacts/0003-instance.json",
+    "artifacts/0003-proof-file.json",
+    "artifacts/0003-proof-dir.json",
+    "artifacts/0003-instance-recheck.json"
+  ]
+}

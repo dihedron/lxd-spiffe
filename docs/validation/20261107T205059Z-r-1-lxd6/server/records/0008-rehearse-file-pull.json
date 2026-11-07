@@ -1,0 +1,152 @@
+{
+  "schema": 1,
+  "id": "server/0008",
+  "time": "2026-11-07T20:51:17.121839581Z",
+  "tool_version": "v0.2.0-21-g7744adc",
+  "env": "server",
+  "verb": "rehearse file-pull",
+  "args": [
+    "c-unpriv",
+    "--expect-fail",
+    "compare",
+    "--allow-privileged"
+  ],
+  "gate": "R",
+  "cell": "lxd6-c-unpriv-tamper",
+  "outcome": "ok",
+  "duration_ms": 444,
+  "server": {
+    "version": "6.10.0",
+    "api_extensions_hash": "sha256:8e367fd210e2811eab78a94e33ca6eb2a748c4793c4729252f5e961d52fef417"
+  },
+  "expectations": [
+    "instance",
+    "file"
+  ],
+  "observations": [
+    {
+      "key": "server.http_status",
+      "value": 200
+    },
+    {
+      "key": "instance.http_status",
+      "value": 200
+    },
+    {
+      "key": "step.resolve.ms",
+      "value": 12
+    },
+    {
+      "key": "step.resolve",
+      "value": "ok"
+    },
+    {
+      "key": "step.policy.ms",
+      "value": 0
+    },
+    {
+      "key": "step.policy",
+      "value": "ok"
+    },
+    {
+      "key": "policy.expected_owner",
+      "value": 0
+    },
+    {
+      "key": "rehearse.challenge",
+      "value": {
+        "agent_nonce": "cfb2d9e2258abb78d948b0658b3d2e6bb8ccd00e55f9c92eee16d5773be9b595",
+        "instance": "c-unpriv",
+        "mode": "file_pull",
+        "project": "default",
+        "proof_path": "/run/spire/lxd/proof-68851050bc35d2a5",
+        "server_nonce": "561697e9133528fa33e448f92b7e1fa9c4eb565810f66bc3bb87c90ccb5a48de",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "key": "step.challenge.ms",
+      "value": 0
+    },
+    {
+      "key": "step.challenge",
+      "value": "ok"
+    },
+    {
+      "key": "rehearse.answer",
+      "value": {
+        "done": true,
+        "mode": "file_pull"
+      }
+    },
+    {
+      "key": "step.answer.ms",
+      "value": 397
+    },
+    {
+      "key": "step.answer",
+      "value": "ok"
+    },
+    {
+      "key": "read.attempts",
+      "value": 1
+    },
+    {
+      "key": "proof-file.http_status",
+      "value": 200
+    },
+    {
+      "key": "proof-file.headers",
+      "value": {
+        "X-Lxd-Gid": [
+          "0"
+        ],
+        "X-Lxd-Mode": [
+          "0600"
+        ],
+        "X-Lxd-Modified": [
+          "2026-11-07 20:51:17 +0000 UTC"
+        ],
+        "X-Lxd-Type": [
+          "file"
+        ],
+        "X-Lxd-Uid": [
+          "0"
+        ]
+      }
+    },
+    {
+      "key": "step.read.ms",
+      "value": 19
+    },
+    {
+      "key": "step.read",
+      "value": "ok"
+    },
+    {
+      "key": "step.file.ms",
+      "value": 0
+    },
+    {
+      "key": "step.file",
+      "value": "ok"
+    },
+    {
+      "key": "step.compare.ms",
+      "value": 0
+    },
+    {
+      "key": "step.compare",
+      "value": "the file does not hold the proof"
+    },
+    {
+      "key": "rehearsal.result",
+      "value": "failed at compare, as expected"
+    }
+  ],
+  "raw": [
+    "artifacts/0008-server.json",
+    "artifacts/0008-instance.json",
+    "artifacts/0008-proof-file.json"
+  ]
+}

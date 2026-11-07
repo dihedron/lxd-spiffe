@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "id": "guest/0001",
+  "time": "2026-11-07T20:51:15.071970329Z",
+  "tool_version": "v0.2.0-21-g7744adc",
+  "env": "guest",
+  "verb": "rehearse file-pull",
+  "args": [
+    "/run/spire/lxd/proof-deb8724e3257869b"
+  ],
+  "gate": "R",
+  "cell": "lxd6-v-alpine",
+  "outcome": "ok",
+  "duration_ms": 3,
+  "observations": [
+    {
+      "key": "rehearse.challenge",
+      "value": {
+        "agent_nonce": "f626def3193446d2f8d04095cea931da2512e2aa3ff50745b41d22605d60f7e1",
+        "instance": "v-alpine",
+        "mode": "file_pull",
+        "project": "default",
+        "proof_path": "/run/spire/lxd/proof-deb8724e3257869b",
+        "server_nonce": "cd020e3ffcd413b396f1b8ec75bd8b1fe56c17e40f3020c01e5fc4963e21d7b6",
+        "timeout_ms": 30000
+      }
+    },
+    {
+      "key": "file.stat",
+      "value": {
+        "gid": 0,
+        "inode": 421,
+        "mode": "0600",
+        "mtime": "2026-11-07T20:51:15.074902596Z",
+        "nlink": 1,
+        "size": 64,
+        "type": "file",
+        "uid": 0
+      }
+    },
+    {
+      "key": "rehearse.answer",
+      "value": {
+        "done": true,
+        "mode": "file_pull"
+      }
+    }
+  ],
+  "raw": null
+}
