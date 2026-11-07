@@ -88,8 +88,6 @@ type attestation struct {
 	s      *settings
 	stream nodeattestorv1.NodeAttestor_AttestServer
 	log    *slog.Logger
-	// claimKey is the claim's cooldown key (SEC-09), once it is decoded.
-	claimKey string
 	// proof is how long the challenge took, sent to proof read back.
 	proof time.Duration
 	start time.Time
@@ -130,10 +128,6 @@ func (a *attestation) run(ctx context.Context) (*nodeattestorv1.AgentAttributes,
 	r, err := lxdiidv1.DecodeAttestRequest(req.GetPayload())
 	if err != nil {
 		return nil, fail(reasonPayloadInvalid, "%v", err)
-	}
-	a.claimKey = r.GetClaim().GetProject() + "/" + r.GetClaim().GetInstanceName()
-	if a.s.limiter.cooling(a.claimKey) {
-		return nil, fail(reasonRateLimited, "the claim is cooling down after a failure")
 	}
 	mode, err := a.chooseMode(r.GetProofModes())
 	if err != nil {

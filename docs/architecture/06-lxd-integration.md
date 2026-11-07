@@ -56,6 +56,6 @@ A cluster is one server entry. Every member forwards every call the plugin makes
 
 Attestations reach SPIRE Server before any authentication, so the plugin protects LXD from floods (`T11`):
 
-- **Before any LXD call**: a cap on concurrent attestations (default 16), a token bucket (default 20 per second), and a per-claim cooldown after a failure (5 s, doubling up to 5 minutes, keyed on the claimed project and name). An attestation over a limit is refused at once (`rate_limited`), not queued.
+- **Before any LXD call**: a cap on concurrent attestations (default 16) and a token bucket (default 20 per second). An attestation over a limit is refused at once (`rate_limited`), not queued. No limit is keyed on the claim: its project and name are unauthenticated until the proof, so such a limit would let anyone lock out the instance they name.
 - **Per LXD server, a circuit breaker**: after 5 transport failures in a row (connection errors, timeouts, server errors other than a VM's agent starting, invalid responses; any answer resets the count), attestations through that server fail at once without calling it, for 5 seconds; then one trial attestation goes through on a new connection, checked again; its failure doubles the open time, up to 60 seconds.
 - **No caching of outcomes**: every attestation asks LXD.

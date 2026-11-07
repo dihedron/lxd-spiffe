@@ -21,7 +21,7 @@ Every refused attestation logs `attestation refused` on SPIRE Server with one of
 | `lxd_unavailable` | LXD failed a call | The server unreachable or failing; the circuit breaker open; the certificate pin not matching | Check the server and the pin (*Incident procedures*) |
 | `lxd_forbidden` | LXD refused a call (401, 403) | SPIRE's identity removed, expired, or lacking the instance grant | Check the identity, its credential and the grant for the instance |
 | `extension_missing` | The LXD server lacks a required API extension | LXD older than 5.21; a bearer token entry on 5.21; another service behind the URL | Upgrade LXD, or fix the entry |
-| `rate_limited` | Refused by the plugin's limits, before any LXD call | A claim cooling down after failures; more attestations than `limits.max_inflight` or `limits.rate_per_sec` | Fix the failing claim; raise the limits for mass restarts |
+| `rate_limited` | Refused by the plugin's limits, before any LXD call | More attestations than `limits.max_inflight` or `limits.rate_per_sec` | Raise the limits for mass restarts; if it is a flood, restrict access to the SPIRE port |
 | `precondition_failed` | The `config_push` challenge write kept meeting other writers | Another tool updating the instance's configuration continuously | Find the other writer; the agent retries |
 | `instance_moved` | The instance changed cluster member during the attestation | A migration or evacuation | None: the agent retries |
 | `project_unreadable` | The instance's project could not be read for the `network` selector | SPIRE's group lacks project `can_view` | Grant project `can_view`, or disable the `network` selector |
@@ -36,7 +36,6 @@ The `error` of `attestation refused`, by the step that refused. The reason code 
 | ---------------------------------- | --------------------- | -------------------------------- | -------------------------------- |
 | `receiving the payload: <error>` | `payload_invalid` | The stream ended before the agent's first message | Look at the agent's log |
 | `invalid message: <detail>` (see *The protocol messages*) | `payload_invalid` | The agent's request broke the protocol | Align versions |
-| `the claim is cooling down after a failure` | `rate_limited` | The same project and name failed recently; the cooldown doubles with each failure, up to 5 minutes | Fix the claim's first failure, then wait |
 | (no error; `inflight` logged) | `rate_limited` | `limits.max_inflight` or `limits.rate_per_sec` reached | Raise them if legitimate |
 | `the agent offers <modes>, the server requires <mode>` | `policy_denied` | The agent does not offer the configured `proof_mode`; an agent offers `config_push` only when devLXD answers | Enable devLXD in the instance, or use `file_pull` or `auto` |
 

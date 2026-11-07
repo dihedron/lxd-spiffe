@@ -86,20 +86,14 @@ func (p *Plugin) Attest(stream nodeattestorv1.NodeAttestor_AttestServer) error {
 	defer release()
 	a := &attestation{s: s, stream: stream, inflight: p.inflight, log: log.With("inflight", s.limiter.inflight()), start: start}
 	attrs, err := a.run(stream.Context())
-	reason := reasonOK
 	if err != nil {
-		reason = reasonPolicyDenied
+		reason := reasonPolicyDenied
 		var f *failure
 		if errors.As(err, &f) {
 			reason = f.reason
 		}
 		a.log.Error("attestation refused", "outcome", "failure", "reason_code", reason, "error", err.Error(),
 			"duration_ms", time.Since(start).Milliseconds(), "proof_ms", a.proof.Milliseconds())
-	}
-	if a.claimKey != "" && reason != reasonRateLimited {
-		s.limiter.outcome(a.claimKey, err == nil)
-	}
-	if err != nil {
 		return status.Error(codes.PermissionDenied, "attestation failed")
 	}
 	return stream.Send(&nodeattestorv1.AttestResponse{Response: &nodeattestorv1.AttestResponse_AgentAttributes{AgentAttributes: attrs}})

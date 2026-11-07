@@ -487,18 +487,22 @@ func TestSEC09InflightRefused(t *testing.T) {
 	}
 }
 
-// TestSEC09CooldownAttest: a claim that failed is refused until its
-// cooldown ends, then tried again.
-func TestSEC09CooldownAttest(t *testing.T) {
-	h := newHarness(t, "limits {\n  failure_cooldown = \"200ms\"\n}")
-	_, err := h.attest("default", newAgent("nobody"))
-	checkRefusedWith(t, h, err, "instance_not_found")
-	_, err = h.attest("default", newAgent("nobody"))
-	checkRefusedWith(t, h, err, "rate_limited")
-	time.Sleep(250 * time.Millisecond)
-	h.addInstance("default", "nobody", "container", uuidA)
-	if _, err := h.attest("default", newAgent("nobody")); err != nil {
-		t.Errorf("after the cooldown: %v\n%s", err, h.log)
+// TestSEC09NoLockoutByClaim: callers with no proof, naming an instance,
+// do not keep that instance from attesting: the claim is unauthenticated
+// until the proof.
+func TestSEC09NoLockoutByClaim(t *testing.T) {
+	h := newHarness(t, "")
+	h.addInstance("default", "victim", "container", uuidA)
+	for range 3 {
+		attacker := newAgent("victim")
+		attacker.answer = func(*harness, *agent, *lxdiidv1.Challenge) *lxdiidv1.ChallengeResponse {
+			return &lxdiidv1.ChallengeResponse{Version: lxdiidv1.Version, Mode: lxdiidv1.ProofMode_PROOF_MODE_FILE_PULL, Done: true}
+		}
+		_, err := h.attest("default", attacker)
+		checkRefusedWith(t, h, err, "proof_mismatch")
+	}
+	if _, err := h.attest("default", newAgent("victim")); err != nil {
+		t.Errorf("the instance itself: %v\n%s", err, h.log)
 	}
 }
 
@@ -520,7 +524,6 @@ func TestFRS15Breaker(t *testing.T) {
 		t.Fatalf("FR-S15: an open breaker let %d requests through:\n%s", len(h.fake.Requests())-before, h.log)
 	}
 	h.fake.FailAll(0, "")
-	// another claim than the trial's: a failure starts its claim's cooldown
 	if _, err := h.attest("default", newAgent("c5")); err == nil {
 		t.Fatal("FR-S15: an attestation got through before breaker_open ended")
 	}

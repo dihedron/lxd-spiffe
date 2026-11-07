@@ -67,7 +67,6 @@ type SelectorsConfig struct {
 type LimitsConfig struct {
 	MaxInflight      int    `hcl:"max_inflight"`
 	RatePerSec       int    `hcl:"rate_per_sec"`
-	FailureCooldown  string `hcl:"failure_cooldown"`
 	BreakerThreshold int    `hcl:"breaker_threshold"`
 	BreakerOpen      string `hcl:"breaker_open"`
 	BreakerMaxOpen   string `hcl:"breaker_max_open"`
@@ -80,7 +79,7 @@ var configKeys = []string{
 	"servers.*.url", "servers.*.client_cert_file", "servers.*.client_key_file", "servers.*.bearer_token_file",
 	"servers.*.server_cert_fingerprint", "servers.*.ca_bundle_file", "servers.*.projects",
 	"selectors.enable", "selectors.config_keys", "selectors.user_keys",
-	"limits.max_inflight", "limits.rate_per_sec", "limits.failure_cooldown",
+	"limits.max_inflight", "limits.rate_per_sec",
 	"limits.breaker_threshold", "limits.breaker_open", "limits.breaker_max_open",
 }
 
@@ -111,10 +110,9 @@ const (
 
 // limitSettings are the limits of SEC-09.
 type limitSettings struct {
-	maxInflight     int
-	ratePerSec      int
-	failureCooldown time.Duration
-	breaker         breakerSettings
+	maxInflight int
+	ratePerSec  int
+	breaker     breakerSettings
 }
 
 // breakerSettings are a server's circuit breaker's (FR-S15): it opens after
@@ -281,9 +279,6 @@ func limitsSettings(c *LimitsConfig) (limitSettings, error) {
 		return l, err
 	}
 	if l.ratePerSec, err = bounded("rate_per_sec", c.RatePerSec, 20, 10000); err != nil {
-		return l, err
-	}
-	if l.failureCooldown, err = config.Duration("limits.failure_cooldown", c.FailureCooldown, 5*time.Second, 100*time.Millisecond, 5*time.Minute); err != nil {
 		return l, err
 	}
 	b := &l.breaker

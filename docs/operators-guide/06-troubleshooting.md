@@ -22,7 +22,7 @@ Start from the symptom, find the server's `attestation refused` line for the att
 | `lxd_forbidden` | The instance grant (`can_access_files` or `can_edit`) for this instance; SPIRE's identity, its credential and its groups |
 | `lxd_unavailable` | The server's reachability and pin (*Incident procedures*) |
 | `extension_missing` | The LXD version behind the URL (5.21 or later); `auth_bearer` for a token entry |
-| `rate_limited` | A claim failing repeatedly (it cools down), or `limits` exceeded by a burst |
+| `rate_limited` | `limits` exceeded by a burst or a flood |
 | `precondition_failed` | Another tool writing the instance's configuration continuously |
 | `instance_moved` | A migration or evacuation during the attestation; it retries |
 | `project_unreadable` | Project `can_view` for SPIRE's group on the instance's project |
