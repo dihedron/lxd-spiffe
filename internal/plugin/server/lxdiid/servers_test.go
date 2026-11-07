@@ -2,6 +2,7 @@ package lxdiid
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -105,6 +106,41 @@ func TestFRS19TokenRotation(t *testing.T) {
 	}
 	if n, auth := serverReads(fake); n != 2 || auth != "Bearer "+otherToken {
 		t.Errorf("%d reads of GET /1.0, last with %q; want 2, the new token", n, auth)
+	}
+}
+
+// TestFRS15TrialOnUnreadableToken: a trial that fails on the token, before
+// any LXD call, is a failed trial: the breaker reopens, for twice as long,
+// and recovers once the token is back, without a restart.
+func TestFRS15TrialOnUnreadableToken(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	fake.SetExtensions(append(lxd.RequiredExtensions, "auth_bearer")...)
+	f := newTestFiles(t)
+	s := fakeServer(t, fake, f, true)
+	c := &clock{t: time.Date(2026, 11, 7, 12, 0, 0, 0, time.UTC)}
+	s.breaker.now = c.now
+	for range s.breaker.threshold {
+		s.breaker.observe(down)
+	}
+	c.advance(s.breaker.open)
+	if err := os.Remove(f.token); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.checked(context.Background()); err == nil || errors.Is(err, errBreakerOpen) {
+		t.Fatalf("the trial: %v, want the token's error", err)
+	}
+	if _, err := s.checked(context.Background()); !errors.Is(err, errBreakerOpen) {
+		t.Fatalf("after the failed trial: %v, want the breaker open", err)
+	}
+	if err := os.WriteFile(f.token, []byte(otherToken), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	c.advance(2 * s.breaker.open)
+	if _, err := s.checked(context.Background()); err != nil {
+		t.Fatalf("after the token came back: %v", err)
+	}
+	if _, err := s.checked(context.Background()); err != nil {
+		t.Errorf("the breaker did not close: %v", err)
 	}
 }
 

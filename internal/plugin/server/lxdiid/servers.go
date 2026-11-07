@@ -86,6 +86,9 @@ func (s *lxdServer) checked(ctx context.Context) (*lxd.Client, error) {
 	}
 	if s.tokenFile != "" && s.tokenChanged() {
 		if err := s.rotate(ctx); err != nil {
+			if trial {
+				s.breaker.observe(err) // no LXD call will end this trial
+			}
 			return nil, s.refuse(err)
 		}
 	}
