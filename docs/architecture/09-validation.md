@@ -30,8 +30,10 @@ With real SPIRE Agents in the instances and the plugins in SPIRE Server, on ever
 - **E2E-3**: an instance outside the allowed projects, a claim naming another instance, and an identity without `can_access_files` are refused, the agent seeing only the uniform error.
 - **E2E-4**: an agent restarted without its data attests again with the same SPIFFE ID; a copy made without the agent's data gets a different SPIFFE ID; a copy that keeps the agent's data never attests and is issued the original's workload SVIDs (recorded, the basis of `T14`). With the agent's data in tmpfs, on a container and a VM, an agent restart does not attest, a copy (a VM from a stateless snapshot) attests as another instance and gets none of the original's workload SVIDs, and a reboot attests again as the same instance, after about 10 s in a container and 42 s in a VM.
 - **E2E-5**: on a cluster, an instance on the second member attests through the first.
+- **E2E-6**: with two servers, one of them cut off (its port dropped) or hung (its LXD daemon stopped, so that it accepts connections and never answers), an instance on the other attests, with a warning naming the skipped server; an instance on the cut off server is refused with `lxd_unavailable`, the breaker opens, and the instance attests once the server is back, without a restart. A twin imported on the other server, which answers, still refuses the original (`instance_ambiguous`).
+- **E2E-7**: attestations that fail while naming an instance (another guest claiming its name) do not keep it from attesting: it attests in about 15 s, with no `rate_limited` refusal.
 
-E2E-1 to E2E-4 passed on LXD 5.21.8 and 6.10.0 (and earlier on 6.9), the tmpfs variant of E2E-4 on both, E2E-5 on a 5.21.8 and a 6.10.0 cluster.
+E2E-1 to E2E-4 passed on LXD 5.21.8 and 6.10.0 (and earlier on 6.9), the tmpfs variant of E2E-4 on both, E2E-5 on a 5.21.8 and a 6.10.0 cluster. E2E-6 and E2E-7 passed on LXD 5.21.8 and 6.10.0; with the other server cut off or hung, an instance on the healthy one attested in about 32 s, against 15 s with both servers up.
 
 ## Stress, chaos and soak
 
