@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
@@ -29,5 +30,21 @@ func TestExitCode(t *testing.T) {
 				t.Errorf("exitCode(%v) = %d; want %d", tt.err, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestCleanupProfiles(t *testing.T) {
+	dir := t.TempDir()
+	var err error
+	if cpuprof, err = os.Create(dir + "/cpu"); err != nil {
+		t.Fatal(err)
+	}
+	if memprof, err = os.Create(dir + "/mem"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { cpuprof, memprof = nil, nil })
+	cleanup()
+	if info, err := os.Stat(dir + "/mem"); err != nil || info.Size() == 0 {
+		t.Errorf("memory profile not written: %v", err)
 	}
 }
