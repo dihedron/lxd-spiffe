@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
@@ -75,5 +76,23 @@ func TestProjectShowRefusals(t *testing.T) {
 				t.Errorf("outcome %q, observations %v", rec.Outcome, rec.Observations)
 			}
 		})
+	}
+}
+
+// TestProjectShowRedactNames: with --redact-names, the project is aliased as
+// a project, not as an instance (PRS-13, PRE-09).
+func TestProjectShowRedactNames(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	fake.AddProject("l16-on", map[string]string{"features.networks": "true"})
+	opts := options(t, fake)
+	opts.RedactNames = true
+	cmd := &ProjectShow{ServerCommand: opts, stdout: &bytes.Buffer{}}
+	cmd.Args.Name = "l16-on"
+	if err := cmd.Execute(nil); err != nil {
+		t.Fatal(err)
+	}
+	name, _ := observation(t, record(t, opts, 1), "project.name").(string)
+	if name == "l16-on" || !strings.HasPrefix(name, evidence.KindProject) {
+		t.Errorf("project name recorded as %q", name)
 	}
 }

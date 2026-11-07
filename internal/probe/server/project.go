@@ -8,6 +8,7 @@ import (
 
 	"github.com/canonical/lxd/shared/api"
 
+	"github.com/dihedron/lxd-spiffe/internal/evidence"
 	"github.com/dihedron/lxd-spiffe/internal/lxd"
 	"github.com/dihedron/lxd-spiffe/internal/probe"
 	"github.com/dihedron/lxd-spiffe/internal/probe/expect"
@@ -31,9 +32,12 @@ func (cmd *ProjectShow) Execute(args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), cmd.Timeout)
 	defer cancel()
 	name := cmd.Args.Name
-	s, err := newSession(ctx, &cmd.ServerCommand, cmd.stdout, "project show", []string{name}, name)
+	s, err := newSession(ctx, &cmd.ServerCommand, cmd.stdout, "project show", []string{name})
 	if err != nil {
 		return err
+	}
+	if cmd.RedactNames {
+		s.run.Sanitizer.RedactName(evidence.KindProject, name)
 	}
 	return s.finish(cmd.run(ctx, s))
 }

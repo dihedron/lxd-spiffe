@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
 )
 
 // GlobalOptions are the options of every command (spec: Global flags).
@@ -104,10 +102,4 @@ func (l *UIDList) UnmarshalFlag(value string) error {
 	}
 	*l = uids
 	return nil
-}
-
-// NotImplemented is returned by the commands of later chunks until they are
-// implemented.
-func NotImplemented(command string) error {
-	return exit.New(exit.Internal, fmt.Errorf("%s: not implemented yet", command))
 }

@@ -25,6 +25,8 @@ const (
 	maxRetries = 10
 	retryBase  = 50 * time.Millisecond
 	retryCap   = time.Second
+	// retriesCut is the refusal when proof_timeout ends the 412 retries.
+	retriesCut = "retries cut by proof_timeout: %v"
 )
 
 // challenges are the config_push keys of the attestations running in this
@@ -159,7 +161,7 @@ func (a *attestation) patch(ctx context.Context, m *match, config func(*api.Inst
 		case err == nil:
 			return nil
 		case retry > 0 && ctx.Err() != nil:
-			return fail(reasonPreconditionFailed, "retries cut by proof_timeout: %v", err)
+			return fail(reasonPreconditionFailed, retriesCut, err)
 		case lxd.KindOf(err) != lxd.KindPrecondition:
 			return fail(lxdReason(err), "writing the challenge key: %v", err)
 		case retry == maxRetries:
@@ -168,12 +170,15 @@ func (a *attestation) patch(ctx context.Context, m *match, config func(*api.Inst
 		jittered := wait/2 + rand.N(wait/2+1) //nolint:gosec // G404: jitter, not a secret
 		select {
 		case <-ctx.Done():
-			return fail(reasonPreconditionFailed, "retries cut by proof_timeout: %v", ctx.Err())
+			return fail(reasonPreconditionFailed, retriesCut, ctx.Err())
 		case <-time.After(jittered):
 		}
 		wait = min(2*wait, retryCap)
 		if inst, etag, err = m.client.Instance(ctx, m.inst.Project, m.instance); err != nil {
 			m.srv.observe(ctx, err)
+			if ctx.Err() != nil {
+				return fail(reasonPreconditionFailed, retriesCut, err)
+			}
 			return fail(lxdReason(err), "reading the instance after a 412: %v", err)
 		}
 		if err := a.same(m, inst); err != nil {

@@ -136,7 +136,8 @@ type settings struct {
 	limits    limitSettings
 	devMode   bool
 	servers   []*lxdServer // sorted by id
-	limiter   *limiter
+	// limiter is the plugin's, shared by every configuration.
+	limiter *limiter
 }
 
 // pathData is what agent_path_template may use: configured and LXD-sourced
@@ -208,7 +209,6 @@ func newSettings(ctx context.Context, c *Config, trustDomain string) (*settings,
 	if s.servers, err = serverSettings(ctx, c, s); err != nil {
 		return nil, err
 	}
-	s.limiter = newLimiter(s.limits, time.Now)
 	if c.DevMode {
 		slog.Warn("dev_mode is on: LXD servers without a pin or CA bundle are not verified (SEC-07)")
 	}

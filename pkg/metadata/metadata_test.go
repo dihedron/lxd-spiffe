@@ -30,3 +30,16 @@ func TestLoadDotEnv(t *testing.T) {
 		t.Errorf("a good file: %v", err)
 	}
 }
+
+// TestPrintFull: everything goes to the writer, each field once.
+func TestPrintFull(t *testing.T) {
+	var b strings.Builder
+	PrintFull(&b)
+	out := b.String()
+	if !strings.Contains(out, "  - Name ") || !strings.Contains(out, "  - Variable Name (.env) ") {
+		t.Errorf("output %q", out)
+	}
+	if n := strings.Count(out, "  - Git Time "); n != 1 {
+		t.Errorf("Git Time printed %d times", n)
+	}
+}

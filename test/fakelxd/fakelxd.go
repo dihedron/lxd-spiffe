@@ -93,7 +93,7 @@ type Server struct {
 // letting skip of them through.
 type failure struct {
 	method, path string
-	skip, status int
+	skip, status int // status 0 leaves the request unanswered
 	msg          string
 }
 
@@ -300,6 +300,12 @@ func (s *Server) FailOn(method, path string, skip, status int, msg string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.failures = append(s.failures, &failure{method: method, path: path, skip: skip, status: status, msg: msg})
+}
+
+// HangOn leaves every request with this method and exact path unanswered
+// until its client gives up, after letting the first skip of them through.
+func (s *Server) HangOn(method, path string, skip int) {
+	s.FailOn(method, path, skip, 0, "")
 }
 
 // HideProject answers 404 Not Found to every request in project, as LXD
@@ -554,6 +560,12 @@ func (s *Server) assumed(w http.ResponseWriter, r *http.Request) {
 		if f.skip > 0 {
 			f.skip--
 			continue
+		}
+		if f.status == 0 {
+			s.mu.Unlock()
+			<-r.Context().Done()
+			s.mu.Lock() // for the deferred unlock
+			return
 		}
 		writeError(w, f.status, f.msg)
 		return
