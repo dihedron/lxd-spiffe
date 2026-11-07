@@ -134,12 +134,6 @@ func (r *soakRun) checkSafety(s *soakSummary, atts []soakAttest) {
 	for n, u := range r.uuids {
 		byUUID[u] = n
 	}
-	var switchAt time.Time
-	for _, e := range r.events {
-		if e.Fault == "mode-switch" {
-			switchAt = e.Start
-		}
-	}
 	for _, a := range atts {
 		if !a.OK {
 			continue
@@ -154,12 +148,29 @@ func (r *soakRun) checkSafety(s *soakSummary, atts []soakAttest) {
 				s.violate("INV-1", "%s was attested at %s while it was stopped (%s to %s)", name, a.Time.Format("15:04:05"), e.Start.Format("15:04:05"), e.End.Format("15:04:05"))
 			}
 		}
-		if !switchAt.IsZero() && a.Time.Sub(switchAt).Abs() > time.Minute {
-			if want := map[bool]string{true: "file_pull", false: "config_push"}[a.Time.Before(switchAt)]; a.Mode != want {
-				s.violate("INV-1", "an attestation at %s used %s, the server's mode was %s", a.Time.Format("15:04:05"), a.Mode, want)
-			}
+		if want, sure := modeAt(r.events, a.Time); sure && a.Mode != want {
+			s.violate("INV-1", "an attestation at %s used %s, the server's mode was %s", a.Time.Format("15:04:05"), a.Mode, want)
 		}
 	}
+}
+
+// modeAt is the server's proof mode at t, from the mode switches among the
+// events (file_pull before the first); sure is false within a minute of a
+// switch, while SPIRE Server restarts with the new mode.
+func modeAt(events []soakEvent, t time.Time) (mode string, sure bool) {
+	mode, sure = "file_pull", true
+	for _, e := range events {
+		if e.Fault != "mode-switch" {
+			continue
+		}
+		if t.Sub(e.Start).Abs() <= time.Minute {
+			sure = false
+		}
+		if e.Start.Before(t) {
+			mode = e.Mode
+		}
+	}
+	return mode, sure
 }
 
 // challengeKeys counts the challenge keys left on the fleet.
@@ -222,8 +233,13 @@ func (r *soakRun) checkDrift(s *soakSummary) {
 	}
 }
 
-// assess judges the soak.
+// assess judges the soak from SPIRE Server's log.
 func (r *soakRun) assess(start time.Time) *soakSummary {
+	return r.assessAtts(start, r.journal(start))
+}
+
+// assessAtts judges the soak from its attestations.
+func (r *soakRun) assessAtts(start time.Time, atts []soakAttest) *soakSummary {
 	elapsed := time.Since(start)
 	p := r.l.plugins(r.t)
 	s := &soakSummary{
@@ -232,7 +248,6 @@ func (r *soakRun) assess(start time.Time) *soakSummary {
 		Environment: fmt.Sprintf("SPIRE %s, plugins %s, %s LXD %s", p.Spire.Version, p.Plugins.Version, r.s.server, r.l.env.Servers[r.s.server].Version),
 		Events:      r.events, Samples: r.samples,
 	}
-	atts := r.journal(start)
 	s.measures(atts, elapsed)
 	r.checkSafety(s, atts)
 	lastEnd := start

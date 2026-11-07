@@ -70,11 +70,22 @@ func soakShardScript(names []string) string {
 	return b.String()
 }
 
-// soakTeardown removes what a soak leaves: the fleet, its shard groups,
-// the template and the image.
+// soakNames are a soak fleet's instance names: prefix-001, prefix-002, …
+// The split soak (ST-8) gives each server its own prefix: agents claim their
+// name with no project, and one name on two servers is ambiguous (FR-S3).
+func soakNames(prefix string, n int) []string {
+	names := make([]string, n)
+	for i := range names {
+		names[i] = fmt.Sprintf("%s-%03d", prefix, i+1)
+	}
+	return names
+}
+
+// soakTeardown removes what a soak leaves: the fleet (of any soak prefix),
+// its shard groups, the template and the image.
 const soakTeardown = `set +e
 for g in $(sudo lxc auth group list -f csv | cut -d, -f1 | grep -E '^lab-spire-s[0-9]+$'); do sudo lxc auth group delete "$g"; done
-for i in $(sudo lxc list -c n -f csv 's-[0-9][0-9][0-9]$'); do sudo lxc delete --force "$i"; done
+for i in $(sudo lxc list -c n -f csv '^[sab]-[0-9][0-9][0-9]$'); do sudo lxc delete --force "$i"; done
 sudo lxc delete --force ` + soakTemplate + ` 2>/dev/null
 sudo lxc image delete ` + soakImage + ` 2>/dev/null
 true
@@ -202,13 +213,13 @@ func (l *lab) soakFleetUp(t *testing.T, server string, names []string, attestTim
 }
 
 // fleetUUIDs maps the fleet's instance names to their volatile.uuid.
-func (l *lab) fleetUUIDs(t *testing.T, server string) map[string]string {
+func (l *lab) fleetUUIDs(t *testing.T, server, prefix string) map[string]string {
 	t.Helper()
 	var list []struct {
 		Name   string            `json:"name"`
 		Config map[string]string `json:"config"`
 	}
-	out := l.ssh(t, server, `sudo lxc list '^s-[0-9]{3}$' -f json`)
+	out := l.ssh(t, server, fmt.Sprintf(`sudo lxc list '^%s-[0-9]{3}$' -f json`, prefix))
 	if err := json.Unmarshal([]byte(out), &list); err != nil {
 		t.Fatalf("listing the fleet: %v", err)
 	}

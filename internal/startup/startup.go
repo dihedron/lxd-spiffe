@@ -24,6 +24,10 @@ var (
 	memprof *os.File
 )
 
+// debug starts the debugging aids of a lab build (debug_lab.go); release
+// builds have none.
+var debug = func(string) {}
+
 // Init sets up logging and profiling for the binary name (the base name of
 // os.Args[0]); the variables it reads are named after it: for "my-app",
 // MY_APP_LOG_LEVEL, MY_APP_LOG_STREAM, MY_APP_CPU_PROFILE and
@@ -56,6 +60,7 @@ func Init(name string) {
 	}
 
 	startProfiles(name)
+	debug(name)
 }
 
 // variable is the name of the binary's variable: for "my-app" and

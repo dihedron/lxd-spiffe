@@ -130,7 +130,18 @@ plugins_build() {
 	env_set .plugins.version "$version"
 	env_set .plugins.server_checksum "$(sha256sum "$dist/lxd-server-plugin_linux_amd64_v1/lxd-server-plugin" | cut -d' ' -f1)"
 	env_set .plugins.agent_checksum "$(sha256sum "$dist/lxd-agent-plugin_linux_amd64_v1/lxd-agent-plugin" | cut -d' ' -f1)"
+	env_set .plugins.server_debug "$LAB_SERVER_PLUGIN_DEBUG"
+	[[ "$LAB_SERVER_PLUGIN_DEBUG" == yes ]] || return 0
+	info "building the server plugin with -race -tags lab (LAB_SERVER_PLUGIN_DEBUG)"
+	mkdir -p "$LAB_STATE_DIR/bin"
+	CGO_ENABLED=1 go -C "$REPO_DIR" build -race -tags lab -o "$(debug_plugin)" ./cmd/lxd-server-plugin ||
+		die "cannot build the debug server plugin"
+	env_set .plugins.server_checksum "$(sha256sum "$(debug_plugin)" | cut -d' ' -f1)"
 }
+
+# debug_plugin: the race-enabled, lab-tagged server plugin of
+# LAB_SERVER_PLUGIN_DEBUG=yes.
+debug_plugin() { echo "$LAB_STATE_DIR/bin/lxd-server-plugin-debug"; }
 
 # plugin_artifact NAME SUFFIX: the path of a package in dist/, e.g.
 # plugin_artifact lxd-agent-plugin linux_amd64.deb.
@@ -221,7 +232,13 @@ spire_install() {
 	mkdir -p "$(spire_dir)"
 	server_conf >"$(spire_dir)/server.conf"
 	info "spire: installing SPIRE $version and lxd-server-plugin $(env_get .plugins.version)"
-	scp -q "${SSH_OPTS[@]}" "$tarball" "$deb" "$(spire_dir)/server.conf" \
+	local debug=no extra=() unit_env=""
+	if [[ "$(env_get .plugins.server_debug)" == yes ]]; then
+		debug=yes extra=("$(debug_plugin)")
+		unit_env='Environment="GORACE=log_path=/var/lib/spire/server/race halt_on_error=0"
+Environment=LXD_SERVER_PLUGIN_PPROF_ADDR=127.0.0.1:6060'
+	fi
+	scp -q "${SSH_OPTS[@]}" "$tarball" "$deb" "$(spire_dir)/server.conf" "${extra[@]}" \
 		"$(identity_cert "$LAB_SPIRE_ID")" "$(identity_key "$LAB_SPIRE_ID")" \
 		"$LAB_USER@$(vm_ip spire):" || die "spire: cannot copy SPIRE and the plugin"
 	vm_ssh spire "set -e
@@ -231,6 +248,8 @@ spire_install() {
 		sudo mkdir -p $SPIRE_PREFIX $SPIRE_ETC/lxd /var/lib/spire/server
 		sudo tar -xzf ${tarball##*/} -C $SPIRE_PREFIX --strip-components=1
 		sudo dpkg -i ${deb##*/} >/dev/null
+		if [ $debug = yes ]; then sudo install -m 0755 lxd-server-plugin-debug /usr/bin/lxd-server-plugin; rm -f lxd-server-plugin-debug; fi
+		sudo rm -f /var/lib/spire/server/race.*
 		sudo install -m 0644 server.conf $SPIRE_ETC/server.conf
 		sudo install -m 0444 $LAB_SPIRE_ID.crt $SPIRE_ETC/lxd/$LAB_SPIRE_ID.crt
 		sudo install -m 0400 -o spire $LAB_SPIRE_ID.key $SPIRE_ETC/lxd/$LAB_SPIRE_ID.key
@@ -244,6 +263,7 @@ Wants=network-online.target
 
 [Service]
 User=spire
+$unit_env
 ExecStart=$SPIRE_PREFIX/bin/spire-server run -config $SPIRE_ETC/server.conf
 Restart=on-failure
 

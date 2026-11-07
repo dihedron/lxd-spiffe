@@ -15,6 +15,7 @@ import (
 // soakSettings are the soak's settings, from the environment.
 type soakSettings struct {
 	server   string        // LAB_SOAK_SERVER, a standalone server
+	prefix   string        // the fleet's names: <prefix>-001, …
 	fleet    int           // LAB_SOAK_FLEET
 	duration time.Duration // LAB_SOAK_DURATION, faults and the final quiet period
 	every    time.Duration // LAB_SOAK_EVERY, the mean gap between faults
@@ -39,6 +40,7 @@ func loadSoakSettings(t *testing.T) soakSettings {
 	}
 	s := soakSettings{
 		server:   setting("LAB_SOAK_SERVER", "lxd6"),
+		prefix:   "s",
 		fleet:    atoi(setting("LAB_SOAK_FLEET", "100")),
 		duration: duration("LAB_SOAK_DURATION", "45m"),
 		every:    duration("LAB_SOAK_EVERY", "90s"),
@@ -75,8 +77,8 @@ func (l *lab) soakSetup(t *testing.T, s soakSettings) map[string]string {
 	vms := strings.Join(baselineVMs, " ")
 	l.trySSH(s.server, "for v in "+vms+"; do sudo timeout -k 5 120 lxc stop --force $v; done")                //nolint:errcheck // one may be absent
 	t.Cleanup(func() { l.trySSH(s.server, "for v in "+vms+"; do sudo timeout -k 5 120 lxc start $v; done") }) //nolint:errcheck // best effort
-	l.soakFleetUp(t, s.server, fleetNames(s.fleet), s.attest)
-	uuids := l.fleetUUIDs(t, s.server)
+	l.soakFleetUp(t, s.server, soakNames(s.prefix, s.fleet), s.attest)
+	uuids := l.fleetUUIDs(t, s.server, s.prefix)
 	if len(uuids) != s.fleet {
 		t.Fatalf("%d fleet instances, want %d", len(uuids), s.fleet)
 	}

@@ -44,6 +44,8 @@ type soakRun struct {
 	uuids map[string]string
 	rng   *rand.Rand
 	mode  string
+	// allow, when set, limits the faults pick may draw (ST-8's phases).
+	allow func(id string) bool
 
 	mu      sync.Mutex
 	events  []soakEvent
@@ -53,7 +55,7 @@ type soakRun struct {
 
 func newSoakRun(t *testing.T, l *lab, s soakSettings, uuids map[string]string) *soakRun {
 	r := &soakRun{l: l, s: s, t: t, uuids: uuids, rng: rand.New(rand.NewPCG(s.seed, s.seed)), mode: "file_pull"}
-	r.names = fleetNames(s.fleet)
+	r.names = soakNames(s.prefix, s.fleet)
 	return r
 }
 
@@ -85,7 +87,7 @@ var soakFaults = []struct {
 	id     string
 	weight int
 }{
-	{"stop", 25}, {"wipe", 20}, {"partition", 10}, {"writer", 10}, {"spire-restart", 8}, {"plugin-kill", 7}, {"daemon", 3},
+	{"stop", 25}, {"wipe", 20}, {"partition", 10}, {"writer", 10}, {"spire-restart", 8}, {"plugin-kill", 7}, {"daemon", 3}, {"hang", 8},
 }
 
 // pick draws a fault; the concurrent writer matters only to config_push, and
@@ -102,8 +104,9 @@ func (r *soakRun) pick(sinceStart time.Duration) string {
 				continue
 			}
 			switch {
+			case r.allow != nil && !r.allow(f.id):
 			case f.id == "writer" && r.mode != "config_push":
-			case f.id == "daemon" && (r.daemons >= 3 || sinceStart < 5*time.Minute):
+			case f.id == "daemon" && (r.daemons >= r.maxDaemons() || sinceStart < 5*time.Minute):
 			default:
 				return f.id
 			}
@@ -131,6 +134,8 @@ func (r *soakRun) inject(id string) {
 		e = r.killPlugin()
 	case "daemon":
 		e = r.killDaemon()
+	case "hang":
+		e = r.hangDaemon()
 	}
 	e.Fault = id
 	if e.Start.IsZero() {
@@ -247,7 +252,7 @@ func (r *soakRun) killDaemon() soakEvent {
 	})
 	var stopped string
 	waitFor(r.t, 5*time.Minute, "the fleet to run again", func() bool {
-		out, _ := r.vm(60*time.Second, `lxc list '^s-[0-9]{3}$' -c ns -f csv | grep -v ',RUNNING' | cut -d, -f1`)
+		out, _ := r.vm(60*time.Second, fmt.Sprintf(`lxc list '^%s-[0-9]{3}$' -c ns -f csv | grep -v ',RUNNING' | cut -d, -f1`, r.s.prefix))
 		stopped = strings.Join(strings.Fields(out), " ")
 		if stopped != "" {
 			_, _ = r.vm(120*time.Second, "for n in "+stopped+"; do lxc start $n; done")
@@ -256,6 +261,35 @@ func (r *soakRun) killDaemon() soakEvent {
 	})
 	e.Disturbed = r.names
 	e.Note = "the fleet's containers run again"
+	return e
+}
+
+// maxDaemons bounds the LXD crashes of a soak: three in ST-7's 45 minutes,
+// one more per 30 minutes of a longer soak.
+func (r *soakRun) maxDaemons() int { return max(3, int(r.s.duration/(30*time.Minute))) }
+
+// lxdDaemon matches the LXD daemon's command line, not that of the shell
+// that runs pkill (the bracket), nor its forkexec helpers or lxd-agent.
+const lxdDaemon = `"[l]xd --logfile"`
+
+// hangDaemon stops the LXD daemon with SIGSTOP for 20 to 60 seconds: it
+// keeps its connections and never answers, as a hung daemon does (ST-8). The
+// SIGCONT is armed on the VM before the stop (STR-61).
+func (r *soakRun) hangDaemon() soakEvent {
+	seconds := 20 + r.rng.IntN(41)
+	unit := fmt.Sprintf("lab-soak-hang-%d", time.Now().UnixNano()%1000000)
+	_, err := r.vm(30*time.Second, fmt.Sprintf("systemd-run --quiet --unit=%s --on-active=%ds pkill -CONT -f %s && pkill -STOP -f %s", unit, seconds, lxdDaemon, lxdDaemon))
+	e := soakEvent{Start: time.Now().UTC(), Note: fmt.Sprintf("%d s", seconds)}
+	if err != nil {
+		e.Note += ": " + err.Error()
+	}
+	time.Sleep(time.Duration(seconds) * time.Second)
+	e.End = time.Now().UTC()
+	waitFor(r.t, 2*time.Minute, "LXD to answer after the hang", func() bool {
+		_, _ = r.vm(15*time.Second, "pkill -CONT -f "+lxdDaemon) // the timer's, again: harmless
+		_, err := r.vm(15*time.Second, "lxc info >/dev/null")
+		return err == nil
+	})
 	return e
 }
 
