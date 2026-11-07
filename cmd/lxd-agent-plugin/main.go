@@ -5,6 +5,7 @@ import (
 
 	"github.com/dihedron/lxd-spiffe/cmd/lxd-agent-plugin/command"
 	"github.com/dihedron/lxd-spiffe/internal/plugin/agent/lxdiid"
+	"github.com/dihedron/lxd-spiffe/internal/startup"
 	"github.com/jessevdk/go-flags"
 	"github.com/spiffe/spire-plugin-sdk/pluginmain"
 	nodeattestorv1 "github.com/spiffe/spire-plugin-sdk/proto/spire/plugin/agent/nodeattestor/v1"
@@ -18,7 +19,7 @@ func main() {
 // run serves the plugin or parses the command line; it returns the exit code
 // so that the deferred cleanup runs before the process exits.
 func run() int {
-	defer cleanup()
+	defer startup.Cleanup()
 
 	// SPIRE Agent starts the plugin without arguments
 	if len(os.Args) == 1 {
