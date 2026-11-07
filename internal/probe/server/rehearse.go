@@ -29,7 +29,7 @@ import (
 
 // filePullSteps are the steps of the file_pull rehearsal, in order
 // (PRS-50); --expect-fail names one of them.
-var filePullSteps = []string{"resolve", "policy", "challenge", "answer", "read", "file", "compare", "recheck"}
+var filePullSteps = []string{"resolve", "policy", "challenge", "answer", "read", "file", "compare", "dir", "recheck"}
 
 // The backoff of the files API read while a VM's lxd-agent starts (attestor
 // spec, Mode file_pull, step 3).
@@ -250,6 +250,18 @@ func (cmd *RehearseFilePull) run(ctx context.Context, r *rehearsal, agentNonce [
 		return nil
 	}
 
+	resp, err = s.call(ctx, "proof-dir", lxd.RawRequest{
+		Method: http.MethodGet, Path: instancePath(cmd.Args.Name) + "/files",
+		Query: url.Values{"path": {cmd.ProofDir}}, MaxBytes: limits.MaxFilesResponse,
+	}, &expect.FileDir)
+	if err != nil {
+		return err
+	}
+	s.observe("proof-dir.headers", lxdHeaders(resp.Header))
+	if !r.step("dir", checkProofDir(resp, decision.ExpectedOwner)) {
+		return nil
+	}
+
 	second, err := rehearseRead(ctx, s, cmd.Args.Name, "instance-recheck")
 	if err != nil {
 		return err
@@ -377,6 +389,23 @@ func checkProofFile(resp *lxd.RawResponse, owner uint32) error {
 		return fmt.Errorf("mode %q, not 0600", h.Get("X-LXD-mode"))
 	case len(resp.Body) != limits.HexProofSize:
 		return fmt.Errorf("%d bytes, not %d", len(resp.Body), limits.HexProofSize)
+	}
+	return nil
+}
+
+// checkProofDir applies the attestor's check of the proof directory (Mode
+// file_pull, step 6): a directory of the expected owner, mode 0700.
+func checkProofDir(resp *lxd.RawResponse, owner uint32) error {
+	h := resp.Header
+	switch {
+	case resp.Status != http.StatusOK:
+		return fmt.Errorf("status %d: %s", resp.Status, errorMessage(resp))
+	case h.Get("X-LXD-type") != "directory":
+		return fmt.Errorf("type %q, not directory", h.Get("X-LXD-type"))
+	case h.Get("X-LXD-uid") != strconv.FormatUint(uint64(owner), 10):
+		return fmt.Errorf("owner %q, expected %d", h.Get("X-LXD-uid"), owner)
+	case h.Get("X-LXD-mode") != "0700":
+		return fmt.Errorf("mode %q, not 0700", h.Get("X-LXD-mode"))
 	}
 	return nil
 }

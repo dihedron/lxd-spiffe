@@ -198,3 +198,31 @@ func TestAbortedEntries(t *testing.T) {
 		t.Error("a record with content is not aborted")
 	}
 }
+
+// TestSanitizeUndecodableJSON: the rules by key cannot apply to JSON that
+// does not decode, so it is redacted whole (PRU-05); the result is stable,
+// or a check would never pass after sanitizing in place.
+func TestSanitizeUndecodableJSON(t *testing.T) {
+	s := NewSanitizer(NewAliases())
+	const secret = `{"user.password": "s3cret",`
+	for name, tc := range map[string]struct {
+		file, in, want string
+	}{
+		"truncated .json":        {"a.json", secret, `"[redacted]"` + "\n"},
+		"trailing data in .json": {"a.json", `{"a":1}{"user.password":"s3cret"}`, `"[redacted]"` + "\n"},
+		"truncated .jsonl line":  {"a.jsonl", `{"a":1}` + "\n" + secret + "\n", `{"a":1}` + "\n" + `"[redacted]"` + "\n"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			out, changed := sanitizeFile(s, tc.file, []byte(tc.in))
+			if !changed || string(out) != tc.want {
+				t.Fatalf("got %q, changed %v; want %q", out, changed, tc.want)
+			}
+			if again, changed := sanitizeFile(s, tc.file, out); changed || string(again) != tc.want {
+				t.Errorf("not stable: %q, changed %v", again, changed)
+			}
+		})
+	}
+	if out, changed := sanitizeFile(s, "a.jsonl", []byte(`{"a":1}`+"\n\n  \n")); changed {
+		t.Errorf("blank .jsonl lines changed: %q", out)
+	}
+}

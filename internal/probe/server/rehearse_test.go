@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -59,11 +60,26 @@ func writeProof(fake *fakelxd.Server, tamper bool, f fakelxd.File) func(rehearse
 		sum, _ := proof.Compute(c.Project, name, sn, an)
 		f.Content = string(proof.Hex(sum))
 		fake.AddFile(c.Project, c.Instance, c.ProofPath, f)
+		fake.AddFile(c.Project, c.Instance, path.Dir(c.ProofPath), goodDir)
 		return rehearse.Answer{Mode: rehearse.FilePull, Done: true}
 	}
 }
 
-var goodFile = fakelxd.File{UID: 0, GID: 0, Mode: 0o600, Type: "file"}
+var (
+	goodFile = fakelxd.File{UID: 0, GID: 0, Mode: 0o600, Type: "file"}
+	goodDir  = fakelxd.File{UID: 0, GID: 0, Mode: 0o700, Type: "directory", Entries: []string{}}
+)
+
+// withDir is an honest guest whose proof directory is dir instead.
+func withDir(dir fakelxd.File) func(*fakelxd.Server) func(rehearse.Challenge) rehearse.Answer {
+	return func(f *fakelxd.Server) func(rehearse.Challenge) rehearse.Answer {
+		return func(c rehearse.Challenge) rehearse.Answer {
+			a := honest(f)(c)
+			f.AddFile(c.Project, c.Instance, path.Dir(c.ProofPath), dir)
+			return a
+		}
+	}
+}
 
 func newRehearsalFake(t *testing.T, config map[string]string) *fakelxd.Server {
 	fake := fakelxd.NewAssumed(t)
@@ -103,7 +119,7 @@ func TestPRS50FilePull(t *testing.T) {
 	if rec.Outcome != evidence.OutcomeOK || observation(t, rec, "rehearsal.result") != "passed" {
 		t.Fatalf("outcome %q, observations %v", rec.Outcome, rec.Observations)
 	}
-	for _, step := range []string{"resolve", "policy", "challenge", "answer", "read", "file", "compare", "recheck"} {
+	for _, step := range []string{"resolve", "policy", "challenge", "answer", "read", "file", "compare", "dir", "recheck"} {
 		if got := observation(t, rec, "step."+step); got != "ok" {
 			t.Errorf("step %s: %v", step, got)
 		}
@@ -151,7 +167,9 @@ func TestPRS52FilePullFailures(t *testing.T) {
 		"a symlink": {nil, func(f *fakelxd.Server) func(rehearse.Challenge) rehearse.Answer {
 			return writeProof(f, false, fakelxd.File{UID: 0, Mode: 0o600, Type: "symlink"})
 		}, nil, "file", evidence.OutcomeUnexpected},
-		"privileged refused by the policy": {map[string]string{"security.privileged": "true"}, honest, nil, "policy", evidence.OutcomeUnexpected},
+		"proof directory with a wrong mode":  {nil, withDir(fakelxd.File{UID: 0, Mode: 0o755, Type: "directory", Entries: []string{}}), nil, "dir", evidence.OutcomeUnexpected},
+		"proof directory with a wrong owner": {nil, withDir(fakelxd.File{UID: 1000, Mode: 0o700, Type: "directory", Entries: []string{}}), nil, "dir", evidence.OutcomeUnexpected},
+		"privileged refused by the policy":   {map[string]string{"security.privileged": "true"}, honest, nil, "policy", evidence.OutcomeUnexpected},
 		"denied config key": {map[string]string{"raw.lxc": "x"}, honest,
 			func(c *RehearseFilePull) { c.DenyConfigKeys = []string{"raw.lxc"} }, "policy", evidence.OutcomeUnexpected},
 		"the guest failed": {nil, func(*fakelxd.Server) func(rehearse.Challenge) rehearse.Answer {

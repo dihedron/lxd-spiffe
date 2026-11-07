@@ -17,6 +17,10 @@ import (
 // aliasesFile is the alias map of a run directory (PRE-09).
 const aliasesFile = "aliases.json"
 
+// redactedJSON replaces JSON that does not decode (PRU-05). It is valid JSON
+// itself, so that sanitizing it again changes nothing.
+const redactedJSON = `"` + Redacted + `"`
+
 // ErrBadOutput is returned when the output directory of SanitizeTree is
 // inside the source or not empty.
 var ErrBadOutput = errors.New("invalid output directory")
@@ -199,39 +203,46 @@ func sanitizerFor(dir, root string, cache map[string]*Sanitizer, readOnly bool) 
 
 // sanitizeFile returns the sanitized content of a file and whether it
 // differs from the original. JSON is compared as values, so formatting
-// alone is not a change.
+// alone is not a change. JSON that does not decode is redacted whole: the
+// rules by key cannot apply to it.
 func sanitizeFile(s *Sanitizer, path string, data []byte) ([]byte, bool) {
 	switch filepath.Ext(path) {
 	case ".json":
-		if v, err := decodeJSON(data); err == nil {
-			clean := s.Value(v)
-			if reflect.DeepEqual(v, clean) {
-				return data, false
-			}
-			if out, err := json.MarshalIndent(clean, "", "  "); err == nil {
-				return append(out, '\n'), true
-			}
+		v, err := decodeJSON(data)
+		if err != nil {
+			return []byte(redactedJSON + "\n"), true
+		}
+		clean := s.Value(v)
+		if reflect.DeepEqual(v, clean) {
+			return data, false
+		}
+		if out, err := json.MarshalIndent(clean, "", "  "); err == nil {
+			return append(out, '\n'), true
 		}
 	case ".jsonl":
 		var b bytes.Buffer
 		changed := false
 		for _, line := range strings.SplitAfter(string(data), "\n") {
 			trimmed := strings.TrimSuffix(line, "\n")
-			if v, err := decodeJSON([]byte(trimmed)); err == nil && trimmed != "" {
-				if clean := s.Value(v); !reflect.DeepEqual(v, clean) {
-					if out, err := json.Marshal(clean); err == nil {
-						changed = true
-						b.Write(out)
-						b.WriteString(line[len(trimmed):])
-						continue
-					}
-				}
+			if strings.TrimSpace(trimmed) == "" {
 				b.WriteString(line)
 				continue
 			}
-			clean := s.String(line)
-			changed = changed || clean != line
-			b.WriteString(clean)
+			v, err := decodeJSON([]byte(trimmed))
+			if err != nil {
+				changed = true
+				b.WriteString(redactedJSON + line[len(trimmed):])
+				continue
+			}
+			if clean := s.Value(v); !reflect.DeepEqual(v, clean) {
+				if out, err := json.Marshal(clean); err == nil {
+					changed = true
+					b.Write(out)
+					b.WriteString(line[len(trimmed):])
+					continue
+				}
+			}
+			b.WriteString(line)
 		}
 		return b.Bytes(), changed
 	}
