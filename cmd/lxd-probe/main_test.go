@@ -48,3 +48,23 @@ func TestCleanupProfiles(t *testing.T) {
 		t.Errorf("memory profile not written: %v", err)
 	}
 }
+
+// TestRun runs the command line parser on a command, help and an unknown
+// command, with the exit codes of the spec (PRN-34).
+func TestRun(t *testing.T) {
+	args := os.Args
+	t.Cleanup(func() { os.Args = args })
+	for _, v := range []struct {
+		args []string
+		want int
+	}{
+		{[]string{"lxd-probe", "version"}, exit.Success},
+		{[]string{"lxd-probe", "--help"}, exit.Success},
+		{[]string{"lxd-probe", "bogus"}, exit.Usage},
+	} {
+		os.Args = v.args
+		if got := run(); got != v.want {
+			t.Errorf("%v: exit code %d, want %d", v.args, got, v.want)
+		}
+	}
+}
