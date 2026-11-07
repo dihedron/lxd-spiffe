@@ -174,6 +174,9 @@ func (a *attestation) patch(ctx context.Context, m *match, config func(*api.Inst
 		wait = min(2*wait, retryCap)
 		if inst, etag, err = m.client.Instance(ctx, m.inst.Project, m.instance); err != nil {
 			m.srv.observe(ctx, err)
+			if ctx.Err() != nil {
+				return fail(reasonPreconditionFailed, "retries cut by proof_timeout: %v", err)
+			}
 			return fail(lxdReason(err), "reading the instance after a 412: %v", err)
 		}
 		if err := a.same(m, inst); err != nil {

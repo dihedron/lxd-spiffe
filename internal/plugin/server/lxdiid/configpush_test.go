@@ -155,6 +155,17 @@ func TestModeConfigPushRefusals(t *testing.T) {
 	}
 }
 
+// TestFRS14DeadlineDuringReread: proof_timeout ending while the instance is
+// read again after a 412 is the retries' budget running out, not LXD failing.
+func TestFRS14DeadlineDuringReread(t *testing.T) {
+	h := newHarness(t, configPush+"\nproof_timeout = \"1s\"")
+	h.addInstance("default", "c1", "container", uuidA)
+	h.fake.AlwaysStale("default", "c1")
+	h.fake.HangOn("GET", "/1.0/instances/c1", 1) // the resolution's read goes through
+	_, err := h.attest("default", pushAgent("c1"))
+	checkRefused(t, h, err, "precondition_failed")
+}
+
 // TestFRS14RetryBudget: 412 retries never run past proof_timeout.
 func TestFRS14RetryBudget(t *testing.T) {
 	h := newHarness(t, configPush+"\nproof_timeout = \"1s\"")
