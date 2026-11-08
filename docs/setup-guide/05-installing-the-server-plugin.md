@@ -43,6 +43,28 @@ SPIRE Server checks the configuration when it starts or reloads its plugins: an 
 - **`agent_ttl`** (in the `server` block): the lifetime of agent SVIDs. Keep it at one hour or less. Agents of this attestor attest again at about half their SVID's life instead of renewing it, and a short lifetime bounds how long an instance copied together with the agent's data passes for the original (*Operator's Guide*, *Routine procedures*).
 - **`ratelimit { attestation = ... }`**: SPIRE Server allows one attestation a second per source address by default, before any plugin runs. Containers behind one NAT share an address; when many of them restart together (an LXD daemon restart restarts every container of the server), their attestations queue at that rate. Either keep the limit and raise the agents' `attestation_timeout`, or turn it off (`attestation = false`) and rely on the plugin's own `limits`.
 
+### Changing the projects without a restart
+
+With `plugin_data` inline, as in the sample, SPIRE Server must restart to apply any change to the plugin's configuration. To add or remove projects without a restart, move the plugin's configuration to its own file with `plugin_data_file`. The file holds what the `plugin_data` block holds, without the block:
+
+```hcl
+NodeAttestor "lxd_iid" {
+  plugin_cmd       = "/usr/bin/lxd-server-plugin"
+  plugin_checksum  = "<sha256 of the installed binary>"
+  plugin_data_file = "/etc/spire/server/lxd_iid.conf"
+}
+```
+
+SPIRE Server then reads the file again when it gets `SIGUSR1` and passes it to the plugin. To add a project:
+
+1. Create the project and grant the SPIRE identity project `can_view`, then `can_view_instances` on it (*Preparing LXD*).
+2. Add the project to `servers.<server_id>.projects` in the file.
+3. Send the signal to SPIRE Server's main process: `systemctl kill --kill-whom=main --signal=SIGUSR1 spire-server`, or `kill -USR1 <pid>`. SPIRE Server logs `Reconfigure signal received`, then `Plugin reconfigured`.
+
+To remove a project, take it out of `projects` and send the signal first. Revoke its grants afterwards. The plugin reads every listed project to check that an instance's `volatile.uuid` is unique. LXD answers 404 for a project the plugin may not read, or one that was deleted. The plugin skips such a project with the warning `skipping a project the LXD identity cannot read`, so a duplicate of an instance in it goes unseen until the list is fixed. Removing a project stops new attestations from its instances, but agents that already attested keep their identities until they next attest. Evict them to cut them off at once (*Operator's Guide*, *Routine procedures*).
+
+The plugin checks the new configuration as a whole. If any key is wrong, SPIRE Server logs `Failed to reconfigure plugin` with the error, such as `invalid plugin configuration: server lxd1: projects: "spire-web" is listed twice`, and the plugin keeps the configuration it had. Attestations already running finish under the old configuration. The next ones use the new list. Changing a server's `projects` gives that server a new LXD connection and a fresh circuit breaker; the other servers keep theirs.
+
 ## Registration entries
 
 The plugin issues each agent the SPIFFE ID `spiffe://<trust-domain>/spire/agent/lxd_iid/<server_id>/<volatile.uuid>`, and the selectors enabled in `selectors`. Registration entries then give workloads their identities, with the agents chosen by selectors. A node entry that groups the agents of a project, and a workload entry under it:

@@ -315,7 +315,7 @@ servers:
 
 // unique requires the match to be the only instance with its volatile.uuid
 // on every server and project of the allow-lists that answers; the matched
-// server must (FR-S18).
+// server must, and a project LXD answers with 404 is skipped (FR-S18).
 func (a *attestation) unique(ctx context.Context, m *match, uuid string) error {
 	var found []string
 servers:
@@ -328,10 +328,7 @@ servers:
 			return err
 		}
 		for _, p := range srv.projects {
-			cctx, cancel := context.WithTimeout(ctx, lxdCallTimeout)
-			names, err := cl.InstancesByUUID(cctx, p, uuid)
-			cancel()
-			srv.observe(ctx, err)
+			names, err := a.listByUUID(ctx, cl, srv, p, uuid)
 			if err != nil {
 				if srv != m.srv && a.skip(ctx, srv, err) {
 					continue servers
@@ -347,6 +344,22 @@ servers:
 		return fail(reasonAmbiguous, "instances with the resolved uuid: %v", found)
 	}
 	return nil
+}
+
+// listByUUID lists the instances of project p with uuid. A project LXD
+// answers with 404, deleted or not viewable, has none that could attest
+// either: it is skipped with a warning, except with proof_mode none, whose
+// only evidence is the claim (FR-S18).
+func (a *attestation) listByUUID(ctx context.Context, cl *lxd.Client, srv *lxdServer, p, uuid string) ([]string, error) {
+	cctx, cancel := context.WithTimeout(ctx, lxdCallTimeout)
+	defer cancel()
+	names, err := cl.InstancesByUUID(cctx, p, uuid)
+	srv.observe(ctx, err)
+	if lxd.KindOf(err) == lxd.KindNotFound && a.s.mode != modeNone {
+		a.log.Warn("skipping a project the LXD identity cannot read", "server_id", srv.id, "project", p, "error", err.Error())
+		return nil, nil
+	}
+	return names, err
 }
 
 // filePull runs the file_pull challenge (Mode file_pull): a fresh server
