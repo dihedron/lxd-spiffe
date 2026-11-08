@@ -173,8 +173,21 @@ func modeAt(events []soakEvent, t time.Time) (mode string, sure bool) {
 	return mode, sure
 }
 
-// challengeKeys counts the challenge keys left on the fleet.
+// challengeKeys counts the challenge keys left on the fleet: those present
+// in two reads keyStable apart. The fleet keeps attesting in the quiet
+// period, and a single read catches the keys of attestations in flight.
 func (r *soakRun) challengeKeys() int {
+	first := r.keySet()
+	time.Sleep(keyStable)
+	return countBoth(first, r.keySet())
+}
+
+// keyStable outlasts any attestation in flight: its key lives at most the
+// agent's proof_timeout (15 s by default).
+const keyStable = 20 * time.Second
+
+// keySet is the fleet's challenge keys, as instance/key.
+func (r *soakRun) keySet() map[string]bool {
 	out := r.l.ssh(r.t, r.s.server, `sudo lxc query "/1.0/instances?recursion=1&project=default"`)
 	var list []struct {
 		Name   string            `json:"name"`
@@ -183,12 +196,23 @@ func (r *soakRun) challengeKeys() int {
 	if err := json.Unmarshal([]byte(out), &list); err != nil {
 		r.t.Fatalf("listing the instances: %v", err)
 	}
-	n := 0
+	keys := map[string]bool{}
 	for _, i := range list {
 		for k := range i.Config {
 			if strings.HasPrefix(k, "user.spire.challenge.") {
-				n++
+				keys[i.Name+"/"+k] = true
 			}
+		}
+	}
+	return keys
+}
+
+// countBoth counts the keys in both sets.
+func countBoth(a, b map[string]bool) int {
+	n := 0
+	for k := range a {
+		if b[k] {
+			n++
 		}
 	}
 	return n
@@ -210,6 +234,9 @@ func (r *soakRun) checkFinal(s *soakSummary, lastEnd time.Time) {
 	}
 	if len(late) > 0 {
 		s.violate("INV-7", "%d agents were not attested again after the last fault ended at %s: %v", len(late), lastEnd.Format("15:04:05"), late)
+	}
+	for _, n := range late { // the teardown deletes what would explain them
+		r.t.Logf("%s:\n%s", n, r.l.ssh(r.t, r.s.server, fmt.Sprintf("sudo lxc exec %s -- sh -c 'rc-service spire-agent status; tail -n 8 /var/log/spire-agent.log' 2>&1 || true", n)))
 	}
 	if s.LeftoverKey = r.challengeKeys(); s.LeftoverKey > 0 {
 		s.violate("INV-4", "%d challenge keys are left on the fleet after the quiet period", s.LeftoverKey)

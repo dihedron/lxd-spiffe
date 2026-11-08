@@ -20,6 +20,14 @@ func TestParseDebug(t *testing.T) {
 	}
 }
 
+func TestCountBoth(t *testing.T) {
+	inFlight := map[string]bool{"a-001/user.spire.challenge.x": true, "a-002/user.spire.challenge.y": true}
+	later := map[string]bool{"a-002/user.spire.challenge.y": true, "a-003/user.spire.challenge.z": true}
+	if n := countBoth(inFlight, later); n != 1 {
+		t.Errorf("countBoth = %d, want 1: only a-002's key stayed", n)
+	}
+}
+
 func TestModeAt(t *testing.T) {
 	t0 := time.Date(2026, 11, 7, 22, 0, 0, 0, time.UTC)
 	events := []soakEvent{

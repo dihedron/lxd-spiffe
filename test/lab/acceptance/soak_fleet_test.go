@@ -168,6 +168,9 @@ command="/opt/spire/bin/spire-agent"
 command_args="run -config /etc/spire/agent.conf"
 supervisor="supervise-daemon"
 respawn_delay=3
+# supervise-daemon otherwise gives up after a few exits in a row: an agent
+# refused through a SPIRE outage would stay down (ST-8, 2026-11-08).
+respawn_max=0
 output_log="/var/log/spire-agent.log"
 error_log="/var/log/spire-agent.log"
 depend() { need net; }
