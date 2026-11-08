@@ -131,6 +131,8 @@ plugins_build() {
 	env_set .plugins.server_checksum "$(sha256sum "$dist/lxd-server-plugin_linux_amd64_v1/lxd-server-plugin" | cut -d' ' -f1)"
 	env_set .plugins.agent_checksum "$(sha256sum "$dist/lxd-agent-plugin_linux_amd64_v1/lxd-agent-plugin" | cut -d' ' -f1)"
 	env_set .plugins.server_debug "$LAB_SERVER_PLUGIN_DEBUG"
+	# kept in the state, so that spire-mode rewrites the configuration alike
+	env_set .plugins.keep_alive "$LAB_SERVER_KEEP_ALIVE"
 	[[ "$LAB_SERVER_PLUGIN_DEBUG" == yes ]] || return 0
 	info "building the server plugin with -race -tags lab (LAB_SERVER_PLUGIN_DEBUG)"
 	mkdir -p "$LAB_STATE_DIR/bin"
@@ -169,7 +171,7 @@ spire_proof_mode() {
 # the chosen ones are listed).
 server_conf() {
 	local server entries="" keep=""
-	[[ "$LAB_SERVER_KEEP_ALIVE" == yes ]] && keep=$'\n        keep_alive              = true'
+	[[ "$(env_get .plugins.keep_alive)" == yes ]] && keep=$'\n        keep_alive              = true'
 	for server in $(lab_servers); do
 		entries+="$(
 			cat <<ENTRY
