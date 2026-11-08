@@ -67,7 +67,7 @@ The `plugin_data` block of `NodeAttestor "lxd_iid"` in SPIRE Server's configurat
 :   *Path.* A PEM bundle of CA certificates to verify the LXD server's certificate against, for servers whose certificate a CA issued, instead of the fingerprint.
 
 `servers.*.projects`
-:   *List of project names, at least one.* The projects whose instances may attest through this server: the project allow-list. An instance in any other project is refused (`scope_denied`), and the uniqueness check of `volatile.uuid` covers these projects. Each must be a valid LXD project name, listed once. The SPIRE identity needs project `can_view` and `can_view_instances` on each.
+:   *List of project names, at least one.* The projects whose instances may attest through this server: the project allow-list. It is required because LXD instance names are unique only within a project and an instance cannot learn its project. A claim without `claim.project` is looked up in every listed project, and the plugin never searches all projects (*Preparing LXD*, *Projects*). An instance in any other project is refused (`scope_denied`), and the uniqueness check of `volatile.uuid` covers these projects. Each must be a valid LXD project name, listed once. The SPIRE identity needs project `can_view` and `can_view_instances` on each.
 
 `servers.*.keep_alive`
 :   *Boolean, default `false`.* Reuse connections to the LXD server between requests. By default every request opens its own connection, as LXD's client library does. With `true`, up to 16 idle connections are kept and each is closed after 90 seconds idle, which saves a TLS handshake per request: about a quarter of the plugin's CPU time in the lab's soak. A renewed client certificate is then used within 90 seconds, on the next new connection.
