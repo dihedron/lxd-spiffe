@@ -168,7 +168,8 @@ spire_proof_mode() {
 # LXD server (an unreachable server fails every attestation closed, so only
 # the chosen ones are listed).
 server_conf() {
-	local server entries=""
+	local server entries="" keep=""
+	[[ "$LAB_SERVER_KEEP_ALIVE" == yes ]] && keep=$'\n        keep_alive              = true'
 	for server in $(lab_servers); do
 		entries+="$(
 			cat <<ENTRY
@@ -177,7 +178,7 @@ server_conf() {
         client_cert_file        = "$SPIRE_ETC/lxd/$LAB_SPIRE_ID.crt"
         client_key_file         = "$SPIRE_ETC/lxd/$LAB_SPIRE_ID.key"
         server_cert_fingerprint = "sha256:$(env_get ".servers[\"$server\"].fingerprint")"
-        projects                = ["default"]
+        projects                = ["default"]$keep
       }
 ENTRY
 		)"$'\n'
