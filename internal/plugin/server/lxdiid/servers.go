@@ -57,8 +57,9 @@ func newLXDServer(ctx context.Context, id string, sc ServerConfig, devMode bool,
 			ClientCertFile: sc.ClientCertFile,
 			ClientKeyFile:  sc.ClientKeyFile,
 			// GET /1.0 and the project reads go to the first project
-			Project:  sc.Projects[0],
-			Insecure: devMode,
+			Project:   sc.Projects[0],
+			Insecure:  devMode,
+			KeepAlive: sc.KeepAlive,
 		},
 		tokenFile: sc.BearerTokenFile,
 	}

@@ -134,12 +134,6 @@ func (r *soakRun) checkSafety(s *soakSummary, atts []soakAttest) {
 	for n, u := range r.uuids {
 		byUUID[u] = n
 	}
-	var switchAt time.Time
-	for _, e := range r.events {
-		if e.Fault == "mode-switch" {
-			switchAt = e.Start
-		}
-	}
 	for _, a := range atts {
 		if !a.OK {
 			continue
@@ -154,16 +148,46 @@ func (r *soakRun) checkSafety(s *soakSummary, atts []soakAttest) {
 				s.violate("INV-1", "%s was attested at %s while it was stopped (%s to %s)", name, a.Time.Format("15:04:05"), e.Start.Format("15:04:05"), e.End.Format("15:04:05"))
 			}
 		}
-		if !switchAt.IsZero() && a.Time.Sub(switchAt).Abs() > time.Minute {
-			if want := map[bool]string{true: "file_pull", false: "config_push"}[a.Time.Before(switchAt)]; a.Mode != want {
-				s.violate("INV-1", "an attestation at %s used %s, the server's mode was %s", a.Time.Format("15:04:05"), a.Mode, want)
-			}
+		if want, sure := modeAt(r.events, a.Time); sure && a.Mode != want {
+			s.violate("INV-1", "an attestation at %s used %s, the server's mode was %s", a.Time.Format("15:04:05"), a.Mode, want)
 		}
 	}
 }
 
-// challengeKeys counts the challenge keys left on the fleet.
+// modeAt is the server's proof mode at t, from the mode switches among the
+// events (file_pull before the first); sure is false within a minute of a
+// switch, while SPIRE Server restarts with the new mode.
+func modeAt(events []soakEvent, t time.Time) (mode string, sure bool) {
+	mode, sure = "file_pull", true
+	for _, e := range events {
+		if e.Fault != "mode-switch" {
+			continue
+		}
+		if t.Sub(e.Start).Abs() <= time.Minute {
+			sure = false
+		}
+		if e.Start.Before(t) {
+			mode = e.Mode
+		}
+	}
+	return mode, sure
+}
+
+// challengeKeys counts the challenge keys left on the fleet: those present
+// in two reads keyStable apart. The fleet keeps attesting in the quiet
+// period, and a single read catches the keys of attestations in flight.
 func (r *soakRun) challengeKeys() int {
+	first := r.keySet()
+	time.Sleep(keyStable)
+	return countBoth(first, r.keySet())
+}
+
+// keyStable outlasts any attestation in flight: its key lives at most the
+// agent's proof_timeout (15 s by default).
+const keyStable = 20 * time.Second
+
+// keySet is the fleet's challenge keys, as instance/key.
+func (r *soakRun) keySet() map[string]bool {
 	out := r.l.ssh(r.t, r.s.server, `sudo lxc query "/1.0/instances?recursion=1&project=default"`)
 	var list []struct {
 		Name   string            `json:"name"`
@@ -172,12 +196,23 @@ func (r *soakRun) challengeKeys() int {
 	if err := json.Unmarshal([]byte(out), &list); err != nil {
 		r.t.Fatalf("listing the instances: %v", err)
 	}
-	n := 0
+	keys := map[string]bool{}
 	for _, i := range list {
 		for k := range i.Config {
 			if strings.HasPrefix(k, "user.spire.challenge.") {
-				n++
+				keys[i.Name+"/"+k] = true
 			}
+		}
+	}
+	return keys
+}
+
+// countBoth counts the keys in both sets.
+func countBoth(a, b map[string]bool) int {
+	n := 0
+	for k := range a {
+		if b[k] {
+			n++
 		}
 	}
 	return n
@@ -199,6 +234,9 @@ func (r *soakRun) checkFinal(s *soakSummary, lastEnd time.Time) {
 	}
 	if len(late) > 0 {
 		s.violate("INV-7", "%d agents were not attested again after the last fault ended at %s: %v", len(late), lastEnd.Format("15:04:05"), late)
+	}
+	for _, n := range late { // the teardown deletes what would explain them
+		r.t.Logf("%s:\n%s", n, r.l.ssh(r.t, r.s.server, fmt.Sprintf("sudo lxc exec %s -- sh -c 'rc-service spire-agent status; tail -n 8 /var/log/spire-agent.log' 2>&1 || true", n)))
 	}
 	if s.LeftoverKey = r.challengeKeys(); s.LeftoverKey > 0 {
 		s.violate("INV-4", "%d challenge keys are left on the fleet after the quiet period", s.LeftoverKey)
@@ -222,8 +260,13 @@ func (r *soakRun) checkDrift(s *soakSummary) {
 	}
 }
 
-// assess judges the soak.
+// assess judges the soak from SPIRE Server's log.
 func (r *soakRun) assess(start time.Time) *soakSummary {
+	return r.assessAtts(start, r.journal(start))
+}
+
+// assessAtts judges the soak from its attestations.
+func (r *soakRun) assessAtts(start time.Time, atts []soakAttest) *soakSummary {
 	elapsed := time.Since(start)
 	p := r.l.plugins(r.t)
 	s := &soakSummary{
@@ -232,7 +275,6 @@ func (r *soakRun) assess(start time.Time) *soakSummary {
 		Environment: fmt.Sprintf("SPIRE %s, plugins %s, %s LXD %s", p.Spire.Version, p.Plugins.Version, r.s.server, r.l.env.Servers[r.s.server].Version),
 		Events:      r.events, Samples: r.samples,
 	}
-	atts := r.journal(start)
 	s.measures(atts, elapsed)
 	r.checkSafety(s, atts)
 	lastEnd := start

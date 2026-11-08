@@ -23,6 +23,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	lxdclient "github.com/canonical/lxd/client"
 	"github.com/canonical/lxd/shared/api"
@@ -63,6 +64,26 @@ type Config struct {
 	MaxBytes int64
 	// Recorder, when set, receives every exchange, unsanitized.
 	Recorder func(Exchange)
+	// KeepAlive reuses connections between requests; the SDK opens one per
+	// request otherwise (FR-S20).
+	KeepAlive bool
+}
+
+// Idle connections kept with KeepAlive: as many per host as the default
+// max_inflight, each closed after Go's default idle timeout, so that a
+// renewed client certificate is used and a replaced client's are released.
+const (
+	keepAliveIdle    = 16
+	keepAliveTimeout = 90 * time.Second
+)
+
+// keepAlive applies KeepAlive to the SDK's transport.
+func keepAlive(t *http.Transport, on bool) {
+	if on {
+		t.DisableKeepAlives = false
+		t.MaxIdleConnsPerHost = keepAliveIdle
+		t.IdleConnTimeout = keepAliveTimeout
+	}
 }
 
 // Exchange is one request and its response, as seen on the wire.
@@ -141,6 +162,7 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 				t.TLSClientConfig.Certificates = nil
 				t.TLSClientConfig.GetClientCertificate = certs.get
 			}
+			keepAlive(t, cfg.KeepAlive)
 			return &transport{base: t, maxBytes: cfg.MaxBytes, recorder: cfg.Recorder}
 		}
 		sdk, err = lxdclient.ConnectLXDWithContext(ctx, endpoint.Scheme+"://"+endpoint.Host, args)
@@ -150,6 +172,7 @@ func Connect(ctx context.Context, cfg Config) (*Client, error) {
 		base = &url.URL{Scheme: "https", Host: endpoint.Host}
 	case "unix":
 		args.TransportWrapper = func(t *http.Transport) lxdclient.HTTPTransporter {
+			keepAlive(t, cfg.KeepAlive)
 			return &transport{base: t, maxBytes: cfg.MaxBytes, recorder: cfg.Recorder}
 		}
 		sdk, err = lxdclient.ConnectLXDUnixWithContext(ctx, endpoint.Path, args)
