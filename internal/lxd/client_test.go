@@ -17,6 +17,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httptrace"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -127,6 +128,29 @@ func TestPin(t *testing.T) {
 	_, err = connect(t, cfg).Raw(context.Background(), RawRequest{Method: http.MethodGet, Path: "/1.0"})
 	if KindOf(err) != KindConnection {
 		t.Errorf("pin mismatch: kind = %v (%v); want connection", KindOf(err), err)
+	}
+}
+
+// TestKeepAlive: the SDK's transport opens a connection per request; with
+// KeepAlive the second request reuses the first one's (FR-S20).
+func TestKeepAlive(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	for _, keep := range []bool{false, true} {
+		cfg := fakeConfig(t, fake)
+		cfg.KeepAlive = keep
+		c := connect(t, cfg)
+		var reused []bool
+		ctx := httptrace.WithClientTrace(context.Background(), &httptrace.ClientTrace{
+			GotConn: func(info httptrace.GotConnInfo) { reused = append(reused, info.Reused) },
+		})
+		for range 2 {
+			if _, err := c.Raw(ctx, RawRequest{Method: http.MethodGet, Path: "/1.0"}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if len(reused) != 2 || reused[1] != keep {
+			t.Errorf("KeepAlive %v: connections reused %v", keep, reused)
+		}
 	}
 }
 

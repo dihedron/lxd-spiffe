@@ -159,3 +159,18 @@ func TestFRS19RereadAfter403(t *testing.T) {
 		t.Errorf("%d reads of GET /1.0, want 2 (one after re-reading the token)", n)
 	}
 }
+
+// TestFRS20KeepAlive: keep_alive reaches the server's connection, and is off
+// by default.
+func TestFRS20KeepAlive(t *testing.T) {
+	fake := fakelxd.NewAssumed(t)
+	f := newTestFiles(t)
+	if fakeServer(t, fake, f, false).conn.KeepAlive {
+		t.Error("keep_alive on by default")
+	}
+	sc := ServerConfig{URL: fake.URL, ServerCertFingerprint: fake.Fingerprint(), Projects: []string{"default"}, ClientCertFile: f.cert, ClientKeyFile: f.key, KeepAlive: true}
+	s, err := newLXDServer(context.Background(), "lab", sc, false, breakerSettings{threshold: 5, open: 5 * time.Second, maxOpen: time.Minute})
+	if err != nil || !s.conn.KeepAlive {
+		t.Errorf("keep_alive = true: conn.KeepAlive = %v, %v", s.conn.KeepAlive, err)
+	}
+}

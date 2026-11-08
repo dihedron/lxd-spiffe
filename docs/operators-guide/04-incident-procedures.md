@@ -26,6 +26,7 @@ While one configured server is unreachable or does not answer, attestations of i
 
 1. Check with `lxc list` that every instance that should run does; start those that do not.
 2. Expect every container's agent to attest again within minutes. If many containers share one NAT address and SPIRE Server's per-address rate limit is on, they queue at one attestation a second; agents whose `attestation_timeout` is shorter than their wait fail and retry with a backoff. Watch for `rate_limited` from the plugin's own limits too: raise `limits.rate_per_sec` and `limits.max_inflight` if one server's containers exceed them.
+3. Expect a few agents to stay silent for up to about two hours. An agent that started while the daemon was down may have opened its connection to SPIRE Server through LXD's NAT before LXD came back. Restarting, LXD rebuilds its bridge's NAT and drops that connection's state, and SPIRE Agent waits for the server's answer without a deadline. The agent logs `attestation failed` with `attestation_timeout`, then nothing more, until the kernel's TCP keepalive closes the connection (after `net.ipv4.tcp_keepalive_time`, 7,200 seconds by default). It then attests again by itself. Restart such an agent to recover it at once. To shorten the wait in guests that reach SPIRE Server through LXD's NAT, lower `net.ipv4.tcp_keepalive_time` in the guest (for example to 300). The setting belongs to the guest's own network namespace, so a container can set it without changing the host.
 
 ## A suspected forged attestation
 

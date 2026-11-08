@@ -46,7 +46,7 @@ The `plugin_data` block of `NodeAttestor "lxd_iid"` in SPIRE Server's configurat
 ### LXD servers
 
 `servers`
-:   *Map, at least one entry.* One entry per LXD server or cluster. The entry's key is its `server_id`: a SPIFFE ID path segment (1 to 63 letters, digits, `.`, `-` and `_`, not `.` or `..`) that becomes part of every SPIFFE ID the plugin issues for that server's instances and of the `server` selector. Keep it unique across every LXD server SPIRE attests instances of, and never change it (`T7`). A cluster is one entry (*Clusters*). An instance's claim is looked up on every server whose `projects` allow it, and must match exactly one instance across all of them; a server that cannot be reached fails the attestation, since without it the match could not be shown to be the only one.
+:   *Map, at least one entry.* One entry per LXD server or cluster. The entry's key is its `server_id`: a SPIFFE ID path segment (1 to 63 letters, digits, `.`, `-` and `_`, not `.` or `..`) that becomes part of every SPIFFE ID the plugin issues for that server's instances and of the `server` selector. Keep it unique across every LXD server SPIRE attests instances of, and never change it (`T7`). A cluster is one entry (*Clusters*). An instance's claim is looked up on every server whose `projects` allow it, and must match exactly one instance across all of them. A server that cannot be reached is skipped with a warning, since the proof still shows that the agent runs inside the instance matched; with no match and a server skipped, the attestation is refused (`lxd_unavailable`), and with `proof_mode` `none` an unreachable server fails it.
 
 `servers.*.url`
 :   *`https://host[:port]`, required.* The LXD API address. No path, user, query or fragment. For a cluster, a load balancer or virtual address in front of the members, or one member's address if attestation may stop while that member is down. The plugin never follows redirects.
@@ -68,6 +68,9 @@ The `plugin_data` block of `NodeAttestor "lxd_iid"` in SPIRE Server's configurat
 
 `servers.*.projects`
 :   *List of project names, at least one.* The projects whose instances may attest through this server: the project allow-list. An instance in any other project is refused (`scope_denied`), and the uniqueness check of `volatile.uuid` covers these projects. Each must be a valid LXD project name, listed once. The SPIRE identity needs project `can_view` and `can_view_instances` on each.
+
+`servers.*.keep_alive`
+:   *Boolean, default `false`.* Reuse connections to the LXD server between requests. By default every request opens its own connection, as LXD's client library does. With `true`, up to 16 idle connections are kept and each is closed after 90 seconds idle, which saves a TLS handshake per request: about a quarter of the plugin's CPU time in the lab's soak. A renewed client certificate is then used within 90 seconds, on the next new connection.
 
 ### Selectors
 

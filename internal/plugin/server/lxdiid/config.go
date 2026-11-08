@@ -53,6 +53,7 @@ type ServerConfig struct {
 	ServerCertFingerprint string   `hcl:"server_cert_fingerprint"`
 	CABundleFile          string   `hcl:"ca_bundle_file"`
 	Projects              []string `hcl:"projects"`
+	KeepAlive             bool     `hcl:"keep_alive"`
 }
 
 // SelectorsConfig is the selectors block (FR-S8).
@@ -77,7 +78,7 @@ var configKeys = []string{
 	"agent_path_template", "proof_mode", "i_understand_claim_only_is_insecure", "proof_timeout", "proof_dir", "reattest", "dev_mode",
 	"policy.allow_privileged", "policy.deny_config_keys",
 	"servers.*.url", "servers.*.client_cert_file", "servers.*.client_key_file", "servers.*.bearer_token_file",
-	"servers.*.server_cert_fingerprint", "servers.*.ca_bundle_file", "servers.*.projects",
+	"servers.*.server_cert_fingerprint", "servers.*.ca_bundle_file", "servers.*.projects", "servers.*.keep_alive",
 	"selectors.enable", "selectors.config_keys", "selectors.user_keys",
 	"limits.max_inflight", "limits.rate_per_sec",
 	"limits.breaker_threshold", "limits.breaker_open", "limits.breaker_max_open",
