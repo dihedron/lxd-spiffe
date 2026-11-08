@@ -11,11 +11,37 @@ lxc auth group permission remove spire instance web-01 can_access_files project=
 
 A group holds at most 99 permissions: once a group has 90 instance grants, create the next one, grant it project `can_view` first, and add the SPIRE identity to it (*Setup Guide*, *Preparing LXD*). Removing an instance's grant does not revoke its agent's SVID: evict the agent when you delete the instance (below).
 
+## Adding and removing projects
+
+The server plugin attests only instances in the projects listed in `servers.<server_id>.projects`. With the plugin's configuration in a `plugin_data_file`, change the list without a restart (*Setup Guide*, *Installing the server plugin*). With `plugin_data` inline, follow the same steps, but restart SPIRE Server instead of sending the signal.
+
+To add a project:
+
+1. Create the project and give it a default profile with a root disk and a managed network (*Setup Guide*, *Preparing LXD*).
+2. Grant SPIRE's group project `can_view` first, then project `can_view_instances`:
+
+   ```bash
+   lxc auth group permission add spire project spire-web can_view
+   lxc auth group permission add spire project spire-web can_view_instances
+   ```
+
+3. Add the project to `projects` in the plugin's configuration file.
+4. Send `SIGUSR1` to SPIRE Server's main process: `systemctl kill --kill-whom=main --signal=SIGUSR1 spire-server`. Check its log for `Plugin reconfigured`. With several SPIRE Servers, change and signal each one.
+5. Grant the instance grants as instances are created (*Adding and removing instances*), and check one attestation from the new project.
+
+To remove a project:
+
+1. Take the project out of `projects` and send `SIGUSR1` to every SPIRE Server.
+2. Evict the agents of the project's instances (*Evicting agents*). The reload alone does not touch them: an agent keeps its identity, with no error, until it next attests, at about half of `agent_ttl`, and that attestation is refused with `scope_denied`. An evicted agent is cut off at once: its next request is denied, its attestation is refused, and it removes its SVID and stops.
+3. Then revoke the project's grants, and delete the project if it is no longer needed. The plugin reads every listed project for the uniqueness check of `volatile.uuid`. LXD answers 404 for a project the plugin may not read, or one that was deleted. The plugin skips such a project with the warning `skipping a project the LXD identity cannot read` on every attestation, and a twin in it goes unseen. So a project left listed without its grants does not stop attestations, but take it out of the list.
+
+A configuration the plugin refuses changes nothing: SPIRE Server logs `Failed to reconfigure plugin` with the error and the plugin keeps the list it had. Fixing the file back to the configuration in force logs `Plugin not reconfigured since the config is unchanged`. Attestations already running finish under the old list. Changing a server's `projects` gives that server a new LXD connection and a fresh circuit breaker, so its capability check runs again at its next attestation.
+
 ## Adding an LXD server or cluster
 
 1. Prepare it as in *Setup Guide*, *Preparing LXD*: projects, the SPIRE identity, the grants, the fingerprint.
 2. Add a `servers` entry with a new, unique `server_id`. Never reuse a `server_id` that a decommissioned server used while agents of it may still exist.
-3. Restart SPIRE Server (one at a time when there are several).
+3. Send `SIGUSR1` to SPIRE Server if the plugin's configuration is in a `plugin_data_file`; restart it if `plugin_data` is inline. With several SPIRE Servers, do one at a time.
 
 An entry is checked at its first attestation: watch for `refusing to attest through an LXD server` with that `server_id`.
 
@@ -23,7 +49,7 @@ An entry is checked at its first attestation: watch for `refusing to attest thro
 
 - **Client certificate**: create a new key and certificate, add the new certificate as a second fine-grained identity in the same groups (or replace the identity's certificate), write the new files over the old ones (write and rename, so the plugin never reads half a file), and the plugin reloads them when they change, without a restart. Then delete the old identity. Keep the key mode `0400` or `0600`.
 - **Bearer token** (LXD 6.x): issue a new token with an expiry (`lxc auth identity token issue bearer/spire --expiry 30d`) and write it atomically to `bearer_token_file`. Issuing it revokes the previous token at once, so write the file right away; the plugin rereads it when it changes, and once more when LXD refuses the old one. Automate it well before expiry: an expired token is refused everywhere at once.
-- **LXD's server certificate** changed (a new cluster certificate): update `server_cert_fingerprint` and restart SPIRE Server. Until then, attestations through that server fail with `lxd_unavailable` and the error `server certificate fingerprint ... does not match the pin`.
+- **LXD's server certificate** changed (a new cluster certificate): update `server_cert_fingerprint`, then send `SIGUSR1` to SPIRE Server (with a `plugin_data_file`) or restart it (with `plugin_data` inline). Until then, attestations through that server fail with `lxd_unavailable` and the error `server certificate fingerprint ... does not match the pin`.
 
 ## Upgrading
 
@@ -31,7 +57,12 @@ See *Setup Guide*, *Upgrades and removal*: the server plugin's `plugin_checksum`
 
 ## Changing the configuration
 
-Change one SPIRE Server at a time and watch its log as it starts: the plugin refuses a bad configuration as a whole, and SPIRE Server then stops with `invalid plugin configuration: ...` naming the key. Keep the previous configuration to roll back. Changes that alter identities:
+Change one SPIRE Server at a time and watch its log. How a change takes effect depends on where the plugin's configuration lives:
+
+- **`plugin_data_file`**: send `SIGUSR1`. SPIRE Server reads the file again and passes it to the plugin, without a restart. A bad configuration changes nothing: the plugin refuses it as a whole and keeps the configuration it had, and SPIRE Server logs `Failed to reconfigure plugin` with the error.
+- **`plugin_data` inline**: restart SPIRE Server. The plugin refuses a bad configuration as a whole, and SPIRE Server then stops with `invalid plugin configuration: ...` naming the key.
+
+A new plugin binary (`plugin_cmd`, `plugin_checksum`) and SPIRE Server's own settings always need a restart. Keep the previous configuration to roll back. Changes that alter identities:
 
 - `agent_path_template` or a `server_id` changes every affected agent's SPIFFE ID: their next attestation gives them the new ID, and node entries that name agents by ID stop matching.
 - `selectors.enable` changes which selectors agents get at their next attestation: entries that rely on a removed selector stop matching.

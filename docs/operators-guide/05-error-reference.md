@@ -74,7 +74,7 @@ These come as `attestation denied (<code>): <detail>`; `after a 412: ` precedes 
 
 | Message | Reason | Cause | Remedy |
 | ---------------------------------- | --------------------- | -------------------------------- | -------------------------------- |
-| `server <id>, project <project>: listing by uuid: <error>` | `lxd_unavailable` or `lxd_forbidden` | The filtered instance list failed: on the matched server, or with a refusal on another, or with any failure under `proof_mode = "none"` | The wrapped error |
+| `server <id>, project <project>: listing by uuid: <error>` | `lxd_unavailable` or `lxd_forbidden` | The filtered instance list failed: on the matched server, or with a refusal on another, or with any failure under `proof_mode = "none"`. A 404 (a deleted project, or one SPIRE's group may not view) is skipped instead, except under `proof_mode = "none"` | The wrapped error |
 | `instances with the resolved uuid: [<server>/<project>/<name> ...]` | `instance_ambiguous` | Several instances share the UUID (an import keeps it), or SPIRE's group lacks project `can_view_instances` so the list misses the instance itself | Remove the twin; grant `can_view_instances` |
 
 ### The proof
@@ -122,6 +122,7 @@ These come as `attestation denied (<code>): <detail>`; `after a 412: ` precedes 
 | `attestation refused` | error | An attestation was refused; see `reason_code` and `error` | This chapter |
 | `refusing to attest through an LXD server` | error | A server failed its check (logged once until the error changes); `error` says why | *Incident procedures* |
 | `the LXD identity has more rights than the attestor needs (SEC-16)` | warn | `finding` is `the identity is not fine-grained: it has every right on the server` or `the identity has the server's admin entitlement` | Use a fine-grained identity with the grants of *Setup Guide*, *Preparing LXD* |
+| `skipping a project the LXD identity cannot read` | warn | A listed project answered 404 to the uniqueness check: it was deleted, or SPIRE's group lacks project `can_view`. The check goes on without it; an instance in it cannot attest | Take the project out of `projects`, or grant project `can_view` and `can_view_instances` |
 | `selector omitted` | warn | A selector value broke the value rule; `why` is `not valid UTF-8`, `control character` or `<n> bytes, over 256` | Fix the value at its source, or stop relying on that selector |
 | `config_push cleanup failed` | warn | The challenge key could not be removed; field `config_push_cleanup_failures_total` | None needed: the next attestation removes it |
 | `proof_mode "none": issuing an identity on a claim only, with no proof of co-location (SEC-02)` | warn | Every claim-only attestation | Never in production |

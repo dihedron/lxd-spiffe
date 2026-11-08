@@ -544,6 +544,43 @@ func TestFRS3SkipsUnreachableServer(t *testing.T) {
 	}
 }
 
+// TestFRS18UnreadableProject: a listed project that LXD answers with 404
+// (deleted, or the identity lost its grants) is skipped by the uniqueness
+// check with a warning, since an instance in it cannot attest either; a twin
+// in a readable project and proof_mode none still fail closed.
+func TestFRS18UnreadableProject(t *testing.T) {
+	const none = "proof_mode = \"none\"\ni_understand_claim_only_is_insecure = true"
+	t.Run("skipped with a warning", func(t *testing.T) {
+		h := newHarness(t, "")
+		h.addInstance("default", "c1", "container", uuidA)
+		h.fake.HideProject("other")
+		if _, err := h.attest("default", newAgent("c1")); err != nil {
+			t.Fatalf("%v\n%s", err, h.log)
+		}
+		for _, want := range []string{"skipping a project the LXD identity cannot read", "server_id=lab", "project=other"} {
+			if !strings.Contains(h.log.String(), want) {
+				t.Errorf("no %q in the log:\n%s", want, h.log)
+			}
+		}
+	})
+	t.Run("a twin in a readable project still refuses", func(t *testing.T) {
+		fake, entry := extraServer(t, "z-other")
+		h := newHarness(t, "", entry)
+		h.addInstance("default", "c1", "container", uuidA)
+		h.fake.HideProject("other")
+		fake.AddInstance("default", "twin", map[string]string{"volatile.uuid": uuidA, "volatile.uuid.generation": uuidA})
+		_, err := h.attest("default", newAgent("c1"))
+		checkRefusedWith(t, h, err, "instance_ambiguous")
+	})
+	t.Run("proof_mode none needs every project", func(t *testing.T) {
+		h := newHarness(t, none)
+		h.addInstance("default", "c1", "container", uuidA)
+		h.fake.HideProject("other")
+		_, err := h.attest("default", newAgent("c1"))
+		checkRefusedWith(t, h, err, "lxd_unavailable")
+	})
+}
+
 // TestFRS3FailsClosed: what still refuses the attestation with several
 // servers: a collision or twin on a server that answers (T6, T7), a server
 // that answers with a refusal, no match while a server was skipped, and
