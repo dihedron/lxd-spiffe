@@ -6,6 +6,12 @@ The server plugin reaches into instances through the LXD API with its own LXD id
 
 Keep SPIRE-managed instances in **dedicated projects**. The SPIRE identity gets grants in those projects only, and the server plugin's allow-list (`projects` in its configuration) names them: an instance in any other project is refused (`scope_denied`).
 
+The plugin cannot work without this list, for three reasons:
+
+- **It is where the plugin looks.** LXD instance names are unique only within a project, and every instance read names one (`GET /1.0/instances/{name}?project=<p>`). An instance cannot learn its own project from inside (devLXD does not report it), so the agent's claim may name none, or only the project the instance was told to claim. The plugin looks up the claimed project when the list allows it. Otherwise it looks in every listed project, one LXD call each.
+- **It is the trust boundary.** Whoever can create or import an instance in a listed project can get an agent identity from SPIRE. List only the projects whose instance lifecycle you control. The plugin never searches all projects: that needs wider grants on the LXD server, and it would attest instances in projects nobody chose to trust.
+- **It bounds the uniqueness checks.** An attestation needs exactly one instance matching the claim, and exactly one with the matched instance's `volatile.uuid`. Both are counted across the listed projects of every configured server. A copy imported into an unlisted project is outside that count, but it cannot attest either.
+
 ```bash
 lxc project create spire-nodes
 ```
