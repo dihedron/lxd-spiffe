@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/dihedron/lxd-spiffe/internal/evidence"
 	"github.com/dihedron/lxd-spiffe/internal/probe/exit"
@@ -404,6 +405,21 @@ func TestPRS52ConfigPushFailures(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestConfigPushKeyRemovedAfterDeadline: the probe's own deadline passing
+// before the guest answers (or while the write was slow) does not leave the
+// key: once written, it is removed whatever happens next (ST-3 iteration 1453).
+func TestConfigPushKeyRemovedAfterDeadline(t *testing.T) {
+	fake := newRehearsalFake(t, nil)
+	slow := func(c rehearse.Challenge) rehearse.Answer {
+		time.Sleep(600 * time.Millisecond)
+		return echoKey(fake, false)(c)
+	}
+	_, _, _ = rehearseConfigPush(t, fake, slow, func(c *RehearseConfigPush) { c.Timeout = 300 * time.Millisecond })
+	if keys := challengeKeys(fake); len(keys) != 0 {
+		t.Errorf("keys left after the deadline: %v", keys)
 	}
 }
 
