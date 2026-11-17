@@ -458,6 +458,9 @@ func (cmd *RehearseConfigPush) Execute(args []string) error {
 	return s.finish(err)
 }
 
+// cleanupSlack bounds the removal of the key after the probe's deadline.
+const cleanupSlack = 30 * time.Second
+
 // run is the config_push flow. Once the key is written, it is removed
 // whatever happens next.
 func (cmd *RehearseConfigPush) run(ctx context.Context, r *rehearsal, agentNonce []byte) error {
@@ -508,6 +511,10 @@ func (cmd *RehearseConfigPush) run(ctx context.Context, r *rehearsal, agentNonce
 
 	cmd.exchange(ctx, r, inst, key, value, agentNonce)
 
+	// the key is removed even when the probe's deadline has passed (a slow
+	// write or a guest that never answered): ST-3 iteration 1453 left it
+	ctx, cancelCleanup := context.WithTimeout(context.WithoutCancel(ctx), cleanupSlack)
+	defer cancelCleanup()
 	cleanupErr, err := cmd.cleanup(ctx, s, key)
 	if err != nil {
 		return err
